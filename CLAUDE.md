@@ -35,9 +35,12 @@ dashboard générique. À l'opposé de l'app "Temps d'écran" native de macOS.
 - **Collecte** (`collector/`) : Python 3. `psutil`/AppKit pour l'app active
   sur Mac, `requests` pour poller l'API PSN. Léger, sans dépendance lourde,
   simple à lancer depuis launchd.
-- **Stockage** : SQLite, fichier unique partagé (`data/screentime.db`),
-  écrit par les scripts Python, lu par le dashboard. Pas de serveur à
-  maintenir, agrégations journalières triviales en SQL.
+- **Stockage** : SQLite, fichier unique partagé, écrit par les scripts
+  Python, lu par le dashboard. Pas de serveur à maintenir, agrégations
+  journalières triviales en SQL. La base vit dans
+  `~/Library/Application Support/Pulseon/screentime.db` et **pas** dans le
+  repo : une app packagée ne peut pas résoudre un chemin relatif au dossier
+  de code. Le schéma, lui, reste versionné dans `db/schema.sql`.
 - **Dashboard** (`dashboard/`) : app **Tauri** (shell Rust + WebView) avec
   frontend **Svelte**. Choisi plutôt qu'Electron (empreinte mémoire/binaire
   bien plus légère) ou une page web servie localement (une vraie app avec
@@ -48,6 +51,24 @@ dashboard générique. À l'opposé de l'app "Temps d'écran" native de macOS.
 - **Visualisations** : composants custom-codés en Svelte, pas de librairie
   de charts générique par défaut — c'est le point sur lequel on investit
   pour se démarquer visuellement.
+
+### Parti pris du dashboard
+
+Le produit s'appelle **Pulseon**. Son élément signature est **la journée en
+multipiste** (`dashboard/src/lib/DayTrace.svelte`) : une piste par appareil
+sur 24h, l'activité tracée en signal carré, avec une tête de lecture sur
+l'heure courante. Ça montre les chevauchements et les trous — ce qu'un total
+en barres, façon Temps d'écran d'Apple, ne dit pas.
+
+Règle de conception à tenir : **ne jamais inventer de placement horaire**.
+La PlayStation n'expose qu'un total cumulé sans horaires, donc sa piste rend
+une bande hachurée de largeur proportionnelle (quantité vraie, heure
+explicitement inconnue). Toute future source à compteur doit suivre la même
+convention, et une source qui n'a jamais rien écrit s'affiche comme "pas
+encore branchée", pas comme une journée à zéro.
+
+Une teinte par appareil, tenue du tracé jusqu'à la répartition. Le corail
+`--live` est réservé au marqueur "maintenant", nulle part ailleurs.
 
 Prérequis machine installés pour cette stack : toolchain Rust (via
 `rustup`), Node/npm (déjà présent), Xcode Command Line Tools (déjà présent).
@@ -98,12 +119,14 @@ réévaluer manuellement si besoin.
 ## Roadmap
 
 1. ~~Stack technique~~ — tranché, voir section dédiée ci-dessus.
-2. Scaffolding : schéma SQLite, squelette collecteur Python, squelette app
-   Tauri + Svelte
-3. Collecteur PC (premier collecteur fonctionnel, testable seul)
-4. Identité visuelle du dashboard (avec données PC réelles)
-5. Collecteur PlayStation, puis TV, orchestrés via launchd
-6. Réévaluer l'intégration iPhone
+2. ~~Scaffolding~~ — schéma SQLite, collecteur Python, app Tauri + Svelte.
+3. ~~Collecteur PC~~ — fonctionnel, testé manuellement, pas encore branché à
+   launchd.
+4. ~~Identité visuelle du dashboard~~ — voir "Parti pris du dashboard".
+5. Brancher le collecteur PC sur launchd (rien ne tourne en continu à ce
+   stade : il faut lancer le script à la main).
+6. Collecteur PlayStation (`psn-api`), puis TV (prise connectée).
+7. Réévaluer l'intégration iPhone.
 
 ## Notes pour reprendre le fil
 
