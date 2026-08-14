@@ -1,0 +1,56 @@
+:root {
+  /* Fond bleu-graphite plutôt que noir neutre : l'app doit se lire comme le
+     boîtier d'un instrument, pas comme un terminal. */
+  --ground: #0e1116;
+  --surface: #151a22;
+  --surface-raised: #1d242f;
+  --line: #232b36;
+  --line-bright: #333d4c;
+
+  --text: #e7edf5;
+  --text-muted: #8593a5;
+  --text-faint: #55606f;
+
+  /* Le code couleur est fonctionnel : une teinte par appareil, tenue partout
+     dans l'app (tracé, totaux, répartition). */
+  --sig-pc: #4ec9e0;
+  --sig-tv: #f0a64a;
+  --sig-ps: #8b87f8;
+
+  /* Réservé au marqueur "maintenant". Nulle part ailleurs. */
+  --live: #ff5e5b;
+
+  --font-display: "Bricolage Grotesque Variable", system-ui, sans-serif;
+  --font-body: "Instrument Sans Variable", system-ui, sans-serif;
+  --font-mono: "Chivo Mono Variable", ui-monospace, monospace;
+
+  --head-w: 8.5rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--sig-pc);
+  outline-offset: 2px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
