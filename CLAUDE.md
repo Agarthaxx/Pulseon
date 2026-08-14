@@ -26,6 +26,32 @@ Dashboard perso pour suivre le temps passé sur PC, PlayStation, TV, et
   délai. On reconstitue le temps journalier par différence entre deux
   relevés.
 
+## Stack technique
+
+Décidée le 2026-08-14. Objectif explicite d'Arthur : un outil perçu comme
+"pro", performant, et avec une identité visuelle distinctive — pas un
+dashboard générique. À l'opposé de l'app "Temps d'écran" native de macOS.
+
+- **Collecte** (`collector/`) : Python 3. `psutil`/AppKit pour l'app active
+  sur Mac, `requests` pour poller l'API PSN. Léger, sans dépendance lourde,
+  simple à lancer depuis launchd.
+- **Stockage** : SQLite, fichier unique partagé (`data/screentime.db`),
+  écrit par les scripts Python, lu par le dashboard. Pas de serveur à
+  maintenir, agrégations journalières triviales en SQL.
+- **Dashboard** (`dashboard/`) : app **Tauri** (shell Rust + WebView) avec
+  frontend **Svelte**. Choisi plutôt qu'Electron (empreinte mémoire/binaire
+  bien plus légère) ou une page web servie localement (une vraie app avec
+  icône dock/menu bar donne plus l'impression d'un produit fini). Le
+  frontend lit directement le fichier SQLite (plugin SQL de Tauri), pas de
+  serveur intermédiaire — cohérent avec la séparation collecte/dashboard
+  déjà actée plus bas.
+- **Visualisations** : composants custom-codés en Svelte, pas de librairie
+  de charts générique par défaut — c'est le point sur lequel on investit
+  pour se démarquer visuellement.
+
+Prérequis machine installés pour cette stack : toolchain Rust (via
+`rustup`), Node/npm (déjà présent), Xcode Command Line Tools (déjà présent).
+
 ## Architecture d'exécution
 
 - **Collecte de données** et **dashboard** sont deux choses séparées :
@@ -71,10 +97,13 @@ réévaluer manuellement si besoin.
 
 ## Roadmap
 
-1. Stack technique (à définir)
-2. Collecte automatique PC + PlayStation + TV, orchestrée via launchd
-3. Dashboard unifié (probablement un Artifact ou une petite app locale)
-4. Réévaluer l'intégration iPhone
+1. ~~Stack technique~~ — tranché, voir section dédiée ci-dessus.
+2. Scaffolding : schéma SQLite, squelette collecteur Python, squelette app
+   Tauri + Svelte
+3. Collecteur PC (premier collecteur fonctionnel, testable seul)
+4. Identité visuelle du dashboard (avec données PC réelles)
+5. Collecteur PlayStation, puis TV, orchestrés via launchd
+6. Réévaluer l'intégration iPhone
 
 ## Notes pour reprendre le fil
 
