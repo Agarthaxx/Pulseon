@@ -1,16 +1,16 @@
-# Screen Time Tracker
+# Pulseon
 
-Dashboard perso pour suivre le temps passé sur PC, PlayStation, TV, et
-(potentiellement, plus tard) iPhone.
+App native Apple pour suivre le temps passé sur Mac, PlayStation, TV, et
+(potentiellement, plus tard) iPhone. **iOS d'abord**, macOS ensuite.
 
 ## Sources de données et statut
 
-| Source     | Statut       | Méthode                                                                 |
-|------------|--------------|--------------------------------------------------------------------------|
-| PC (Mac)   | À faire      | Script local (temps d'écran allumé / app active)                        |
-| PlayStation| À faire      | API non-officielle `psn-api` — poll quotidien de `playDuration` par jeu, temps journalier = delta entre deux polls |
-| TV         | À faire      | Prise connectée avec mesure de conso (type Shelly / TP-Link Kasa) — détecte allumage/extinction |
-| iPhone     | Différé      | Voir contrainte ci-dessous                                              |
+| Source      | Statut  | Méthode                                                                 |
+|-------------|---------|-------------------------------------------------------------------------|
+| Mac         | À faire | `NSWorkspace` (app active) + `Quartz` (inactivité), depuis l'app macOS  |
+| PlayStation | À faire | API non-officielle PSN — poll de `playDuration` par jeu, temps journalier = delta entre deux relevés |
+| TV          | À faire | Prise connectée avec mesure de conso (type Shelly / TP-Link Kasa) — détecte allumage/extinction |
+| iPhone      | Différé | Voir contrainte ci-dessous                                              |
 
 ## Décisions et contraintes connues
 
@@ -18,66 +18,136 @@ Dashboard perso pour suivre le temps passé sur PC, PlayStation, TV, et
   DeviceActivity d'Apple ne laisse pas une app tierce (même perso) accéder
   aux chiffres bruts : `DeviceActivityReport` n'affiche qu'une vue système
   fermée, et `DeviceActivityMonitor` ne donne que des callbacks sur des
-  seuils définis à l'avance, pas un flux de données exploitable. Décision :
-  on démarre sans iPhone, à revoir plus tard (soit affichage de la vue
-  Apple native à côté du reste, soit semi-manuel via Shortcuts).
+  seuils définis à l'avance, pas un flux de données exploitable.
+  **Attention à ne pas confondre** : *afficher* le dashboard sur iPhone ne
+  pose aucun problème et c'est même la cible principale. C'est *collecter*
+  le temps d'écran de l'iPhone qui est bloqué. Le pivot iOS ne rouvre pas ce
+  dossier.
 - **PlayStation** : pas de temps de jeu en temps réel exposé par l'API,
   seulement un total cumulé par jeu (`playDuration`), mis à jour avec un
   délai. On reconstitue le temps journalier par différence entre deux
   relevés.
 
+## Stack technique
+
+Décidée le 2026-08-14, **après un premier essai abandonné** en Tauri +
+Svelte + Python (voir « Historique » plus bas). Objectif : un produit
+perçu comme pro, avec une identité visuelle forte, et une stack légère.
+
+- **Swift / SwiftUI**, un seul codebase pour les deux cibles. Pas de techno
+  web.
+- **`PulseonCore`** (`Sources/PulseonCore/`) : package Swift pur, sans
+  dépendance à SwiftUI ni SwiftData, qui porte les modèles et toute la
+  logique d'agrégation. C'est volontaire : ça se teste en ligne de commande,
+  sans simulateur.
+- **SwiftData** pour la persistance, choisi surtout parce qu'il se
+  synchronise avec CloudKit quasi gratuitement.
+- **CloudKit** pour la synchro Mac → iPhone. L'iPhone ne peut pas lire le
+  disque du Mac, et tous les collecteurs tournent côté Mac : sans synchro,
+  une app iOS n'a rien à afficher. **Exige l'Apple Developer Program payant
+  (~99 €/an)** — point bloquant à ne pas découvrir trop tard.
+
+### Prérequis machine
+
+- **Xcode complet requis.** Les Command Line Tools seuls ne suffisent pas :
+  pas de SDK iOS, pas de simulateur, et le `Testing.framework` livré est
+  incomplet (`lib_TestingInterop.dylib` manquant) donc `swift test` compile
+  mais ne s'exécute pas.
+
 ## Architecture d'exécution
 
-- **Collecte de données** et **dashboard** sont deux choses séparées :
-  - La collecte (script PC, poll API PlayStation) doit tourner en arrière-plan
-    en continu, indépendamment de toute fenêtre ouverte.
-  - Le dashboard ne fait que lire les données déjà accumulées quand on l'ouvre.
-- Sur macOS, la collecte en arrière-plan se fait via **launchd** (LaunchAgents)
-  — équivalent système d'un cron, lance un script à intervalle régulier ou à
-  la connexion, sans app ni terminal ouvert.
-- La prise connectée (TV) a sa propre logique côté cloud/webhook, indépendante
-  du Mac.
+- **L'app macOS est elle-même le collecteur**, sous forme d'agent en barre de
+  menu. Elle tourne en continu sans fenêtre ouverte. Ça remplace le trio
+  script Python + venv + launchd de la première version.
+- **L'app iOS ne collecte rien**, elle lit et affiche.
+- La règle d'origine tient toujours : la collecte ne doit pas dépendre d'une
+  fenêtre ouverte, et l'affichage ne fait que lire des données déjà
+  accumulées.
+- La prise connectée (TV) a sa propre logique côté cloud/webhook,
+  indépendante du Mac.
 
-## Continuité entre sessions Claude
+## Parti pris produit
 
-Pas besoin de copier-coller la conversation d'une session à l'autre. Ce
-fichier `CLAUDE.md` est relu automatiquement à chaque nouvelle session de
-travail dans ce dossier, et la mémoire long-terme de Claude complète avec le
-contexte (pourquoi les décisions ont été prises). Garder ce fichier à jour à
-chaque décision structurante est ce qui assure cette continuité.
+L'app native « Temps d'écran » de macOS dit **combien**. Pulseon montre
+**quand**.
+
+L'élément signature est **la journée en multipiste** : une piste par
+appareil sur 24 h, l'activité tracée en signal, avec un marqueur sur l'heure
+courante. On y voit les chevauchements et les trous — ce qu'un total en
+barres ne dira jamais. La donnée est faite d'intervalles parallèles, le
+multipiste est sa forme naturelle.
+
+**Règle à tenir, non négociable : ne jamais inventer de placement horaire.**
+La PlayStation n'expose qu'un total cumulé sans horaires. Sa piste doit
+rendre la quantité (largeur proportionnelle) tout en signalant visuellement
+que l'heure est inconnue — hachures ou équivalent. Toute future source à
+compteur suit la même convention. Une source qui n'a jamais rien écrit
+s'affiche « pas encore branchée », visuellement distinct d'une journée à
+zéro.
+
+Corollaire déjà implémenté dans `DayDigest` : **deux totaux**, parce qu'ils
+ne veulent pas dire la même chose. `summedTotal` additionne les appareils et
+double-compte les écrans simultanés ; `coveredTotal` fusionne les
+intervalles qui se chevauchent. À l'UI de choisir lequel elle met en avant.
 
 ## Conventions de développement
 
 - **Une branche par feature ou tâche complexe.** Pas de travail non-trivial
-  directement sur `main`.
+  directement sur `main`. Le découpage doit rester relisible : une PR = une
+  feature identifiable, y compris côté UI.
 - **Commits réguliers** au fil de l'avancement (pas un seul gros commit en
-  fin de tâche) — pour pouvoir suivre la progression et revenir en arrière
-  facilement.
-- **Pas de dette de doc** : ce `CLAUDE.md` (et toute doc pertinente) est mis à
-  jour en même temps que le code, pas après coup.
+  fin de tâche).
+- **Pas de dette de doc** : ce `CLAUDE.md` est mis à jour en même temps que
+  le code.
+- **Arthur relit et merge lui-même.** Relation tech lead / dev : livrer,
+  signaler les choix discutables, ne pas merger à sa place.
 
-## Skills Claude installées (test)
+### Lancer les tests
 
-Installées via `npx skills add` dans `.claude/skills/` (voir `skills-lock.json`
-à la racine pour les sources exactes) :
-- `frontend-design` (anthropics/skills) — qualité visuelle du dashboard
-- `webapp-testing` (anthropics/skills) — tests navigateur via Playwright
-- `handoff` (mattpocock/skills) — compresse une session en doc pour reprise
+Une fois Xcode installé : `swift test`.
 
-`agent-manager-skill` (fractalmind-ai) a été volontairement écartée pour
-l'instant — auteur moins connu, capacités puissantes (gestion de processus
-via tmux/cron), bloquée par le classificateur de sécurité de Claude Code. À
-réévaluer manuellement si besoin.
+## Historique : la première version (abandonnée)
+
+Un premier dashboard complet a été construit en Tauri + Svelte + Python,
+puis abandonné le 2026-08-14 au profit du natif Apple (trop lourd, et pas
+d'app iPhone possible). Le code reste accessible dans les branches et PR
+fermées `chore/foundation`, `feat/collector-pc`, `feat/dashboard-*` (PR #1
+à #6).
+
+Ce qui a été repris : le modèle de données (sources à intervalles vs
+sources à compteur cumulatif), la logique du collecteur Mac (PyObjC ne
+faisait qu'appeler `NSWorkspace` et `Quartz`, mêmes API depuis Swift), et
+tout le parti pris visuel ci-dessus.
 
 ## Roadmap
 
-1. Stack technique (à définir)
-2. Collecte automatique PC + PlayStation + TV, orchestrée via launchd
-3. Dashboard unifié (probablement un Artifact ou une petite app locale)
-4. Réévaluer l'intégration iPhone
+1. ~~Stack technique~~ — tranché deux fois, voir ci-dessus.
+2. ~~`PulseonCore`~~ — modèles + agrégation journalière, couverts par des
+   tests.
+3. App macOS : agent barre de menu qui collecte l'usage Mac.
+4. App iOS : le dashboard, avec la journée en multipiste.
+5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
+6. Collecteur PlayStation, puis TV.
+7. Réévaluer l'intégration iPhone.
 
-## Notes pour reprendre le fil
+## Continuité entre sessions Claude
 
-Ce fichier doit être tenu à jour à chaque décision structurante ou
-changement de scope. Ne pas relancer la discussion iPhone sans relire la
-section contrainte ci-dessus.
+Ce fichier est relu automatiquement à chaque nouvelle session dans ce
+dossier, et la mémoire long-terme complète avec le *pourquoi* des décisions.
+Le tenir à jour à chaque décision structurante est ce qui assure la
+continuité — pas besoin de recopier la conversation.
+
+Ne pas relancer la discussion iPhone sans relire la section contrainte.
+
+## Skills Claude installées (test)
+
+Installées via `npx skills add` dans `.claude/skills/` (voir
+`skills-lock.json`) :
+- `frontend-design` (anthropics/skills) — direction visuelle
+- `webapp-testing` (anthropics/skills) — tests navigateur via Playwright,
+  **devenu sans objet** depuis l'abandon du front web
+- `handoff` (mattpocock/skills) — compresse une session en doc pour reprise
+
+`agent-manager-skill` (fractalmind-ai) a été volontairement écartée —
+auteur moins connu, capacités puissantes (tmux/cron), bloquée par le
+classificateur de sécurité de Claude Code.
