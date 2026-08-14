@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import IOKit.pwr_mgt
 import PulseonCore
 
 /// Observe l'usage du Mac et le transforme en sessions.
@@ -27,6 +28,8 @@ public final class ActivityMonitor {
     private var timer: Timer?
     private var observers: [NSObjectProtocol] = []
     private var isIdle = false
+    /// Dernier tick où une vidéo tournait. Voir `endOfActivity`.
+    private var lastWatchedAt: Date = .distantPast
 
     public init(store: SessionStore) {
         self.store = store
@@ -104,6 +107,26 @@ public final class ActivityMonitor {
         )
     }
 
+    /// Vrai quand quelque chose empêche l'écran de s'éteindre — typiquement un
+    /// lecteur vidéo pendant la lecture.
+    ///
+    /// C'est le signal qui rattrape le cas du film : personne ne tape, mais
+    /// quelqu'un regarde. Sans lui, deux heures de film comptaient pour zéro.
+    ///
+    /// On lit bien `PreventUserIdleDisplaySleep` et surtout pas son voisin
+    /// `PreventUserIdleSystemSleep`, qui est levé par des tâches de fond
+    /// (Handoff, sauvegardes, `caffeinate`) et compterait un téléchargement
+    /// nocturne écran éteint comme du temps d'écran.
+    static func isDisplayKeptAwake() -> Bool {
+        var status: Unmanaged<CFDictionary>?
+        guard IOPMCopyAssertionsStatus(&status) == kIOReturnSuccess,
+            let levels = status?.takeRetainedValue() as? [String: Int]
+        else { return false }
+        // Constante déclarée via CFSTR côté C, donc absente en Swift : la
+        // chaîne est celle qu'affiche `pmset -g assertions`.
+        return (levels["PreventUserIdleDisplaySleep"] ?? 0) > 0
+    }
+
     private func handleActivation(of app: NSRunningApplication?) {
         guard let name = app?.localizedName else { return }
         isIdle = false
@@ -111,20 +134,33 @@ public final class ActivityMonitor {
     }
 
     private func checkIdle() {
+        let now = Date()
         let idle = Self.systemIdleTime()
+        let watching = Self.isDisplayKeptAwake()
+        if watching { lastWatchedAt = now }
 
-        if idle >= idleThreshold, !isIdle {
+        // Deux façons d'être là : interagir, ou regarder.
+        let isActive = idle < idleThreshold || watching
+
+        if !isActive, !isIdle {
             isIdle = true
-            // La session s'arrête au *début* de l'inactivité, pas maintenant :
-            // sinon on compterait le temps passé loin du clavier.
-            store.closeOpenSession(at: Date().addingTimeInterval(-idle))
-        } else if idle < idleThreshold, isIdle {
+            store.closeOpenSession(at: endOfActivity(now: now, idle: idle))
+        } else if isActive, isIdle {
             isIdle = false
             handleActivation(of: NSWorkspace.shared.frontmostApplication)
-        } else if !isIdle {
-            // Actif et déjà compté : on se contente de dater le dernier signe
-            // de vie, pour borner la session si le processus meurt d'un coup.
-            store.touchOpenSessions(at: Date())
+        } else if isActive {
+            store.touchOpenSessions(at: now)
         }
+    }
+
+    /// Quand l'activité s'est réellement arrêtée.
+    ///
+    /// Le dernier événement clavier date de `now - idle`, mais une vidéo a pu
+    /// tourner bien après : la fin est le plus tardif des deux signaux
+    /// *observés*. Sans ce `max`, arrêter un film de deux heures fermait la
+    /// session deux heures en arrière et effaçait le film qu'on venait tout
+    /// juste de compter.
+    private func endOfActivity(now: Date, idle: TimeInterval) -> Date {
+        min(max(now.addingTimeInterval(-idle), lastWatchedAt), now)
     }
 }
