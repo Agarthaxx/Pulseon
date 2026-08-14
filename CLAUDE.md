@@ -69,6 +69,41 @@ perçu comme pro, avec une identité visuelle forte, et une stack légère.
 - La prise connectée (TV) a sa propre logique côté cloud/webhook,
   indépendante du Mac.
 
+### Collecteur macOS : ce qui tourne, et les pièges payés
+
+Depuis le 2026-08-15, le collecteur **tourne et écrit vraiment** : sessions
+horodatées avec le nom de l'app active, vérifiées dans la base. Trois pièges
+ont été payés au passage, tous invisibles à la compilation.
+
+**Le store doit être nommé explicitement.** Un exécutable SwiftPM n'a pas de
+bundle identifier ; SwiftData retombe alors sur
+`~/Library/Application Support/default.store`, un chemin non-namespacé.
+Pulseon y a ouvert la base d'une autre app et a planté au démarrage. La base
+vit maintenant dans `~/Library/Application Support/Pulseon/Pulseon.store`
+(voir `StoreLocation`).
+
+**`entity` et `entityName` sont inutilisables comme noms de propriété dans un
+`@Model`.** SwiftData s'appuie sur CoreData, où ces noms sont pris. `entity`
+plante au démarrage (« Could not cast NSEntityDescription to NSString ») ;
+`entityName` **échoue en silence** — l'objet en mémoire porte la valeur, la
+colonne reste NULL, aucune erreur nulle part. D'où `appName` côté persistance,
+traduit en `entity` à la frontière de `PulseonCore`, qui garde son vocabulaire.
+Le silence est le vrai danger : une base de temps d'écran sans nom d'app se
+remplit sans rien signaler.
+
+**Une session ouverte doit pouvoir survivre à un crash.** `StoredSession`
+porte un `lastSeen` rafraîchi à chaque tick (15 s) ; au démarrage,
+`closeDanglingSessions()` ferme à cette date ce qu'un arrêt brutal a laissé
+ouvert. Sans ça la première activation venue fermait la session fantôme à
+l'instant présent, et une nuit machine éteinte comptait comme du temps
+d'écran.
+
+**Limite connue, pas encore traitée** : l'exécutable SwiftPM n'est pas un
+`.app`. Pas de `LSUIElement`, pas de lancement à l'ouverture de session, pas
+de signature — et **CloudKit (étape 5) exigera un vrai bundle**. Il faudra
+donc soit un projet Xcode, soit un bundle fabriqué à la main. À trancher
+avant l'étape 5, pas après.
+
 ## Parti pris produit
 
 L'app native « Temps d'écran » de macOS dit **combien**. Pulseon montre
@@ -155,7 +190,9 @@ tout le parti pris visuel ci-dessus.
 1. ~~Stack technique~~ — tranché deux fois, voir ci-dessus.
 2. ~~`PulseonCore`~~ — modèles + agrégation journalière, couverts par des
    tests.
-3. App macOS : agent barre de menu qui collecte l'usage Mac.
+3. App macOS : agent barre de menu qui collecte l'usage Mac. **Le collecteur
+   tourne et persiste** ; restent l'empaquetage en `.app` et le lancement
+   automatique à l'ouverture de session.
 4. App iOS : le dashboard, avec la journée en multipiste.
 5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
 6. Collecteur PlayStation, puis TV.

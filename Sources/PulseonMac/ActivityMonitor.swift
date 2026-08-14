@@ -36,6 +36,11 @@ public final class ActivityMonitor {
         let workspace = NSWorkspace.shared
         let center = workspace.notificationCenter
 
+        // Avant toute chose : réparer ce qu'un arrêt brutal a laissé ouvert.
+        // Doit précéder la première activation, qui sinon fermerait la session
+        // fantôme à l'instant présent.
+        store.closeDanglingSessions()
+
         observers.append(
             center.addObserver(
                 forName: NSWorkspace.didActivateApplicationNotification,
@@ -116,6 +121,10 @@ public final class ActivityMonitor {
         } else if idle < idleThreshold, isIdle {
             isIdle = false
             handleActivation(of: NSWorkspace.shared.frontmostApplication)
+        } else if !isIdle {
+            // Actif et déjà compté : on se contente de dater le dernier signe
+            // de vie, pour borner la session si le processus meurt d'un coup.
+            store.touchOpenSessions(at: Date())
         }
     }
 }

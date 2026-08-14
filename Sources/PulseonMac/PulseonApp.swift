@@ -27,14 +27,17 @@ struct PulseonApp: App {
 final class CollectionEngine {
     let container: ModelContainer
     private(set) var isCollecting = false
+    /// Non-nil quand la persistance a échoué : la collecte tourne en mémoire
+    /// et sera perdue. Le menu doit le dire — un agent qui ne dit rien laisse
+    /// croire qu'il enregistre.
+    private(set) var failure: String?
     private let monitor: ActivityMonitor
     private let store: SessionStore
 
     init() {
-        let container = try! ModelContainer(
-            for: StoredSession.self, StoredCounterSample.self
-        )
+        let (container, failure) = StoreLocation.makeContainer()
         self.container = container
+        self.failure = failure
         let store = SessionStore(context: container.mainContext)
         self.store = store
         self.monitor = ActivityMonitor(store: store)
@@ -72,6 +75,10 @@ private struct MenuContent: View {
 
     var body: some View {
         let digest = engine.todayDigest()
+
+        if let failure = engine.failure {
+            Text("⚠︎ Rien n'est enregistré — \(failure)")
+        }
 
         Text("Aujourd'hui — \(format(digest.coveredTotal)) devant un écran")
 
