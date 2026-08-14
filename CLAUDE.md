@@ -46,6 +46,29 @@ travail dans ce dossier, et la mémoire long-terme de Claude complète avec le
 contexte (pourquoi les décisions ont été prises). Garder ce fichier à jour à
 chaque décision structurante est ce qui assure cette continuité.
 
+## Conventions de développement
+
+- **Une branche par feature ou tâche complexe.** Pas de travail non-trivial
+  directement sur `main`.
+- **Commits réguliers** au fil de l'avancement (pas un seul gros commit en
+  fin de tâche) — pour pouvoir suivre la progression et revenir en arrière
+  facilement.
+- **Pas de dette de doc** : ce `CLAUDE.md` (et toute doc pertinente) est mis à
+  jour en même temps que le code, pas après coup.
+
+## Skills Claude installées (test)
+
+Installées via `npx skills add` dans `.claude/skills/` (voir `skills-lock.json`
+à la racine pour les sources exactes) :
+- `frontend-design` (anthropics/skills) — qualité visuelle du dashboard
+- `webapp-testing` (anthropics/skills) — tests navigateur via Playwright
+- `handoff` (mattpocock/skills) — compresse une session en doc pour reprise
+
+`agent-manager-skill` (fractalmind-ai) a été volontairement écartée pour
+l'instant — auteur moins connu, capacités puissantes (gestion de processus
+via tmux/cron), bloquée par le classificateur de sécurité de Claude Code. À
+réévaluer manuellement si besoin.
+
 ## Roadmap
 
 1. Stack technique (à définir)
