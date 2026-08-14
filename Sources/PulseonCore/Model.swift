@@ -12,7 +12,9 @@ public enum SourceKind: String, Codable, Sendable {
     case counter
 }
 
-public enum Device: String, Codable, CaseIterable, Sendable {
+public enum Device: String, Codable, CaseIterable, Sendable, Identifiable {
+    public var id: String { rawValue }
+
     case mac
     case playstation
     case tv

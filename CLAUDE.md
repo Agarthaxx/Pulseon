@@ -53,6 +53,9 @@ perçu comme pro, avec une identité visuelle forte, et une stack légère.
   pas de SDK iOS, pas de simulateur, et le `Testing.framework` livré est
   incomplet (`lib_TestingInterop.dylib` manquant) donc `swift test` compile
   mais ne s'exécute pas.
+- **Xcode est installé et sa licence est acceptée** (vérifié le 2026-08-15).
+  Il reste seulement à ce que `swift` vise Xcode et non les CLT — voir
+  « Lancer les tests ».
 
 ## Architecture d'exécution
 
@@ -65,6 +68,41 @@ perçu comme pro, avec une identité visuelle forte, et une stack légère.
   accumulées.
 - La prise connectée (TV) a sa propre logique côté cloud/webhook,
   indépendante du Mac.
+
+### Collecteur macOS : ce qui tourne, et les pièges payés
+
+Depuis le 2026-08-15, le collecteur **tourne et écrit vraiment** : sessions
+horodatées avec le nom de l'app active, vérifiées dans la base. Trois pièges
+ont été payés au passage, tous invisibles à la compilation.
+
+**Le store doit être nommé explicitement.** Un exécutable SwiftPM n'a pas de
+bundle identifier ; SwiftData retombe alors sur
+`~/Library/Application Support/default.store`, un chemin non-namespacé.
+Pulseon y a ouvert la base d'une autre app et a planté au démarrage. La base
+vit maintenant dans `~/Library/Application Support/Pulseon/Pulseon.store`
+(voir `StoreLocation`).
+
+**`entity` et `entityName` sont inutilisables comme noms de propriété dans un
+`@Model`.** SwiftData s'appuie sur CoreData, où ces noms sont pris. `entity`
+plante au démarrage (« Could not cast NSEntityDescription to NSString ») ;
+`entityName` **échoue en silence** — l'objet en mémoire porte la valeur, la
+colonne reste NULL, aucune erreur nulle part. D'où `appName` côté persistance,
+traduit en `entity` à la frontière de `PulseonCore`, qui garde son vocabulaire.
+Le silence est le vrai danger : une base de temps d'écran sans nom d'app se
+remplit sans rien signaler.
+
+**Une session ouverte doit pouvoir survivre à un crash.** `StoredSession`
+porte un `lastSeen` rafraîchi à chaque tick (15 s) ; au démarrage,
+`closeDanglingSessions()` ferme à cette date ce qu'un arrêt brutal a laissé
+ouvert. Sans ça la première activation venue fermait la session fantôme à
+l'instant présent, et une nuit machine éteinte comptait comme du temps
+d'écran.
+
+**Limite connue, pas encore traitée** : l'exécutable SwiftPM n'est pas un
+`.app`. Pas de `LSUIElement`, pas de lancement à l'ouverture de session, pas
+de signature — et **CloudKit (étape 5) exigera un vrai bundle**. Il faudra
+donc soit un projet Xcode, soit un bundle fabriqué à la main. À trancher
+avant l'étape 5, pas après.
 
 ## Parti pris produit
 
@@ -104,7 +142,35 @@ intervalles qui se chevauchent. À l'UI de choisir lequel elle met en avant.
 
 ### Lancer les tests
 
-Une fois Xcode installé : `swift test`.
+```
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+swift build && swift test
+```
+
+**Le `export` n'est pas optionnel** tant que `xcode-select -p` renvoie
+`/Library/Developer/CommandLineTools` : sans lui, les macros SwiftData
+(`@Model`) ne s'expansent pas — le plugin n'existe que dans Xcode complet —
+et le build casse sur une cascade d'erreurs `PersistentModel` trompeuses,
+qui pointent le code alors que le problème est la toolchain.
+
+Aucun `sudo` n'est nécessaire, contrairement à ce qui était noté ici avant :
+la licence est déjà acceptée, `DEVELOPER_DIR` suffit. Pour s'en passer
+définitivement (et faire taire le `No such module 'Testing'` de l'éditeur,
+car SourceKit, lui, ne lit pas cette variable), une seule fois dans un vrai
+terminal — le `!` de Claude Code n'a pas de TTY, donc `sudo` y échoue :
+
+```
+sudo xcode-select -s /Applications/Xcode.app
+```
+
+## Doc de référence du code
+
+Visite guidée des 744 lignes, écrite pour Arthur qui apprend Swift depuis
+zéro : https://claude.ai/code/artifact/65616a6f-3229-4a29-bc5f-4b3302b2926a
+
+Elle décrit chaque fichier, le trajet d'une donnée, et les notions Swift
+accrochées à de vraies lignes du projet. **À mettre à jour quand
+l'architecture bouge** — republier le même fichier met à jour la même URL.
 
 ## Historique : la première version (abandonnée)
 
@@ -124,7 +190,9 @@ tout le parti pris visuel ci-dessus.
 1. ~~Stack technique~~ — tranché deux fois, voir ci-dessus.
 2. ~~`PulseonCore`~~ — modèles + agrégation journalière, couverts par des
    tests.
-3. App macOS : agent barre de menu qui collecte l'usage Mac.
+3. App macOS : agent barre de menu qui collecte l'usage Mac. **Le collecteur
+   tourne et persiste** ; restent l'empaquetage en `.app` et le lancement
+   automatique à l'ouverture de session.
 4. App iOS : le dashboard, avec la journée en multipiste.
 5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
 6. Collecteur PlayStation, puis TV.
