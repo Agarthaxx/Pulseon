@@ -16,3 +16,4 @@ let package = Package(
         .executableTarget(name: "PulseonMac", dependencies: ["PulseonCore"]),
         .testTarget(name: "PulseonCoreTests", dependencies: ["PulseonCore"]),
     ]
+)
