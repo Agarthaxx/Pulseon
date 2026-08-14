@@ -25,17 +25,12 @@ public final class StoredSession {
     public var appName: String?
     public var start: Date
     public var end: Date?
-    /// Dernier instant où la session a été vue vivante, rafraîchi à chaque
-    /// tick. Sert à réparer les sessions laissées ouvertes par un crash ou un
-    /// arrêt brutal : on les ferme à cette date plutôt que d'inventer une fin.
-    public var lastSeen: Date
 
     public init(device: Device, entity: String?, start: Date, end: Date? = nil) {
         self.deviceRaw = device.rawValue
         self.appName = entity
         self.start = start
         self.end = end
-        self.lastSeen = start
     }
 
     public var device: Device { Device(rawValue: deviceRaw) ?? .mac }
@@ -86,6 +81,11 @@ public enum StoreLocation {
         directory.appendingPathComponent("Pulseon.store")
     }
 
+    /// Fichier vide dont seule la date de modification compte. Voir `Heartbeat`.
+    public static var heartbeatURL: URL {
+        directory.appendingPathComponent("heartbeat")
+    }
+
     /// - Returns: le conteneur, et un message d'erreur si la persistance a
     ///   échoué. Dans ce cas le conteneur est en mémoire : l'agent continue de
     ///   tourner et affiche la panne, au lieu de mourir au lancement.
@@ -123,38 +123,27 @@ public final class SessionStore {
         self.context = context
     }
 
-    /// Ferme les sessions qu'un arrêt brutal a laissées ouvertes, à leur
-    /// dernier signe de vie.
+    /// Ferme les sessions qu'un arrêt brutal a laissées ouvertes.
     ///
     /// Sans ça, la première activation venue les fermerait à l'instant présent
     /// et attribuerait à une app tout le temps machine éteinte — une nuit
     /// entière compterait comme du temps d'écran.
     ///
+    /// - Parameter date: dernier signe de vie du collecteur (voir `Heartbeat`).
+    ///   Si nil — aucune trace, donc rien d'observé —, la session est fermée
+    ///   sur son propre début : durée nulle plutôt qu'une fin inventée.
     /// - Returns: le nombre de sessions réparées.
     @discardableResult
-    public func closeDanglingSessions() -> Int {
+    public func closeDanglingSessions(at date: Date?) -> Int {
         var repaired = 0
         for device in Device.allCases {
             if let session = openSession(for: device) {
-                close(session, at: session.lastSeen)
+                close(session, at: date ?? session.start)
                 repaired += 1
             }
         }
         if repaired > 0 { save() }
         return repaired
-    }
-
-    /// Marque les sessions ouvertes comme toujours vivantes. Appelé à chaque
-    /// tick : la précision de la réparation ci-dessus vaut cet intervalle.
-    public func touchOpenSessions(at date: Date) {
-        var touched = false
-        for device in Device.allCases {
-            if let session = openSession(for: device) {
-                session.lastSeen = max(date, session.lastSeen)
-                touched = true
-            }
-        }
-        if touched { save() }
     }
 
     /// Ouvre une session, sauf si la même est déjà en cours — sinon un simple
