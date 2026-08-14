@@ -114,7 +114,7 @@ func missingCollectorIsNotAQuietDay() {
 }
 
 @Test("Les apps sont classées par temps décroissant")
-func entitiesAreRankedByTime() {
+func entitiesAreRankedByTime() throws {
     let sessions = [
         ActivitySession(device: .mac, entity: "Safari", start: date(14, 9), end: date(14, 10)),
         ActivitySession(device: .mac, entity: "Xcode", start: date(14, 10), end: date(14, 13)),
@@ -126,6 +126,11 @@ func entitiesAreRankedByTime() {
     let top = digest.lanes.first { $0.device == .mac }!.topEntities
 
     #expect(top.map(\.entity) == ["Xcode", "Safari"])
-    #expect(top.first?.total == 3 * 3600)
-    #expect(top.last?.total == 2 * 3600)
+    // On déballe avec #require au lieu de comparer `top.first?.total` : à
+    // l'intérieur de #expect, comparer un optionnel à une expression de
+    // littéraux entiers (`3 * 3600`) fait échouer la comparaison alors que les
+    // valeurs sont égales — la macro type l'opérande droit isolément, il tombe
+    // en Int, et la comparaison se fait entre deux types différents.
+    #expect(try #require(top.first).total == 3 * 3600)
+    #expect(try #require(top.last).total == 2 * 3600)
 }

@@ -53,6 +53,9 @@ perçu comme pro, avec une identité visuelle forte, et une stack légère.
   pas de SDK iOS, pas de simulateur, et le `Testing.framework` livré est
   incomplet (`lib_TestingInterop.dylib` manquant) donc `swift test` compile
   mais ne s'exécute pas.
+- **Xcode est installé et sa licence est acceptée** (vérifié le 2026-08-15).
+  Il reste seulement à ce que `swift` vise Xcode et non les CLT — voir
+  « Lancer les tests ».
 
 ## Architecture d'exécution
 
@@ -104,17 +107,26 @@ intervalles qui se chevauchent. À l'UI de choisir lequel elle met en avant.
 
 ### Lancer les tests
 
-Une fois la licence Xcode acceptée : `swift test`.
-
-**Licence Xcode à accepter dans un vrai terminal** (le `!` de Claude Code
-n'a pas de TTY, donc `sudo` y échoue) :
-
 ```
-sudo xcodebuild -license accept && sudo xcode-select -s /Applications/Xcode.app
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+swift build && swift test
 ```
 
-Sans ça, les macros SwiftData (`@Model`) ne s'expansent pas — le plugin
-n'existe que dans Xcode complet — et rien ne compile.
+**Le `export` n'est pas optionnel** tant que `xcode-select -p` renvoie
+`/Library/Developer/CommandLineTools` : sans lui, les macros SwiftData
+(`@Model`) ne s'expansent pas — le plugin n'existe que dans Xcode complet —
+et le build casse sur une cascade d'erreurs `PersistentModel` trompeuses,
+qui pointent le code alors que le problème est la toolchain.
+
+Aucun `sudo` n'est nécessaire, contrairement à ce qui était noté ici avant :
+la licence est déjà acceptée, `DEVELOPER_DIR` suffit. Pour s'en passer
+définitivement (et faire taire le `No such module 'Testing'` de l'éditeur,
+car SourceKit, lui, ne lit pas cette variable), une seule fois dans un vrai
+terminal — le `!` de Claude Code n'a pas de TTY, donc `sudo` y échoue :
+
+```
+sudo xcode-select -s /Applications/Xcode.app
+```
 
 ## Doc de référence du code
 
