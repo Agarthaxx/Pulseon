@@ -1,0 +1,25 @@
+# Données locales
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python
+collector/.venv/
+collector/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Node
+dashboard/node_modules/
+
+# Rust / Tauri
+dashboard/src-tauri/target/
+
+# OS
+.DS_Store
+
+# Secrets
+.env
+*.local
