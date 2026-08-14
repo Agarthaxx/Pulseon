@@ -1,15 +1,17 @@
 """Connexion SQLite partagée pour tous les collecteurs.
 
-Le fichier de données vit dans data/screentime.db (gitignored), le schéma
-dans db/schema.sql (versionné). connect() crée le fichier et applique le
-schéma si besoin, donc chaque collecteur peut l'appeler sans setup préalable.
+La base vit dans Application Support, pas dans le repo : le dashboard est
+une app packagée qui n'a aucun moyen de retrouver un chemin relatif au
+dossier de code. Le schéma, lui, reste versionné dans db/schema.sql.
+connect() crée le fichier et applique le schéma si besoin, donc chaque
+collecteur peut l'appeler sans setup préalable.
 """
 
 import sqlite3
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = REPO_ROOT / "data" / "screentime.db"
+DB_PATH = Path.home() / "Library" / "Application Support" / "Pulseon" / "screentime.db"
 SCHEMA_PATH = REPO_ROOT / "db" / "schema.sql"
 
 
