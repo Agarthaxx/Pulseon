@@ -8,10 +8,12 @@ let package = Package(
     name: "PulseonCore",
     platforms: [.macOS(.v14), .iOS(.v17)],
     products: [
-        .library(name: "PulseonCore", targets: ["PulseonCore"])
+        .library(name: "PulseonCore", targets: ["PulseonCore"]),
+        .executable(name: "PulseonMac", targets: ["PulseonMac"]),
     ],
     targets: [
         .target(name: "PulseonCore"),
+        .executableTarget(name: "PulseonMac", dependencies: ["PulseonCore"]),
         .testTarget(name: "PulseonCoreTests", dependencies: ["PulseonCore"]),
     ]
 )

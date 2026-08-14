@@ -104,7 +104,26 @@ intervalles qui se chevauchent. À l'UI de choisir lequel elle met en avant.
 
 ### Lancer les tests
 
-Une fois Xcode installé : `swift test`.
+Une fois la licence Xcode acceptée : `swift test`.
+
+**Licence Xcode à accepter dans un vrai terminal** (le `!` de Claude Code
+n'a pas de TTY, donc `sudo` y échoue) :
+
+```
+sudo xcodebuild -license accept && sudo xcode-select -s /Applications/Xcode.app
+```
+
+Sans ça, les macros SwiftData (`@Model`) ne s'expansent pas — le plugin
+n'existe que dans Xcode complet — et rien ne compile.
+
+## Doc de référence du code
+
+Visite guidée des 744 lignes, écrite pour Arthur qui apprend Swift depuis
+zéro : https://claude.ai/code/artifact/65616a6f-3229-4a29-bc5f-4b3302b2926a
+
+Elle décrit chaque fichier, le trajet d'une donnée, et les notions Swift
+accrochées à de vraies lignes du projet. **À mettre à jour quand
+l'architecture bouge** — republier le même fichier met à jour la même URL.
 
 ## Historique : la première version (abandonnée)
 
