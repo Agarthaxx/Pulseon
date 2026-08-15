@@ -13,7 +13,13 @@ let package = Package(
     ],
     targets: [
         .target(name: "PulseonCore"),
-        .executableTarget(name: "PulseonMac", dependencies: ["PulseonCore"]),
+        // Tout le code macOS sauf le point d'entrée. Une bibliothèque, et pas
+        // l'exécutable, parce qu'un `@main` démarre l'app dans le processus de
+        // test : la cible exécutable est donc réduite au strict minimum, et
+        // tout ce qui mérite d'être testé vit ici.
+        .target(name: "PulseonMacKit", dependencies: ["PulseonCore"]),
+        .executableTarget(name: "PulseonMac", dependencies: ["PulseonMacKit"]),
         .testTarget(name: "PulseonCoreTests", dependencies: ["PulseonCore"]),
+        .testTarget(name: "PulseonMacKitTests", dependencies: ["PulseonMacKit"]),
     ]
 )

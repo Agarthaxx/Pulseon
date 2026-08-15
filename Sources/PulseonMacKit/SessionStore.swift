@@ -179,6 +179,47 @@ public final class SessionStore {
             .map(\.asSession)
     }
 
+    /// Enregistre un relevé de compteur, **sauf s'il n'apprend rien**.
+    ///
+    /// Les sources à compteur se relèvent périodiquement, et la plupart des
+    /// relevés retournent le même total : on ne joue pas toute la journée.
+    /// Réécrire ce total à chaque passage referait exactement l'erreur du
+    /// `lastSeen` en base — des centaines de mégaoctets par jour pour ne rien
+    /// apprendre. Voir `Heartbeat`.
+    ///
+    /// Sauter les doublons ne perturbe pas l'agrégation : `DayDigestBuilder`
+    /// cherche « le dernier relevé antérieur au jour », et un relevé plus
+    /// ancien fait tout aussi bien l'affaire tant que le total n'a pas bougé.
+    ///
+    /// Un total qui *baisse* est écrit quand même. C'est ce que la source a
+    /// dit, et on ne réécrit pas ce qu'on observe ; c'est à l'agrégation de
+    /// refuser les deltas négatifs, ce qu'elle fait déjà.
+    ///
+    /// - Returns: vrai si le relevé a été écrit.
+    @discardableResult
+    public func record(
+        device: Device, entity: String, total: TimeInterval, at date: Date
+    ) -> Bool {
+        if let last = lastSample(device: device, entity: entity), last.total == total {
+            return false
+        }
+        context.insert(
+            StoredCounterSample(device: device, entity: entity, total: total, recordedAt: date)
+        )
+        save()
+        return true
+    }
+
+    private func lastSample(device: Device, entity: String) -> StoredCounterSample? {
+        let raw = device.rawValue
+        let name = entity
+        let descriptor = FetchDescriptor<StoredCounterSample>(
+            predicate: #Predicate { $0.deviceRaw == raw && $0.appName == name },
+            sortBy: [SortDescriptor(\.recordedAt, order: .reverse)]
+        )
+        return try? context.fetch(descriptor).first
+    }
+
     public func samples(before: Date) -> [CounterSample] {
         let descriptor = FetchDescriptor<StoredCounterSample>(
             predicate: #Predicate { $0.recordedAt < before },
