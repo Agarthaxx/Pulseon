@@ -33,6 +33,9 @@ final class CollectionEngine {
     /// croire qu'il enregistre.
     private(set) var failure: String?
     private(set) var launchAtLogin: LaunchAtLogin.State = LaunchAtLogin.state
+    /// Non-nil quand la *lecture* a échoué — distinct de `failure`, qui parle
+    /// de l'écriture. Les deux méritent d'être dits séparément.
+    private(set) var readFailure: String?
     private let monitor: ActivityMonitor
     private let store: SessionStore
 
@@ -68,16 +71,27 @@ final class CollectionEngine {
     }
 
     /// Le total du jour, tel qu'affiché dans le menu.
-    func todayDigest() -> DayDigest {
+    ///
+    /// Une lecture qui échoue est signalée, pas maquillée : rendre une journée
+    /// vide ferait croire à zéro minute d'écran alors qu'on ne sait tout
+    /// simplement pas.
+    func todayDigest() -> DayDigest? {
         let calendar = Calendar.current
         let day = Date()
         let start = calendar.startOfDay(for: day)
         let end = calendar.date(byAdding: .day, value: 1, to: start)!
-        return DayDigestBuilder(calendar: calendar).build(
-            day: day,
-            sessions: store.sessions(from: start, to: end),
-            samples: store.samples(before: end)
-        )
+        do {
+            let digest = DayDigestBuilder(calendar: calendar).build(
+                day: day,
+                sessions: try store.sessions(from: start, to: end),
+                samples: try store.samples(before: end)
+            )
+            readFailure = nil
+            return digest
+        } catch {
+            readFailure = error.localizedDescription
+            return nil
+        }
     }
 }
 
@@ -91,10 +105,15 @@ private struct MenuContent: View {
             Text("⚠︎ Rien n'est enregistré — \(failure)")
         }
 
-        Text("Aujourd'hui — \(format(digest.coveredTotal)) devant un écran")
+        if let digest {
+            Text("Aujourd'hui — \(format(digest.coveredTotal)) devant un écran")
 
-        ForEach(digest.lanes.filter(\.isConnected), id: \.device) { lane in
-            Text("\(lane.device.label) · \(format(lane.total))")
+            ForEach(digest.lanes.filter(\.isConnected), id: \.device) { lane in
+                Text("\(lane.device.label) · \(format(lane.total))")
+            }
+        } else {
+            // Pas « 0 min » : on ne sait pas, et le dire est plus honnête.
+            Text("⚠︎ Lecture impossible — \(engine.readFailure ?? "raison inconnue")")
         }
 
         Divider()
