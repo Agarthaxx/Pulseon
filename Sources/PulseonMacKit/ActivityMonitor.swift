@@ -135,6 +135,27 @@ public final class ActivityMonitor {
         return (levels["PreventUserIdleDisplaySleep"] ?? 0) > 0
     }
 
+    /// Jusqu'à quel instant l'activité est **observée**, à l'instant `now`.
+    ///
+    /// C'est l'horizon que l'affichage doit utiliser pour faire défiler le
+    /// total du jour, et il répond à un problème précis : la session en cours
+    /// reste ouverte pendant les `idleThreshold` secondes de tolérance, puis
+    /// est fermée *rétroactivement* à ton dernier signe de vie. Un compteur qui
+    /// avancerait jusqu'à `now` devrait donc reculer de deux minutes à chaque
+    /// pause. Reculer est pire qu'attendre : on n'avance que sur du constaté.
+    ///
+    /// Conséquence assumée : lire un article sans toucher la souris fige
+    /// l'affichage. Le temps est bien compté — il apparaît d'un bloc au premier
+    /// mouvement.
+    ///
+    /// Effet de bord voulu : chaque appel rafraîchit `lastWatchedAt`, donc plus
+    /// l'affichage interroge, plus la fin de session écrite en base est précise.
+    public func observedActivityEnd(now: Date = Date()) -> Date {
+        let idle = Self.systemIdleTime()
+        if Self.isDisplayKeptAwake() { lastWatchedAt = now }
+        return endOfActivity(now: now, idle: idle)
+    }
+
     private func handleActivation(of app: NSRunningApplication?) {
         guard let name = app?.localizedName else { return }
         isIdle = false

@@ -17,6 +17,21 @@ public enum DurationFormat {
         return "\(hours)h\(pad(minutes))"
     }
 
+    /// Forme vivante, pour un compteur qui défile : `3h07:12`, `7m12`, `42s`.
+    ///
+    /// L'unité (`h`, `m`, `s`) est ce qui distingue une *durée* de l'horloge
+    /// juste à côté : `3h07:12` ne peut pas se lire comme sept heures du matin.
+    /// Le dernier segment est toujours les secondes, d'où sa largeur fixe.
+    ///
+    /// Le palier suit la durée : afficher `0h00:42` au réveil ferait ressembler
+    /// un compteur qui monte à un minuteur en panne.
+    public static func live(_ seconds: TimeInterval) -> String {
+        let (hours, minutes, secs) = splitFull(seconds)
+        if hours > 0 { return "\(hours)h\(pad(minutes)):\(pad(secs))" }
+        if minutes > 0 { return "\(minutes)m\(pad(secs))" }
+        return "\(secs)s"
+    }
+
     /// Forme longue, pour le menu déroulant : `3 h 07`, `42 min`.
     public static func long(_ seconds: TimeInterval) -> String {
         let (hours, minutes) = split(seconds)
@@ -35,6 +50,15 @@ public enum DurationFormat {
         guard seconds > 0, seconds.isFinite else { return (0, 0) }
         let total = Int(seconds)
         return (total / 3600, (total % 3600) / 60)
+    }
+
+    /// Même troncature que `split`, poussée jusqu'aux secondes.
+    private static func splitFull(
+        _ seconds: TimeInterval
+    ) -> (hours: Int, minutes: Int, seconds: Int) {
+        guard seconds > 0, seconds.isFinite else { return (0, 0, 0) }
+        let total = Int(seconds)
+        return (total / 3600, (total % 3600) / 60, total % 60)
     }
 
     private static func pad(_ minutes: Int) -> String {
