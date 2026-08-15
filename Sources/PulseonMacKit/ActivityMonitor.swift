@@ -20,6 +20,23 @@ public final class ActivityMonitor {
     /// lire un article sans toucher au clavier ne doit pas couper la session.
     public var idleThreshold: TimeInterval = 120
 
+    /// Combien de temps une pause continue de compter comme du temps d'écran.
+    ///
+    /// Une pause de trente secondes est du temps devant l'écran : on réfléchit,
+    /// on lit, on regarde. Ne compter que les instants portant un événement
+    /// clavier découperait la journée en confettis et sous-compterait
+    /// exactement les moments où on est le plus attentif.
+    ///
+    /// Reste **plus court que `idleThreshold`**, et ce n'est pas un détail :
+    /// c'est ce qui garantit que le compteur affiché est déjà gelé sur sa
+    /// valeur définitive quand la session se ferme. Sans cet écart, la
+    /// fermeture ferait reculer le total à l'écran.
+    ///
+    /// Le prix, assumé et borné : partir sans rien dire compte une minute de
+    /// trop. C'est le prix de toute politique de grâce, et il est préférable à
+    /// un affichage qui a l'air en panne dès qu'on lâche la souris.
+    public var graceInterval: TimeInterval = 60
+
     /// Fréquence de vérification de l'inactivité. Ne conditionne pas la
     /// précision des changements d'app, qui arrivent par notification.
     private let idleCheckInterval: TimeInterval = 15
@@ -139,14 +156,14 @@ public final class ActivityMonitor {
     ///
     /// C'est l'horizon que l'affichage doit utiliser pour faire défiler le
     /// total du jour, et il répond à un problème précis : la session en cours
-    /// reste ouverte pendant les `idleThreshold` secondes de tolérance, puis
-    /// est fermée *rétroactivement* à ton dernier signe de vie. Un compteur qui
-    /// avancerait jusqu'à `now` devrait donc reculer de deux minutes à chaque
-    /// pause. Reculer est pire qu'attendre : on n'avance que sur du constaté.
+    /// est fermée *rétroactivement*, donc un compteur qui avancerait jusqu'à
+    /// `now` reculerait à chaque pause. Reculer, à l'écran, ressemble à une
+    /// panne — c'est pour ça que cette méthode et la fermeture de session
+    /// partagent le même calcul plutôt que de se ressembler.
     ///
-    /// Conséquence assumée : lire un article sans toucher la souris fige
-    /// l'affichage. Le temps est bien compté — il apparaît d'un bloc au premier
-    /// mouvement.
+    /// Le compteur défile donc pendant les pauses courtes (voir
+    /// `graceInterval`) et se fige au bout d'une minute sans rien toucher, sur
+    /// la valeur exacte qui sera écrite en base.
     ///
     /// Effet de bord voulu : chaque appel rafraîchit `lastWatchedAt`, donc plus
     /// l'affichage interroge, plus la fin de session écrite en base est précise.
@@ -192,6 +209,28 @@ public final class ActivityMonitor {
     /// session deux heures en arrière et effaçait le film qu'on venait tout
     /// juste de compter.
     private func endOfActivity(now: Date, idle: TimeInterval) -> Date {
-        min(max(now.addingTimeInterval(-idle), lastWatchedAt), now)
+        Self.activityEnd(
+            now: now, idle: idle, lastWatched: lastWatchedAt, grace: graceInterval
+        )
+    }
+
+    /// La règle, isolée du système pour être testable — et surtout **partagée**
+    /// par la fermeture de session et par l'affichage. C'est cette unicité qui
+    /// garantit que le compteur en haut de l'écran ne peut pas reculer : les
+    /// deux répondent à la même question avec le même calcul.
+    ///
+    /// - `lastWatched` l'emporte quand une vidéo tourne encore, ou vient de
+    ///   s'arrêter après le dernier geste.
+    /// - La grâce s'ajoute au dernier *geste*, jamais à la vidéo : une lecture
+    ///   qui s'arrête est un signal net, sans ambiguïté à couvrir.
+    /// - Jamais au-delà de `now` : on ne compte pas du temps pas encore écoulé.
+    nonisolated static func activityEnd(
+        now: Date,
+        idle: TimeInterval,
+        lastWatched: Date,
+        grace: TimeInterval
+    ) -> Date {
+        let lastInput = now.addingTimeInterval(-idle)
+        return min(max(lastInput.addingTimeInterval(grace), lastWatched), now)
     }
 }

@@ -213,19 +213,34 @@ rien à SwiftData. Le titre n'est réassigné que s'il change, pour ne pas
 réveiller les vues quand le compteur est gelé.
 
 **L'horizon d'affichage est le dernier instant d'activité *observée*, jamais
-l'heure courante** (`ActivityMonitor.observedActivityEnd`). Une session reste
-ouverte pendant les deux minutes d'inactivité tolérée, puis est fermée
-*rétroactivement* au dernier signe de vie : un compteur qui avancerait jusqu'à
-`now` reculerait donc de deux minutes à chaque pause. Invisible à la minute,
-criant à la seconde — et **reculer est pire qu'attendre**. Le compteur gèle
-donc dès qu'on lâche le clavier et rattrape d'un bloc au premier mouvement ;
-lire un article sans bouger la souris fige l'affichage alors que le temps,
-lui, est bien compté. Cet horizon doit venir du moniteur et pas d'une fonction
-pure, parce que lui seul se souvient du dernier instant où une vidéo tournait :
-sans cette mémoire, la fin d'un film ferait dégringoler le compteur de deux
-heures. Effet de bord gagné au passage : l'affichage interrogeant chaque
-seconde, la fin de session écrite en base est précise à la seconde au lieu du
-tick de 15 s.
+l'heure courante** (`ActivityMonitor.observedActivityEnd`). La session en cours
+est fermée *rétroactivement*, donc un compteur qui avancerait jusqu'à `now`
+reculerait à chaque pause — et à l'écran, **reculer ressemble à une panne**.
+Il ne peut pas reculer ici parce que l'affichage et la fermeture de session
+appellent la **même** fonction (`activityEnd`), pas deux calculs qui se
+ressemblent. Cet horizon vient du moniteur et non d'une fonction pure appelée
+n'importe où, parce que lui seul se souvient du dernier instant où une vidéo
+tournait : sans cette mémoire, la fin d'un film ferait dégringoler le compteur
+de deux heures. Effet de bord gagné : l'affichage interrogeant chaque seconde,
+la fin de session écrite en base est précise à la seconde au lieu du tick de
+15 s.
+
+**Une pause de moins d'une minute compte comme du temps d'écran**
+(`graceInterval`), et c'est une correction de fond, pas un ajustement
+d'affichage. Ne compter que les instants portant un événement clavier
+découpait la journée en confettis et sous-comptait la lecture et la réflexion
+— précisément les moments où on est le plus devant l'écran. Le collecteur
+tolérait déjà la pause (la session ne se fragmente pas avant `idleThreshold`,
+2 min) mais reprenait d'une main ce qu'il donnait de l'autre en fermant au
+dernier geste.
+
+L'écart entre les deux seuils **n'est pas un réglage arbitraire** : la grâce
+(1 min) doit rester plus courte que le seuil d'inactivité (2 min) pour que
+l'affichage soit déjà figé sur sa valeur définitive quand la session se ferme.
+Les rapprocher rouvrirait le recul. Prix assumé et borné : partir sans rien
+dire compte une minute de trop — préférable à un compteur qui a l'air cassé
+dès qu'on lâche la souris deux secondes. La grâce s'ajoute au dernier *geste*,
+jamais à la vidéo : une lecture qui s'arrête est un signal net.
 
 `DurationFormat` (dans `PulseonCore`, donc partagé avec la future app iOS)
 tient les trois formes : vivante pour la barre (`3h07:12`, puis `7m12`, puis
