@@ -189,6 +189,27 @@ et elle apparaît proprement dans Réglages > Général > Ouverture.
 sur une autre machine sans avertissement Gatekeeper. Sans objet tant que
 Pulseon ne tourne que sur le Mac d'Arthur.
 
+### Ce que la barre de menu affiche
+
+Le libellé porte **l'icône et le total du jour**, rafraîchi chaque minute :
+c'est la plus petite unité affichée, donc rafraîchir plus vite ne changerait
+rien à l'écran. Ce sont des *lectures*, jamais des écritures — aucun rapport
+avec le problème des 450 Mo/jour.
+
+Le rafraîchissement vit indépendamment de la collecte : suspendre la collecte
+ne doit pas figer l'affichage de ce qui est déjà enregistré.
+
+`DurationFormat` (dans `PulseonCore`, donc partagé avec la future app iOS)
+tient les deux formes : resserrée pour la barre (`3h07`), longue pour le menu
+(`3 h 07`). La barre de menu est un espace partagé avec toutes les autres
+apps, chaque caractère y coûte. **Les minutes sont tronquées, jamais
+arrondies** : afficher 1 h à 59 min 40 annoncerait du temps qui n'a pas eu
+lieu. Quand la lecture échoue, la barre affiche un tiret et pas un zéro.
+
+Un vrai *Widget* macOS (centre de notifications, bureau) est autre chose : une
+extension d'app, qui suppose un projet Xcode et une signature — même mur que
+CloudKit.
+
 ### Lire l'historique
 
 `DayDigestBuilder.buildPeriod(from:through:...)` agrège une plage de journées.
