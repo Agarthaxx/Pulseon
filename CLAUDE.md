@@ -391,10 +391,39 @@ tout le parti pris visuel ci-dessus.
    tests.
 3. ~~App macOS~~ — agent barre de menu, collecte vérifiée, empaqueté en
    `.app`, démarrage automatique par `LaunchAgent`.
-4. App iOS : le dashboard, avec la journée en multipiste.
+4. App iOS : le dashboard, avec la journée en multipiste. **Prochain gros
+   morceau, en attente de la liste d'Arthur** — ne pas la lui inventer.
 5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
 6. Collecteur PlayStation, puis TV.
 7. Réévaluer l'intégration iPhone.
+
+### État au 2026-08-15 (fin de session)
+
+Ce qui tourne : le collecteur Mac est installé dans `/Applications`, démarre
+à l'ouverture de session, et affiche le total du jour dans la barre de menu.
+32 tests verts sur `main`, aucune PR ouverte.
+
+Ce qui bloque, et sur quoi :
+
+- **PlayStation** : toute la plomberie est prête (`CounterSource`,
+  `CounterPoller`, `record()` dédoublonné, `PlayDuration`, `Secrets`). Il ne
+  manque que le client HTTP — et le jeton, qu'Arthur n'a pas pu récupérer,
+  n'arrivant plus à se connecter à son compte PSN. Le jeton se dépose à la
+  main dans le Trousseau, **jamais dans la conversation ni dans un fichier**.
+- **TV** : bloquée matériellement, pas de prise connectée. Viser une Shelly
+  (API HTTP locale, sans cloud). Ce sera une source à **intervalles**, pas à
+  compteur : `openSession` / `closeOpenSession`, comme le Mac.
+- **Widget macOS** (le vrai, centre de notifications) : extension d'app, donc
+  projet Xcode et signature — même mur que CloudKit.
+
+Point en suspens : le texte de la barre de menu s'affiche-t-il **sans
+cliquer** ? Arthur a confirmé que ça marche, mais sa formulation (« quand je
+clique ») laissait un doute. Si seul le menu déroulant montre le temps, le
+libellé `Label(_:systemImage:)` du `MenuBarExtra` est à composer autrement.
+
+Dette de doc connue : la visite guidée du code (lien plus haut) décrit
+744 lignes et sept fichiers de moins que la réalité. À reprendre avant
+d'attaquer le front, puisqu'elle sert à Arthur pour lire son propre code.
 
 ## Continuité entre sessions Claude
 
