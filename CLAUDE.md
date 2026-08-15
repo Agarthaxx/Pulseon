@@ -91,12 +91,29 @@ traduit en `entity` à la frontière de `PulseonCore`, qui garde son vocabulaire
 Le silence est le vrai danger : une base de temps d'écran sans nom d'app se
 remplit sans rien signaler.
 
-**Une session ouverte doit pouvoir survivre à un crash.** `StoredSession`
-porte un `lastSeen` rafraîchi à chaque tick (15 s) ; au démarrage,
-`closeDanglingSessions()` ferme à cette date ce qu'un arrêt brutal a laissé
-ouvert. Sans ça la première activation venue fermait la session fantôme à
-l'instant présent, et une nuit machine éteinte comptait comme du temps
-d'écran.
+**Une session ouverte doit pouvoir survivre à un crash.** Au démarrage,
+`closeDanglingSessions(at:)` ferme ce qu'un arrêt brutal a laissé ouvert, à
+la date du dernier signe de vie. Sans ça la première activation venue fermait
+la session fantôme à l'instant présent, et une nuit machine éteinte comptait
+comme du temps d'écran. Sans trace de vie du tout, la session est fermée sur
+son propre début : durée nulle plutôt qu'une fin inventée.
+
+**Ce signe de vie ne va pas dans la base**, et la raison est mesurée, pas
+théorique. Il y vivait au départ (un champ `lastSeen` réécrit à chaque tick) :
+chaque écriture coûtait **78 Ko** — journal SQLite plus historique CoreData —
+pour une information de 8 octets, soit **~450 Mo par jour** une fois l'agent
+lancé en continu. Aucun risque pour le disque (il faudrait des siècles pour
+l'entamer), mais indéfendable.
+
+`Heartbeat` le remplace par un fichier vide dont **la date de modification
+est l'information** : marquer ne touche qu'une métadonnée, sans écrire un
+octet de contenu, et aucun arrêt brutal ne peut le laisser à moitié écrit. Il
+est daté au plus une fois par minute — la seule chose en jeu est la précision
+de la réparation après un crash, événement rare. La base, elle, n'est plus
+écrite que sur de vrais événements : ouverture et fermeture de session.
+
+Le timer porte aussi une `tolerance`, qui laisse macOS regrouper son réveil
+avec ceux des autres processus au lieu d'en provoquer un pour nous seuls.
 
 **Regarder est une activité.** Le clavier et la souris ne suffisent pas :
 sans autre signal, deux heures de film comptaient pour zéro, et Pulseon
