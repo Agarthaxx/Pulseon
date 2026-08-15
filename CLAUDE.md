@@ -98,6 +98,44 @@ ouvert. Sans ça la première activation venue fermait la session fantôme à
 l'instant présent, et une nuit machine éteinte comptait comme du temps
 d'écran.
 
+**Regarder est une activité.** Le clavier et la souris ne suffisent pas :
+sans autre signal, deux heures de film comptaient pour zéro, et Pulseon
+effaçait précisément le moment où on est le plus devant l'écran. On lit donc
+aussi l'assertion système `PreventUserIdleDisplaySleep`, que tout lecteur
+vidéo lève pendant la lecture (`ActivityMonitor.isDisplayKeptAwake`).
+
+Deux pièges, tous deux vérifiés à l'exécution :
+
+- **Lire la bonne assertion.** `PreventUserIdleSystemSleep`, sa voisine, est
+  levée par Handoff, les sauvegardes et `caffeinate` — elle compterait un
+  téléchargement nocturne écran éteint comme du temps d'écran.
+- **La fin du film.** Le dernier événement clavier peut dater d'une heure ;
+  fermer la session à `maintenant - inactivité` effacerait le film qu'on
+  vient de compter. La fin retenue est le plus tardif des signaux *observés*
+  (`endOfActivity`). Conséquence assumée : on sous-compte d'au plus un tick
+  (15 s) à la fin d'une vidéo, parce qu'on ignore à quel instant exact elle
+  s'est arrêtée entre deux vérifications. Sous-compter est permis, inventer
+  ne l'est pas.
+
+### Ce que « actif » veut dire, appareil par appareil
+
+Règle générale, valable pour toute source à venir : **chaque collecteur
+décide seul de ce qu'« actif » signifie pour son appareil.** Le cœur ne
+reçoit jamais que deux formes, et un nouvel appareil doit répondre à l'une
+ou l'autre — jamais à autre chose :
+
+| Appareil    | Signal d'activité                                  | Forme envoyée |
+|-------------|----------------------------------------------------|---------------|
+| Mac         | Clavier/souris **+ vidéo en cours**                | Intervalles   |
+| TV          | Consommation électrique de la prise au-dessus d'un seuil | Intervalles |
+| PlayStation | Aucun signal temporel, juste un total qui monte    | Compteur      |
+
+Corriger le cas du film rapproche d'ailleurs le Mac de la TV : les deux
+disent désormais « l'écran était allumé et montrait quelque chose », au lieu
+de « quelqu'un tapait ». Ni l'un ni l'autre ne sait si tu t'es endormi
+devant — on mesure l'usage de l'appareil, pas l'attention, et on ne prétend
+pas le contraire.
+
 **Limite connue, pas encore traitée** : l'exécutable SwiftPM n'est pas un
 `.app`. Pas de `LSUIElement`, pas de lancement à l'ouverture de session, pas
 de signature — et **CloudKit (étape 5) exigera un vrai bundle**. Il faudra
