@@ -18,7 +18,14 @@ struct PulseonApp: App {
             // sans avoir à ouvrir le menu. Il avance d'une minute par minute
             // tant qu'on est devant l'écran — et s'arrête quand on ne l'est
             // plus, ce qui n'est pas une panne mais le comportement voulu.
-            Label(engine.menuBarTitle, systemImage: engine.menuBarSymbol)
+            //
+            // `Label(_:systemImage:)` ne convient pas ici, et ça a été vu à
+            // l'exécution : le libellé d'un `MenuBarExtra` est traité comme une
+            // icône de barre de menu, donc le texte est silencieusement jeté et
+            // le total n'apparaissait qu'en ouvrant le menu. Un `Text` qui
+            // *interpole* l'image garde les deux, parce que tout est alors un
+            // seul texte aux yeux du système.
+            Text("\(Image(systemName: engine.menuBarSymbol)) \(engine.menuBarTitle)")
         }
         .menuBarExtraStyle(.menu)
         .modelContainer(engine.container)
