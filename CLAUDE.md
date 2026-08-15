@@ -255,6 +255,64 @@ Un vrai *Widget* macOS (centre de notifications, bureau) est autre chose : une
 extension d'app, qui suppose un projet Xcode et une signature — même mur que
 CloudKit.
 
+### Le dashboard : la journée en multipiste
+
+Vit dans **`PulseonUI`**, un paquet à part et non dans l'app macOS, parce que
+ce sont *les mêmes vues* qui serviront à l'app iOS : le jour où la cible iOS
+existera, elle consomme ce paquet sans qu'une ligne de dessin soit réécrite.
+D'où l'interdiction d'y toucher à AppKit, qui n'existe pas sur iPhone —
+`.buttonStyle(.link)` s'y est déjà fait refuser.
+
+**Direction visuelle : la station de travail.** Le vocabulaire du projet était
+déjà celui d'un séquenceur (« multipiste », « piste », « signal », « marqueur
+d'heure courante », une icône `waveform`), donc la journée est dessinée comme
+un rack d'appareil de mesure. Le rack **reste sombre même en apparence
+claire** : un instrument ne change pas de couleur avec le papier peint, et les
+blocs d'activité ne se lisent qu'en couleur saturée sur fond sombre. Le reste
+de la fenêtre suit le système, comme n'importe quelle app native.
+
+La signature est **la tête de lecture** : une ligne rouge qui traverse les
+pistes à l'heure courante, avec l'heure en cartouche. Rouge parce que c'est la
+couleur de l'enregistrement en cours sur une station audio — ici, la journée
+en train de s'écrire. Elle n'apparaît **que sur aujourd'hui** : une journée
+passée est entièrement jouée, y planter une tête de lecture ne voudrait rien
+dire. Ce rouge ne sert qu'à ça, aucun autre élément ne le porte.
+
+**Les couleurs portent de l'information** : une par appareil, tenue partout
+(pastille du détail comprise). Elles ne se choisissent pas à l'humeur.
+
+**Une source à compteur ne doit occuper aucune position dans la journée.** La
+première version calait le bloc PlayStation à gauche : hachuré, certes, mais il
+se lisait « joué de minuit à 1 h 48 ». Les hachures ne suffisent pas si la
+*position*, elle, ment. Le bloc est donc **centré**, sa piste n'a **pas de
+graduations horaires** — une grille donnerait un sens à une position qui n'en a
+aucun — et le libellé « heure inconnue » est posé à côté, où il reste lisible
+même quand le bloc est court.
+
+**Voir les vues sans lancer l'app.** `ImageRenderer` rend n'importe quelle vue
+en PNG hors écran, ce qui permet de regarder le résultat sans fenêtre, sans
+simulateur, et sans lancer une seconde instance du collecteur — qui écrirait
+dans la même base. Ça a trouvé deux défauts qu'aucun test ne pouvait voir :
+une étiquette « PLAYSTATIO/N » coupée, et une grille horaire qui partait de
+midi. Ce dernier mérite d'être retenu : **un `ZStack` de rectangles d'un point
+ne mesure qu'un point de large**, donc l'`overlay` le centrait dans la piste et
+toute la matinée n'avait aucune graduation. Rien ne le signale, ni le
+compilateur ni les tests. D'où `.frame(maxWidth: .infinity, alignment:
+.leading)`.
+
+`TimelineGeometry` tient tout le calcul de placement, séparé des vues pour être
+testable sans simulateur — même raison que `PulseonCore`. La longueur du jour
+lui est **fournie**, jamais supposée égale à 86 400 : les journées de
+changement d'heure font 23 ou 25 h, et une timeline qui l'ignore décale toute
+la soirée de ces jours-là. Elle garantit aussi qu'une minute d'activité reste
+visible (plancher de 2 points) : 60 s sur 24 h font 0,7 point, et une minute
+invisible reviendrait à dire qu'elle n'a pas eu lieu.
+
+`DayBrowser` (dans `PulseonMacKit`) choisit la journée affichée et va la
+chercher. Il interdit de naviguer dans le futur — aucune donnée ne peut exister
+demain — et relit chaque minute, parce qu'une journée en cours grandit pendant
+qu'on la regarde. C'est lui qu'on remplacera pour iOS, pas le dessin.
+
 ### Lire l'historique
 
 `DayDigestBuilder.buildPeriod(from:through:...)` agrège une plage de journées.
@@ -436,8 +494,17 @@ tout le parti pris visuel ci-dessus.
    tests.
 3. ~~App macOS~~ — agent barre de menu, collecte vérifiée, empaqueté en
    `.app`, démarrage automatique par `LaunchAgent`.
-4. App iOS : le dashboard, avec la journée en multipiste. **Prochain gros
-   morceau, en attente de la liste d'Arthur** — ne pas la lui inventer.
+4. Dashboard : la journée en multipiste. **Ébauche livrée côté macOS**
+   (`PulseonUI`), volontairement d'abord dans une fenêtre Mac — l'app existe,
+   elle a les vraies données en local, et ça ne demande ni compte payant ni
+   projet Xcode. Reste **en attente de la liste d'Arthur** pour la suite : ne
+   pas la lui inventer.
+   - Porter ces vues sur iOS est l'étape B, et c'est un portage, pas une
+     construction : il faudra un projet Xcode (SwiftPM seul ne fabrique pas
+     d'app iOS) et le compte payant. Stack rediscutée puis reconfirmée le
+     2026-08-15 : **rester en Swift**, Expo ne cible pas macOS, ne peut pas
+     porter les collecteurs natifs, et remplacerait CloudKit par un backend
+     à héberger.
 5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
 6. Collecteur PlayStation, puis TV.
 7. Réévaluer l'intégration iPhone.
