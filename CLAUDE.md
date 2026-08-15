@@ -191,20 +191,50 @@ Pulseon ne tourne que sur le Mac d'Arthur.
 
 ### Ce que la barre de menu affiche
 
-Le libellé porte **l'icône et le total du jour**, rafraîchi chaque minute :
-c'est la plus petite unité affichée, donc rafraîchir plus vite ne changerait
-rien à l'écran. Ce sont des *lectures*, jamais des écritures — aucun rapport
-avec le problème des 450 Mo/jour.
+Le libellé porte **l'icône et le total du jour, qui défile à la seconde**
+(`3h07:12`). Un compteur qui bouge en permanence en haut de l'écran est
+confrontant par construction, et c'est voulu : macOS dit *combien* une fois
+par semaine dans un écran que personne n'ouvre.
+
+**`Label(_:systemImage:)` ne marche pas dans un `MenuBarExtra`**, et ça a
+coûté une session : le libellé y est traité comme une icône de barre de menu,
+donc le texte est **jeté en silence**. Le total n'apparaissait qu'une fois le
+menu ouvert. Il faut un `Text` qui *interpole* l'image
+(`Text("\(Image(systemName:)) \(titre)")`) pour garder les deux.
 
 Le rafraîchissement vit indépendamment de la collecte : suspendre la collecte
 ne doit pas figer l'affichage de ce qui est déjà enregistré.
 
+**Défiler à la seconde ne coûte ni requête ni écriture.** Deux timers, pas un :
+le disque est relu chaque minute et gardé en cache, tandis que le tick d'une
+seconde ne fait qu'une addition — `DayDigestBuilder.build` borne les sessions
+ouvertes sur le `now` qu'on lui passe, donc avancer d'une seconde ne demande
+rien à SwiftData. Le titre n'est réassigné que s'il change, pour ne pas
+réveiller les vues quand le compteur est gelé.
+
+**L'horizon d'affichage est le dernier instant d'activité *observée*, jamais
+l'heure courante** (`ActivityMonitor.observedActivityEnd`). Une session reste
+ouverte pendant les deux minutes d'inactivité tolérée, puis est fermée
+*rétroactivement* au dernier signe de vie : un compteur qui avancerait jusqu'à
+`now` reculerait donc de deux minutes à chaque pause. Invisible à la minute,
+criant à la seconde — et **reculer est pire qu'attendre**. Le compteur gèle
+donc dès qu'on lâche le clavier et rattrape d'un bloc au premier mouvement ;
+lire un article sans bouger la souris fige l'affichage alors que le temps,
+lui, est bien compté. Cet horizon doit venir du moniteur et pas d'une fonction
+pure, parce que lui seul se souvient du dernier instant où une vidéo tournait :
+sans cette mémoire, la fin d'un film ferait dégringoler le compteur de deux
+heures. Effet de bord gagné au passage : l'affichage interrogeant chaque
+seconde, la fin de session écrite en base est précise à la seconde au lieu du
+tick de 15 s.
+
 `DurationFormat` (dans `PulseonCore`, donc partagé avec la future app iOS)
-tient les deux formes : resserrée pour la barre (`3h07`), longue pour le menu
-(`3 h 07`). La barre de menu est un espace partagé avec toutes les autres
-apps, chaque caractère y coûte. **Les minutes sont tronquées, jamais
-arrondies** : afficher 1 h à 59 min 40 annoncerait du temps qui n'a pas eu
-lieu. Quand la lecture échoue, la barre affiche un tiret et pas un zéro.
+tient les trois formes : vivante pour la barre (`3h07:12`, puis `7m12`, puis
+`42s`), resserrée (`3h07`) et longue pour le menu (`3 h 07`). L'unité `h`/`m`/`s`
+n'est pas décorative : c'est elle qui empêche de lire le total comme l'horloge
+juste à côté. La barre de menu est un espace partagé avec toutes les autres
+apps, chaque caractère y coûte. **Tout est tronqué, jamais arrondi** : afficher
+1 h à 59 min 40 annoncerait du temps qui n'a pas eu lieu. Quand la lecture
+échoue, la barre affiche un tiret et pas un zéro.
 
 Un vrai *Widget* macOS (centre de notifications, bureau) est autre chose : une
 extension d'app, qui suppose un projet Xcode et une signature — même mur que
@@ -416,10 +446,12 @@ Ce qui bloque, et sur quoi :
 - **Widget macOS** (le vrai, centre de notifications) : extension d'app, donc
   projet Xcode et signature — même mur que CloudKit.
 
-Point en suspens : le texte de la barre de menu s'affiche-t-il **sans
-cliquer** ? Arthur a confirmé que ça marche, mais sa formulation (« quand je
-clique ») laissait un doute. Si seul le menu déroulant montre le temps, le
-libellé `Label(_:systemImage:)` du `MenuBarExtra` est à composer autrement.
+~~Point en suspens : le texte de la barre de menu s'affiche-t-il sans
+cliquer ?~~ **Non, il ne s'affichait pas** — le doute était fondé. Corrigé
+depuis (`Label` → `Text` interpolé, voir « Ce que la barre de menu affiche »),
+et le compteur défile désormais à la seconde. À retenir : quand Arthur décrit
+un comportement observé, prendre la formulation au pied de la lettre plutôt
+que la reformuler dans le sens attendu.
 
 Dette de doc connue : la visite guidée du code (lien plus haut) décrit
 744 lignes et sept fichiers de moins que la réalité. À reprendre avant
