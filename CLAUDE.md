@@ -91,12 +91,29 @@ traduit en `entity` à la frontière de `PulseonCore`, qui garde son vocabulaire
 Le silence est le vrai danger : une base de temps d'écran sans nom d'app se
 remplit sans rien signaler.
 
-**Une session ouverte doit pouvoir survivre à un crash.** `StoredSession`
-porte un `lastSeen` rafraîchi à chaque tick (15 s) ; au démarrage,
-`closeDanglingSessions()` ferme à cette date ce qu'un arrêt brutal a laissé
-ouvert. Sans ça la première activation venue fermait la session fantôme à
-l'instant présent, et une nuit machine éteinte comptait comme du temps
-d'écran.
+**Une session ouverte doit pouvoir survivre à un crash.** Au démarrage,
+`closeDanglingSessions(at:)` ferme ce qu'un arrêt brutal a laissé ouvert, à
+la date du dernier signe de vie. Sans ça la première activation venue fermait
+la session fantôme à l'instant présent, et une nuit machine éteinte comptait
+comme du temps d'écran. Sans trace de vie du tout, la session est fermée sur
+son propre début : durée nulle plutôt qu'une fin inventée.
+
+**Ce signe de vie ne va pas dans la base**, et la raison est mesurée, pas
+théorique. Il y vivait au départ (un champ `lastSeen` réécrit à chaque tick) :
+chaque écriture coûtait **78 Ko** — journal SQLite plus historique CoreData —
+pour une information de 8 octets, soit **~450 Mo par jour** une fois l'agent
+lancé en continu. Aucun risque pour le disque (il faudrait des siècles pour
+l'entamer), mais indéfendable.
+
+`Heartbeat` le remplace par un fichier vide dont **la date de modification
+est l'information** : marquer ne touche qu'une métadonnée, sans écrire un
+octet de contenu, et aucun arrêt brutal ne peut le laisser à moitié écrit. Il
+est daté au plus une fois par minute — la seule chose en jeu est la précision
+de la réparation après un crash, événement rare. La base, elle, n'est plus
+écrite que sur de vrais événements : ouverture et fermeture de session.
+
+Le timer porte aussi une `tolerance`, qui laisse macOS regrouper son réveil
+avec ceux des autres processus au lieu d'en provoquer un pour nous seuls.
 
 **Regarder est une activité.** Le clavier et la souris ne suffisent pas :
 sans autre signal, deux heures de film comptaient pour zéro, et Pulseon
@@ -136,11 +153,41 @@ de « quelqu'un tapait ». Ni l'un ni l'autre ne sait si tu t'es endormi
 devant — on mesure l'usage de l'appareil, pas l'attention, et on ne prétend
 pas le contraire.
 
-**Limite connue, pas encore traitée** : l'exécutable SwiftPM n'est pas un
-`.app`. Pas de `LSUIElement`, pas de lancement à l'ouverture de session, pas
-de signature — et **CloudKit (étape 5) exigera un vrai bundle**. Il faudra
-donc soit un projet Xcode, soit un bundle fabriqué à la main. À trancher
-avant l'étape 5, pas après.
+### Empaquetage et démarrage automatique
+
+`Scripts/build-app.sh` fabrique `Pulseon.app` à partir de l'exécutable
+SwiftPM, sans projet Xcode : arborescence du bundle, `Info.plist`, signature
+ad-hoc. `LSUIElement` y vaut vrai — l'agent vit dans la barre de menu, pas
+dans le Dock.
+
+```
+./Scripts/build-app.sh
+cp -R .build/release/Pulseon.app /Applications/
+open /Applications/Pulseon.app
+```
+
+Le démarrage automatique s'active ensuite depuis le menu de l'app.
+
+**`SMAppService` est inutilisable ici, et ça a été vérifié à l'exécution.**
+L'API moderne exige une **vraie signature** : une signature ad-hoc n'en est
+pas une. Depuis `/Applications`, lancée par LaunchServices, avec le bon
+bundle identifier, `status` renvoie quand même `notFound` — la machine n'a
+aucune identité (`security find-identity` : zéro identité valide).
+
+D'où le repli sur un **`LaunchAgent`** : un `.plist` déposé dans
+`~/Library/LaunchAgents`, que launchd lit à chaque ouverture de session.
+Aucune signature, aucun compte, aucun privilège administrateur, et pas de
+sous-processus — écrire le fichier suffit, launchd le découvre seul.
+`KeepAlive` reste à faux pour que « Quitter Pulseon » quitte vraiment.
+
+À retenir pour la suite : **le compte Apple payant conditionne CloudKit
+(étape 5), pas le démarrage automatique.** Le jour où une vraie identité
+existe, revenir à `SMAppService` est la bonne cible — c'est l'API supportée,
+et elle apparaît proprement dans Réglages > Général > Ouverture.
+
+**Limite restante** : sans signature Developer ID, l'app ne s'installe pas
+sur une autre machine sans avertissement Gatekeeper. Sans objet tant que
+Pulseon ne tourne que sur le Mac d'Arthur.
 
 ## Parti pris produit
 
@@ -228,9 +275,8 @@ tout le parti pris visuel ci-dessus.
 1. ~~Stack technique~~ — tranché deux fois, voir ci-dessus.
 2. ~~`PulseonCore`~~ — modèles + agrégation journalière, couverts par des
    tests.
-3. App macOS : agent barre de menu qui collecte l'usage Mac. **Le collecteur
-   tourne et persiste** ; restent l'empaquetage en `.app` et le lancement
-   automatique à l'ouverture de session.
+3. ~~App macOS~~ — agent barre de menu, collecte vérifiée, empaqueté en
+   `.app`, démarrage automatique par `LaunchAgent`.
 4. App iOS : le dashboard, avec la journée en multipiste.
 5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
 6. Collecteur PlayStation, puis TV.

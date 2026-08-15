@@ -31,6 +31,7 @@ final class CollectionEngine {
     /// et sera perdue. Le menu doit le dire — un agent qui ne dit rien laisse
     /// croire qu'il enregistre.
     private(set) var failure: String?
+    private(set) var launchAtLogin: LaunchAtLogin.State = LaunchAtLogin.state
     private let monitor: ActivityMonitor
     private let store: SessionStore
 
@@ -54,6 +55,15 @@ final class CollectionEngine {
         guard isCollecting else { return }
         monitor.stop()
         isCollecting = false
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        if let error = LaunchAtLogin.setEnabled(enabled) {
+            failure = error
+        }
+        // Le système fait foi : après un enregistrement il peut exiger une
+        // approbation, ce qui n'est ni « activé » ni « désactivé ».
+        launchAtLogin = LaunchAtLogin.state
     }
 
     /// Le total du jour, tel qu'affiché dans le menu.
@@ -92,11 +102,28 @@ private struct MenuContent: View {
             engine.isCollecting ? engine.stop() : engine.start()
         }
 
+        launchAtLoginItem
+
         Button("Quitter Pulseon") {
             engine.stop()
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+
+    /// Le menu dit toujours la vérité sur l'état réel du système : si l'app
+    /// tourne hors bundle, on l'annonce au lieu d'afficher une case à cocher
+    /// qui ne cocherait rien.
+    @ViewBuilder
+    private var launchAtLoginItem: some View {
+        switch engine.launchAtLogin {
+        case .unavailable:
+            Text("Démarrage auto — installe Pulseon dans Applications")
+        case .enabled:
+            Button("✓ Lancer au démarrage") { engine.setLaunchAtLogin(false) }
+        case .disabled:
+            Button("Lancer au démarrage") { engine.setLaunchAtLogin(true) }
+        }
     }
 
     private func format(_ seconds: TimeInterval) -> String {

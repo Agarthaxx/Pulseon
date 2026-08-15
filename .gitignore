@@ -11,3 +11,6 @@ DerivedData/
 # Secrets
 .env
 *.local
+
+# Bundle fabriqué par Scripts/build-app.sh
+*.app/

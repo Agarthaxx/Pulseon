@@ -25,14 +25,16 @@ public final class ActivityMonitor {
     private let idleCheckInterval: TimeInterval = 15
 
     private let store: SessionStore
+    private let heartbeat: Heartbeat
     private var timer: Timer?
     private var observers: [NSObjectProtocol] = []
     private var isIdle = false
     /// Dernier tick où une vidéo tournait. Voir `endOfActivity`.
     private var lastWatchedAt: Date = .distantPast
 
-    public init(store: SessionStore) {
+    public init(store: SessionStore, heartbeat: Heartbeat? = nil) {
         self.store = store
+        self.heartbeat = heartbeat ?? Heartbeat(url: StoreLocation.heartbeatURL)
     }
 
     public func start() {
@@ -42,7 +44,8 @@ public final class ActivityMonitor {
         // Avant toute chose : réparer ce qu'un arrêt brutal a laissé ouvert.
         // Doit précéder la première activation, qui sinon fermerait la session
         // fantôme à l'instant présent.
-        store.closeDanglingSessions()
+        store.closeDanglingSessions(at: heartbeat.lastMark())
+        heartbeat.mark(Date(), force: true)
 
         observers.append(
             center.addObserver(
@@ -85,6 +88,11 @@ public final class ActivityMonitor {
             [weak self] _ in
             MainActor.assumeIsolated { self?.checkIdle() }
         }
+        // Laisse macOS regrouper ce réveil avec ceux des autres processus au
+        // lieu d'en provoquer un rien que pour nous. Rien ici n'exige la
+        // seconde près, et grouper les réveils est ce qui économise la
+        // batterie.
+        timer.tolerance = idleCheckInterval / 2
         self.timer = timer
         RunLoop.main.add(timer, forMode: .common)
 
@@ -149,7 +157,9 @@ public final class ActivityMonitor {
             isIdle = false
             handleActivation(of: NSWorkspace.shared.frontmostApplication)
         } else if isActive {
-            store.touchOpenSessions(at: now)
+            // Rien à écrire en base : l'activité n'a pas changé d'état. On se
+            // contente de dater la trace de vie, hors base et à sa cadence.
+            heartbeat.mark(now)
         }
     }
 
