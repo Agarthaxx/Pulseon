@@ -189,6 +189,42 @@ et elle apparaît proprement dans Réglages > Général > Ouverture.
 sur une autre machine sans avertissement Gatekeeper. Sans objet tant que
 Pulseon ne tourne que sur le Mac d'Arthur.
 
+### Lire l'historique
+
+`DayDigestBuilder.buildPeriod(from:through:...)` agrège une plage de journées.
+`PeriodDigest.days` contient **toutes** les journées, y compris les vides :
+une semaine sans Mac le mercredi doit montrer un mercredi vide, pas sauter du
+mardi au jeudi. Les trous font partie de ce qu'on a à dire.
+
+`PeriodDigest.lanes` cumule les appareils sur la période, et ses `blocks` sont
+**toujours vides** — ce n'est pas un oubli. Un bloc porte une position dans
+une journée de 24 h ; sur sept jours cette position ne veut plus rien dire.
+Une timeline se dessine à partir de `days`.
+
+Le `coveredTotal` d'une période est la somme des totaux journaliers, et c'est
+licite précisément parce que deux journées ne se chevauchent jamais — là où
+deux appareils, eux, le peuvent.
+
+**Deux pièges de performance, tous deux mesurés :**
+
+- `sessions(from:to:)` ne bornait que le haut et filtrait le bas en Swift :
+  pour afficher *aujourd'hui*, elle chargeait tout l'historique depuis le
+  premier jour. Les deux bornes sont maintenant dans le prédicat.
+- Agréger une plage en demandant au calendrier l'index du jour de chaque
+  session coûtait **11,5 s pour un an** — 1,4 million d'opérations `Calendar`,
+  qui sont lentes. Les frontières de journées sont désormais calculées une
+  fois puis les sessions placées par dichotomie sur des nombres : **155 ms**,
+  soit 74 fois plus vite. À retenir : jamais de `Calendar` dans une boucle
+  chaude. Mais des frontières explicites, jamais une multiplication par
+  86 400 : les journées de changement d'heure ne font pas 24 h.
+
+**SwiftData refuse le déballage forcé dans un prédicat.** `session.end! > from`
+compile, puis lève à l'exécution. Écrire `(session.end ?? horizon) > from`.
+Le `??` est supporté, le `!` non — et si l'erreur est avalée par un `try?`,
+la requête rend une liste vide impossible à distinguer d'une journée sans
+activité. C'est pour ça que `sessions` et `samples` sont désormais `throws` :
+une lecture qui échoue doit se voir, pas se déguiser en zéro.
+
 ### Sources à compteur : la plomberie commune
 
 `CounterSource` est le contrat que remplit toute source incapable de dire un

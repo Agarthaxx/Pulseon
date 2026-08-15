@@ -45,7 +45,7 @@ func identicalTotalsAreSkipped() throws {
             device: .playstation, entity: "Bloodborne", total: 3600,
             at: t0.addingTimeInterval(1800)) == false)
 
-    #expect(base.store.samples(before: t0.addingTimeInterval(9999)).count == 1)
+    #expect(try base.store.samples(before: t0.addingTimeInterval(9999)).count == 1)
 }
 
 @Test("Un total qui bouge est écrit")
@@ -59,7 +59,7 @@ func changedTotalsAreRecorded() throws {
             device: .playstation, entity: "Bloodborne", total: 5400,
             at: t0.addingTimeInterval(900)))
 
-    let samples = base.store.samples(before: t0.addingTimeInterval(9999))
+    let samples = try base.store.samples(before: t0.addingTimeInterval(9999))
     #expect(samples.count == 2)
     #expect(samples.map(\.total) == [3600, 5400])
 }
@@ -73,7 +73,7 @@ func entitiesAreIndependent() throws {
     // Même total, autre jeu : ce n'est pas un doublon.
     #expect(base.store.record(device: .playstation, entity: "Returnal", total: 3600, at: t0))
 
-    let samples = base.store.samples(before: t0.addingTimeInterval(9999))
+    let samples = try base.store.samples(before: t0.addingTimeInterval(9999))
     #expect(Set(samples.map(\.entity)) == ["Bloodborne", "Returnal"])
 }
 
@@ -90,7 +90,7 @@ func decreasingTotalsAreStoredAsIs() throws {
             device: .playstation, entity: "Bloodborne", total: 3600,
             at: t0.addingTimeInterval(900)))
 
-    #expect(base.store.samples(before: t0.addingTimeInterval(9999)).map(\.total) == [7200, 3600])
+    #expect(try base.store.samples(before: t0.addingTimeInterval(9999)).map(\.total) == [7200, 3600])
 }
 
 @Test("Le dédoublonnage ne casse pas le calcul du temps du jour")
@@ -117,7 +117,7 @@ func dedupPreservesDailyMath() throws {
     let digest = DayDigestBuilder(calendar: calendar).build(
         day: day,
         sessions: [],
-        samples: base.store.samples(before: end),
+        samples: try base.store.samples(before: end),
         now: dayStart.addingTimeInterval(7200)
     )
 

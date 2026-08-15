@@ -167,16 +167,31 @@ public final class SessionStore {
         save()
     }
 
-    public func sessions(from: Date, to: Date) -> [ActivitySession] {
+    /// Les sessions qui chevauchent la fenêtre `[from, to)`.
+    ///
+    /// Les **deux** bornes sont dans le prédicat, donc dans SQLite. La version
+    /// précédente ne bornait que le haut et filtrait le bas en Swift : pour
+    /// afficher aujourd'hui, elle chargeait tout l'historique depuis le
+    /// premier jour, puis en jetait l'essentiel. Invisible avec une journée de
+    /// données, ruineux avec six mois.
+    ///
+    /// Une session encore ouverte n'a pas de fin : elle chevauche la fenêtre
+    /// dès lors qu'elle a commencé avant `to`. D'où l'horizon, qui remplace le
+    /// `nil` le temps de la comparaison.
+    ///
+    /// Écrit avec `??` et surtout pas avec `session.end! > from` : SwiftData
+    /// **refuse le déballage forcé** dans un prédicat. Ça compile, puis ça
+    /// lève à l'exécution — et si l'erreur est avalée, la requête rend une
+    /// liste vide impossible à distinguer d'une journée sans activité.
+    public func sessions(from: Date, to: Date) throws -> [ActivitySession] {
+        let horizon = Date.distantFuture
         let descriptor = FetchDescriptor<StoredSession>(
-            predicate: #Predicate { $0.start < to },
+            predicate: #Predicate { session in
+                session.start < to && (session.end ?? horizon) > from
+            },
             sortBy: [SortDescriptor(\.start)]
         )
-        return ((try? context.fetch(descriptor)) ?? [])
-            // Une session ouverte n'a pas de fin : elle appartient au jour dès
-            // lors qu'elle a commencé avant sa borne haute.
-            .filter { ($0.end ?? .distantFuture) > from }
-            .map(\.asSession)
+        return try context.fetch(descriptor).map(\.asSession)
     }
 
     /// Enregistre un relevé de compteur, **sauf s'il n'apprend rien**.
@@ -220,12 +235,18 @@ public final class SessionStore {
         return try? context.fetch(descriptor).first
     }
 
-    public func samples(before: Date) -> [CounterSample] {
+    /// Les relevés de compteur antérieurs à `before`.
+    ///
+    /// Pas de borne basse ici, et c'est voulu : le calcul d'un temps de jeu
+    /// exige le dernier relevé *antérieur* à la journée, qui peut dater de
+    /// plusieurs jours si on n'a pas joué entre-temps. Les relevés sont rares
+    /// — un par quart d'heure au plus, et seulement quand un total bouge.
+    public func samples(before: Date) throws -> [CounterSample] {
         let descriptor = FetchDescriptor<StoredCounterSample>(
             predicate: #Predicate { $0.recordedAt < before },
             sortBy: [SortDescriptor(\.recordedAt)]
         )
-        return ((try? context.fetch(descriptor)) ?? []).map(\.asSample)
+        return try context.fetch(descriptor).map(\.asSample)
     }
 
     private func openSession(for device: Device) -> StoredSession? {
