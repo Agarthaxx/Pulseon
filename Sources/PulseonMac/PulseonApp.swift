@@ -1,4 +1,5 @@
 import PulseonCore
+import PulseonMacKit
 import SwiftData
 import SwiftUI
 

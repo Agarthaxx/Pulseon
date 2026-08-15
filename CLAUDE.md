@@ -189,6 +189,63 @@ et elle apparaît proprement dans Réglages > Général > Ouverture.
 sur une autre machine sans avertissement Gatekeeper. Sans objet tant que
 Pulseon ne tourne que sur le Mac d'Arthur.
 
+### Sources à compteur : la plomberie commune
+
+`CounterSource` est le contrat que remplit toute source incapable de dire un
+horaire (la PlayStation, et toute future source du même genre) : elle rend des
+**totaux cumulés par entité**, rien d'autre. `CounterPoller` l'interroge à
+intervalle régulier (un quart d'heure) et range ce qu'elle dit sans rien
+calculer — la conversion en temps du jour se fait à la lecture, par différence
+entre deux relevés. C'est ce qui garantit qu'aucun horaire n'est inventé.
+
+Rendre un dictionnaire vide et lever une erreur sont **deux réponses
+différentes** : « la source répond, rien à déclarer » n'est pas « on ne sait
+pas ». Le poller retient la dernière erreur pour que l'UI puisse dire qu'une
+source est muette, au lieu de laisser croire qu'elle est à zéro.
+
+`SessionStore.record(...)` **n'écrit pas un relevé identique au précédent**.
+On ne joue pas toute la journée : réécrire le même total à chaque passage
+referait exactement l'erreur du `lastSeen` en base. Sauter les doublons ne
+gêne pas l'agrégation, qui cherche « le dernier relevé antérieur au jour » —
+un relevé plus ancien fait l'affaire tant que le total n'a pas bougé. Un total
+qui *baisse* est écrit tel quel : c'est ce que la source a dit, et c'est à
+l'agrégation de refuser les deltas négatifs, ce qu'elle fait déjà.
+
+### Les secrets vont dans le Trousseau, pas dans un `.env`
+
+`Secrets` est le seul fichier qui sait où vivent les secrets ; le collecteur
+PSN, lui, l'ignore. La raison n'est pas la peur du `.gitignore`, qui marche
+très bien : un jeton PSN appartient à **l'utilisateur**, pas au code. Un
+secret de déploiement (mot de passe de base) se livre avec le service et un
+`.env` lui convient. Ici, chaque personne installant Pulseon a le sien, saisi
+à l'exécution — c'est exactement l'usage du Trousseau.
+
+Le jeton se dépose à la main, une fois, sans jamais transiter par un fichier
+du projet :
+
+```
+security add-generic-password -s "com.arthurlanllier.pulseon.psn" -a "npsso" -U -w
+```
+
+**Aucune valeur de secret ne doit finir dans un log**, ni tronquée, ni dans un
+message d'erreur. `Secrets.Failure` ne porte que des statuts.
+
+### `PulseonMacKit` : pourquoi le code macOS n'est pas dans l'exécutable
+
+Tout le code macOS vit dans une bibliothèque, et la cible exécutable ne
+contient plus que `PulseonApp.swift`. Sans ça, rien n'est testable : le `@main`
+de l'app démarre SwiftUI **dans le processus de test**.
+
+Deux pièges rencontrés en écrivant ces tests, tous deux sans message d'erreur
+utile — le processus meurt sur un signal, c'est tout :
+
+- **`ModelContext` ne retient pas son `ModelContainer`.** Un helper qui crée
+  le conteneur en local et ne rend que le contexte laisse le conteneur être
+  libéré, et tout accès ultérieur plante. Le conteneur doit rester vivant
+  aussi longtemps que le contexte.
+- Ça vaut aussi pour un objet qui les détient : `try TestBase().store` libère
+  l'objet aussitôt. Il faut garder l'instance et passer par elle.
+
 ## Parti pris produit
 
 L'app native « Temps d'écran » de macOS dit **combien**. Pulseon montre
