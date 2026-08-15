@@ -153,11 +153,41 @@ de « quelqu'un tapait ». Ni l'un ni l'autre ne sait si tu t'es endormi
 devant — on mesure l'usage de l'appareil, pas l'attention, et on ne prétend
 pas le contraire.
 
-**Limite connue, pas encore traitée** : l'exécutable SwiftPM n'est pas un
-`.app`. Pas de `LSUIElement`, pas de lancement à l'ouverture de session, pas
-de signature — et **CloudKit (étape 5) exigera un vrai bundle**. Il faudra
-donc soit un projet Xcode, soit un bundle fabriqué à la main. À trancher
-avant l'étape 5, pas après.
+### Empaquetage et démarrage automatique
+
+`Scripts/build-app.sh` fabrique `Pulseon.app` à partir de l'exécutable
+SwiftPM, sans projet Xcode : arborescence du bundle, `Info.plist`, signature
+ad-hoc. `LSUIElement` y vaut vrai — l'agent vit dans la barre de menu, pas
+dans le Dock.
+
+```
+./Scripts/build-app.sh
+cp -R .build/release/Pulseon.app /Applications/
+open /Applications/Pulseon.app
+```
+
+Le démarrage automatique s'active ensuite depuis le menu de l'app.
+
+**`SMAppService` est inutilisable ici, et ça a été vérifié à l'exécution.**
+L'API moderne exige une **vraie signature** : une signature ad-hoc n'en est
+pas une. Depuis `/Applications`, lancée par LaunchServices, avec le bon
+bundle identifier, `status` renvoie quand même `notFound` — la machine n'a
+aucune identité (`security find-identity` : zéro identité valide).
+
+D'où le repli sur un **`LaunchAgent`** : un `.plist` déposé dans
+`~/Library/LaunchAgents`, que launchd lit à chaque ouverture de session.
+Aucune signature, aucun compte, aucun privilège administrateur, et pas de
+sous-processus — écrire le fichier suffit, launchd le découvre seul.
+`KeepAlive` reste à faux pour que « Quitter Pulseon » quitte vraiment.
+
+À retenir pour la suite : **le compte Apple payant conditionne CloudKit
+(étape 5), pas le démarrage automatique.** Le jour où une vraie identité
+existe, revenir à `SMAppService` est la bonne cible — c'est l'API supportée,
+et elle apparaît proprement dans Réglages > Général > Ouverture.
+
+**Limite restante** : sans signature Developer ID, l'app ne s'installe pas
+sur une autre machine sans avertissement Gatekeeper. Sans objet tant que
+Pulseon ne tourne que sur le Mac d'Arthur.
 
 ## Parti pris produit
 
@@ -245,9 +275,8 @@ tout le parti pris visuel ci-dessus.
 1. ~~Stack technique~~ — tranché deux fois, voir ci-dessus.
 2. ~~`PulseonCore`~~ — modèles + agrégation journalière, couverts par des
    tests.
-3. App macOS : agent barre de menu qui collecte l'usage Mac. **Le collecteur
-   tourne et persiste** ; restent l'empaquetage en `.app` et le lancement
-   automatique à l'ouverture de session.
+3. ~~App macOS~~ — agent barre de menu, collecte vérifiée, empaqueté en
+   `.app`, démarrage automatique par `LaunchAgent`.
 4. App iOS : le dashboard, avec la journée en multipiste.
 5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
 6. Collecteur PlayStation, puis TV.
