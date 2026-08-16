@@ -66,8 +66,32 @@ public final class AppRegistry {
         self.rules = rules
     }
 
+    /// Le classement de toutes les entités d'une journée, en une seule valeur.
+    ///
+    /// Résolu ici et figé, plutôt que consulté pendant l'agrégation : le calcul
+    /// ne doit pas dépendre d'un objet vivant lié à la base, et surtout pas
+    /// interroger SwiftData depuis une boucle chaude. Même leçon que les
+    /// frontières de journées calculées une fois puis parcourues par dichotomie.
+    public func assignment(for digest: DayDigest) -> CategoryAssignment {
+        var byEntity: [String: AppCategory] = [:]
+        for lane in digest.lanes {
+            for entity in lane.topEntities where byEntity[entity.entity] == nil {
+                byEntity[entity.entity] = category(ofApp: entity.entity, on: lane.device)
+            }
+        }
+        return CategoryAssignment(byEntity: byEntity)
+    }
+
     /// À quoi servait ce temps.
-    public func category(ofApp name: String) -> AppCategory {
+    ///
+    /// - Parameter device: sert de repli quand l'app est inconnue de la base —
+    ///   un jeu PlayStation n'a pas d'`Info.plist` à lire.
+    public func category(ofApp name: String, on device: Device = .mac) -> AppCategory {
+        guard device == .mac else { return device.defaultCategory }
+        return category(ofApp: name)
+    }
+
+    private func category(ofApp name: String) -> AppCategory {
         let identity = identity(ofApp: name)
         return rules.category(
             forApp: name,

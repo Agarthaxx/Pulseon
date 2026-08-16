@@ -36,6 +36,43 @@ public enum AppCategory: String, CaseIterable, Sendable, Codable {
     }
 }
 
+extension Device {
+    /// La catégorie d'un appareil qui ne dit pas ce qu'il fait.
+    ///
+    /// Une TV allumée ne déclare pas ce qu'elle diffuse, et la PlayStation ne
+    /// donne qu'un nom de jeu sans rien d'autre. Ce n'est **pas** une invention
+    /// de contenu — c'est la nature de l'appareil : une console sert à jouer, une
+    /// télé à regarder. Le Mac, lui, ne se laisse pas résumer : c'est le seul
+    /// appareil polyvalent, donc son défaut est `other` et tout passe par
+    /// l'identité de l'app.
+    public var defaultCategory: AppCategory {
+        switch self {
+        case .mac: .other
+        case .playstation: .game
+        case .tv: .media
+        }
+    }
+}
+
+/// Le classement figé pour une lecture donnée.
+///
+/// Une valeur, pas un service : le classement se calcule une fois côté macOS
+/// (seul endroit qui sait lire la catégorie déclarée d'une app), puis voyage
+/// sous cette forme jusqu'à l'agrégation. Ça évite de tenir un objet vivant
+/// dans une boucle de calcul, et ça rend l'agrégation testable sans machine.
+public struct CategoryAssignment: Sendable {
+    private let byEntity: [String: AppCategory]
+
+    public init(byEntity: [String: AppCategory]) {
+        self.byEntity = byEntity
+    }
+
+    public func category(for device: Device, entity: String?) -> AppCategory {
+        guard let entity, let known = byEntity[entity] else { return device.defaultCategory }
+        return known
+    }
+}
+
 /// Comment on décide de la catégorie d'une app.
 ///
 /// La source de vérité de départ est macOS lui-même : chaque app déclare une
