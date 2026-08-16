@@ -47,7 +47,7 @@ montre *quand*.**
 
 ### Règles non négociables
 
-1. **Ne jamais inventer de placement horaire.** Une source à compteur (Steam, la
+1. **Ne jamais inventer de placement horaire.** Une source à compteur (la
    PlayStation) ne connaît pas ses horaires. Et **centrer son bloc ne suffit
    pas** : centré sous un axe des heures, il tombait pile sous « 12 h » et se
    lisait « joué vers midi ». Il faut cumuler un filet, un titre de section

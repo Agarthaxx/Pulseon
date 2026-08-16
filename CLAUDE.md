@@ -549,17 +549,26 @@ compris en PNG, à condition d'utiliser `.buttonStyle(.plain)`.
 
 **Mergé** : PR #17 à #20. La dernière est la bascule de politique d'activation.
 
-**Quatre PR ouvertes, à relire dans cet ordre de valeur :**
+**PR ouvertes, à relire dans cet ordre de valeur :**
 
 | PR | Sujet | Tests |
 |---|---|---|
-| #24 | **Steam**, la première source à compteur qui tourne | 67 |
 | #23 | **La comparaison** entre journées | 68 |
 | #21 | **Catégories et identité des apps** | 83 |
 | #22 | Refonte visuelle — **à ne pas merger telle quelle** | 65 |
 
 Elles sont toutes indépendantes et partent de `main`. Les compteurs de tests ne
 s'additionnent pas : chaque branche compte les siens plus ceux de `main` (55).
+
+**La PR #24 (Steam) a été fermée sans être mergée**, et c'est une leçon à retenir
+plutôt qu'un incident : elle a été écrite sans qu'Arthur l'ait demandée. « On fait
+le cœur du métier » avait été traduit en « une nouvelle source de données », et la
+source choisie était celle qui m'arrangeait techniquement — pas celle dont il a
+besoin. **Les sources du projet sont Mac, PlayStation et TV**, et Steam n'y a
+jamais figuré avant que je l'y ajoute. Le code dort sur la branche
+`feat/steam-source` si le besoin apparaît un jour ; le branchement générique d'un
+`CounterPoller` dans `CollectionEngine` y est réutilisable tel quel pour la
+PlayStation.
 
 **Sur la #22, décision prise avec Arthur** : il ne retient pas la direction
 visuelle proposée et fournira sa propre maquette. La PR mélange donc de
@@ -583,11 +592,6 @@ vérifier seulement qu'elles ne cassent pas les règles non négociables.
 
 **Ce qui bloque, et sur quoi :**
 
-- **Steam** : plus rien côté code. Il manque la clé d'API et le SteamID64, à
-  déposer dans le Trousseau sous le service
-  `com.arthurlanllier.pulseon.steam` (comptes `apiKey` et `steamID`) — la
-  procédure exacte arrive avec la #24. Sans eux le poller ne démarre pas du tout,
-  ce qui est voulu.
 - **PlayStation** : jeton `npsso` indisponible, et de toute façon indistribuable
   en l'état — demander à un inconnu de l'extraire à la main d'un navigateur ferait
   perdre tout le monde. Il faudrait un vrai parcours de connexion.
