@@ -111,6 +111,15 @@ final class CollectionEngine {
     private var reloadTimer: Timer?
     private var tickTimer: Timer?
 
+    /// Le collecteur TV, s'il est configuré. Non-nil seulement quand un nom
+    /// d'hôte a été déposé (voir `TVSettings`) : sans télé à interroger, un
+    /// collecteur ne ferait qu'échouer toutes les trente secondes.
+    private var tv: TVMonitor?
+
+    /// Ce que la télé a répondu au dernier relevé, pour que le menu puisse dire
+    /// qu'elle est injoignable — ce qui n'est pas la même chose qu'éteinte.
+    var tvIsUnreachable: Bool { tv?.lastReading == .unknown }
+
     /// Les sessions et relevés de la journée, gardés en mémoire entre deux
     /// relectures. C'est ce qui rend le défilement gratuit : `build` borne les
     /// sessions ouvertes sur l'horizon qu'on lui passe, donc avancer d'une
@@ -187,6 +196,7 @@ final class CollectionEngine {
     func start() {
         guard !isCollecting else { return }
         monitor.start()
+        startTV()
         isCollecting = true
         refresh()
     }
@@ -194,8 +204,27 @@ final class CollectionEngine {
     func stop() {
         guard isCollecting else { return }
         monitor.stop()
+        tv?.stop()
+        tv = nil
         isCollecting = false
         refresh()
+    }
+
+    /// Branche le collecteur TV si une télé est configurée.
+    ///
+    /// La télé est une source à **intervalles**, comme le Mac : elle sait dire
+    /// *quand* son écran était allumé, donc elle ouvre et ferme de vraies
+    /// sessions. Rien à voir avec une source à compteur.
+    private func startTV() {
+        guard tv == nil, let host = TVSettings.host else { return }
+
+        let witness = NetworkWitness()
+        let monitor = TVMonitor(
+            probe: SamsungTVProbe(host: host, hasNetwork: { witness.hasNetwork }),
+            store: store
+        )
+        tv = monitor
+        monitor.start()
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -285,6 +314,12 @@ private struct MenuContent: View {
         } else {
             // Pas « 0 min » : on ne sait pas, et le dire est plus honnête.
             Text("⚠︎ Lecture impossible — \(engine.readFailure ?? "raison inconnue")")
+        }
+
+        // Injoignable n'est pas éteinte : le dire évite de croire à une soirée
+        // sans télé alors qu'on n'en sait rien.
+        if engine.tvIsUnreachable {
+            Text("⚠︎ TV injoignable — état inconnu")
         }
 
         Divider()
