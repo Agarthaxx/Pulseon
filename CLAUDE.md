@@ -509,11 +509,22 @@ tout le parti pris visuel ci-dessus.
 6. Collecteur PlayStation, puis TV.
 7. Réévaluer l'intégration iPhone.
 
-### État au 2026-08-15 (fin de session)
+### État au 2026-08-16 (fin de session de nuit)
 
-Ce qui tourne : le collecteur Mac est installé dans `/Applications`, démarre
-à l'ouverture de session, et affiche le total du jour dans la barre de menu.
-32 tests verts sur `main`, aucune PR ouverte.
+Ce qui tourne : le collecteur Mac est installé dans `/Applications`, démarre à
+l'ouverture de session, et affiche le total du jour dans la barre de menu — qui
+**défile désormais à la seconde** (`3h07:12`). Le **dashboard existe** : fenêtre
+macOS ouverte depuis le menu (« Ouvrir la journée », ⌘J), avec la journée en
+multipiste. 52 tests verts sur `main`.
+
+Livré cette nuit, tout mergé (PR #17 et #18) : le libellé de la barre de menu
+qui ne s'affichait pas, le compteur à la seconde, les pauses courtes comptées
+comme du temps d'écran, et l'ébauche du dashboard.
+
+Ce qui n'a **pas** été vérifié à l'œil : le dashboard n'a été regardé qu'en PNG
+rendus hors écran, jamais dans la vraie fenêtre avec les vraies données. À faire
+au prochain démarrage — les chevrons de navigation ‹ › en particulier, que
+`ImageRenderer` ne sait pas rendre.
 
 Ce qui bloque, et sur quoi :
 
@@ -536,8 +547,14 @@ un comportement observé, prendre la formulation au pied de la lettre plutôt
 que la reformuler dans le sens attendu.
 
 Dette de doc connue : la visite guidée du code (lien plus haut) décrit
-744 lignes et sept fichiers de moins que la réalité. À reprendre avant
-d'attaquer le front, puisqu'elle sert à Arthur pour lire son propre code.
+744 lignes et sept fichiers de moins que la réalité — dix maintenant, avec
+`PulseonUI`. À reprendre, puisqu'elle sert à Arthur pour lire son propre code.
+
+Références visuelles données par Arthur le 2026-08-16, à respecter quand le
+design évolue : **Flighty** (couleur strictement sémantique, hiérarchie
+typographique sans milieu, forte densité de faits utiles par ligne) et **Notion
+Calendar** (même philosophie en neutre et discret). Le point commun, qui est la
+règle : *la donnée est le design*. Voir la skill `pulseon-design`.
 
 ## Continuité entre sessions Claude
 
@@ -548,10 +565,23 @@ continuité — pas besoin de recopier la conversation.
 
 Ne pas relancer la discussion iPhone sans relire la section contrainte.
 
-## Skills Claude installées (test)
+## Skills Claude
 
-Installées via `npx skills add` dans `.claude/skills/` (voir
-`skills-lock.json`) :
+### Maison (à charger avant de toucher aux vues)
+
+- **`pulseon-design`** — la direction visuelle : l'instrument de mesure, les
+  couleurs par appareil, la typographie d'afficheur, les règles non négociables
+  (ne jamais inventer un horaire, « pas branchée » ≠ « zéro », tronquer et non
+  arrondir) et la liste de ce qui trahit un design généré. Sans elle, chaque
+  session redécouvre la direction et l'app dérive.
+- **`pulseon-preview`** — `./Scripts/preview.sh` rend les vues en PNG hors
+  écran, puis on les regarde. Lancer l'app à la place corromprait la base (deux
+  collecteurs sur le même store) et suppose quelqu'un devant l'écran. A trouvé
+  en une session trois défauts qu'aucun test ne voyait, dont une grille horaire
+  qui partait de midi.
+
+### Installées via `npx skills add` (voir `skills-lock.json`)
+
 - `frontend-design` (anthropics/skills) — direction visuelle
 - `webapp-testing` (anthropics/skills) — tests navigateur via Playwright,
   **devenu sans objet** depuis l'abandon du front web
