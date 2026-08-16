@@ -7,10 +7,11 @@ App native Apple pour suivre le temps passé sur Mac, PlayStation, TV, et
 
 | Source      | Statut  | Méthode                                                                 |
 |-------------|---------|-------------------------------------------------------------------------|
-| Mac         | À faire | `NSWorkspace` (app active) + `Quartz` (inactivité), depuis l'app macOS  |
-| PlayStation | À faire | API non-officielle PSN — poll de `playDuration` par jeu, temps journalier = delta entre deux relevés |
-| TV          | À faire | Prise connectée avec mesure de conso (type Shelly / TP-Link Kasa) — détecte allumage/extinction |
-| iPhone      | Différé | Voir contrainte ci-dessous                                              |
+| Mac         | **Tourne** | `NSWorkspace` (app active) + `Quartz` (inactivité) + assertion vidéo, depuis l'app macOS |
+| Steam       | **Codé, en attente de la clé** | API Web officielle — `playtime_forever` cumulatif par jeu, temps journalier = delta entre deux relevés |
+| PlayStation | Bloqué  | API non-officielle PSN — même forme que Steam. Il manque le jeton `npsso`, et un vrai parcours de connexion pour que ce soit distribuable |
+| TV          | Bloqué  | Prise connectée avec mesure de conso (type Shelly), ou détection réseau — voir « Roadmap » |
+| iPhone      | Impossible | Verrou Apple, voir contrainte ci-dessous. C'est *collecter* qui est bloqué, pas afficher |
 
 ## Décisions et contraintes connues
 
@@ -399,6 +400,45 @@ un relevé plus ancien fait l'affaire tant que le total n'a pas bougé. Un total
 qui *baisse* est écrit tel quel : c'est ce que la source a dit, et c'est à
 l'agrégation de refuser les deltas négatifs, ce qu'elle fait déjà.
 
+### Steam : la première source à compteur qui tourne vraiment
+
+`SteamSource` remplit `CounterSource` en interrogeant
+`IPlayerService/GetOwnedGames`, qui rend un `playtime_forever` cumulatif par jeu
+et **aucun horaire** — le cas d'école de la source à compteur.
+
+**Pourquoi Steam avant la PlayStation**, alors que celle-ci attend depuis plus
+longtemps : c'est la seule source qui ne dépend ni d'un jeton bloqué ni de
+matériel à acheter. Une clé d'API Steam est gratuite et se demande en une minute,
+là où le `npsso` de Sony s'extrait à la main d'un navigateur — acceptable pour
+Arthur, rédhibitoire pour un inconnu qui téléchargerait l'app.
+
+Quatre pièges, tous couverts par des tests :
+
+- **`playtime_forever` est en minutes.** Le prendre pour des secondes fait une
+  erreur d'un facteur 60 que rien ne signale : ni le compilateur, ni l'API, ni
+  l'affichage.
+- **Un profil privé ne renvoie pas d'erreur.** Steam répond
+  `{"response":{}}` — sans la liste des jeux. Le confondre avec « rien joué »
+  afficherait un zéro alors qu'on ne sait rien. D'où `Failure.detailsHidden`,
+  distinct d'une liste vide, qui est une vraie réponse (« la source répond, rien
+  à déclarer »).
+- **Les jeux jamais lancés sont écartés.** Une bibliothèque en compte des
+  centaines : les relever écrirait des centaines de lignes à zéro au premier
+  passage, pour une information qui n'existe pas.
+- **La clé d'API voyage dans l'URL, et `CounterPoller.lastFailure` est affiché
+  dans le menu.** Or la description d'une erreur `URLSession` contient l'URL
+  appelée. Sans conversion en `Failure.unreachable`, le secret sortirait par
+  l'interface. Un test vérifie que le message ne contient ni la clé ni `key=`.
+
+Le poller n'est branché que si les identifiants **existent** — vérifiés avec
+`Secrets.exists`, qui ne lit rien et ne déclenche donc pas la demande
+d'autorisation du Trousseau à chaque démarrage. Sans eux, aucune source : un
+poller qui échoue tous les quarts d'heure n'apporterait qu'une erreur permanente.
+
+`include_appinfo=1` n'est pas optionnel — sans lui la réponse ne contient que des
+identifiants numériques, et le dashboard afficherait « 570 » au lieu de
+« Dota 2 ».
+
 ### Les secrets vont dans le Trousseau, pas dans un `.env`
 
 `Secrets` est le seul fichier qui sait où vivent les secrets ; le collecteur
@@ -408,12 +448,21 @@ secret de déploiement (mot de passe de base) se livre avec le service et un
 `.env` lui convient. Ici, chaque personne installant Pulseon a le sien, saisi
 à l'exécution — c'est exactement l'usage du Trousseau.
 
-Le jeton se dépose à la main, une fois, sans jamais transiter par un fichier
-du projet :
+Les secrets se déposent à la main, une fois, sans jamais transiter par un
+fichier du projet :
 
 ```
+# PlayStation : le jeton de session
 security add-generic-password -s "com.arthurlanllier.pulseon.psn" -a "npsso" -U -w
+
+# Steam : la clé d'API (steamcommunity.com/dev/apikey) puis le SteamID64
+security add-generic-password -s "com.arthurlanllier.pulseon.steam" -a "apiKey" -U -w
+security add-generic-password -s "com.arthurlanllier.pulseon.steam" -a "steamID" -U -w
 ```
+
+Le SteamID64 n'est pas vraiment un secret — il est public sur le profil — mais il
+vit au même endroit que la clé : un seul mécanisme à comprendre, et rien qui
+traîne dans un fichier du projet.
 
 **Aucune valeur de secret ne doit finir dans un log**, ni tronquée, ni dans un
 message d'erreur. `Secrets.Failure` ne porte que des statuts.

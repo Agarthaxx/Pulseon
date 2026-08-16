@@ -25,6 +25,26 @@ public enum Secrets {
         public static let account = "npsso"
     }
 
+    /// Steam demande **deux** valeurs, rangées sous le même service : la clé
+    /// d'API personnelle et l'identifiant du compte.
+    ///
+    /// La clé s'obtient sur `steamcommunity.com/dev/apikey`, l'identifiant est le
+    /// SteamID64 à 17 chiffres. À déposer une fois, à la main :
+    ///
+    /// ```
+    /// security add-generic-password -s "com.arthurlanllier.pulseon.steam" -a "apiKey" -U -w
+    /// security add-generic-password -s "com.arthurlanllier.pulseon.steam" -a "steamID" -U -w
+    /// ```
+    ///
+    /// L'identifiant n'est pas vraiment un secret — il est public sur le profil —
+    /// mais il vit au même endroit que la clé : un seul mécanisme à comprendre, et
+    /// rien qui traîne dans un fichier du projet.
+    public enum Steam {
+        public static let service = "com.arthurlanllier.pulseon.steam"
+        public static let apiKey = "apiKey"
+        public static let steamID = "steamID"
+    }
+
     public enum Failure: Error, Equatable {
         /// Rien n'est rangé sous cette étiquette.
         case notFound

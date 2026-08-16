@@ -111,6 +111,20 @@ final class CollectionEngine {
     private var reloadTimer: Timer?
     private var tickTimer: Timer?
 
+    /// Les sources à compteur branchées. Aucune si rien n'est déposé dans le
+    /// Trousseau : un poller qui échoue toutes les quinze minutes n'apporte
+    /// qu'une erreur permanente à l'écran.
+    private var counterPollers: [Device: CounterPoller] = [:]
+
+    /// Ce que les sources à compteur ont à dire, pour que le menu puisse
+    /// distinguer « muette » de « à zéro ».
+    var counterFailures: [(device: Device, reason: String)] {
+        counterPollers.compactMap { device, poller in
+            poller.lastFailure.map { (device, $0) }
+        }
+        .sorted { $0.device.rawValue < $1.device.rawValue }
+    }
+
     /// Les sessions et relevés de la journée, gardés en mémoire entre deux
     /// relectures. C'est ce qui rend le défilement gratuit : `build` borne les
     /// sessions ouvertes sur l'horizon qu'on lui passe, donc avancer d'une
@@ -187,6 +201,7 @@ final class CollectionEngine {
     func start() {
         guard !isCollecting else { return }
         monitor.start()
+        startCounterSources()
         isCollecting = true
         refresh()
     }
@@ -194,8 +209,27 @@ final class CollectionEngine {
     func stop() {
         guard isCollecting else { return }
         monitor.stop()
+        for poller in counterPollers.values { poller.stop() }
+        counterPollers = [:]
         isCollecting = false
         refresh()
+    }
+
+    /// Branche les sources à compteur dont les identifiants existent.
+    ///
+    /// **On ne lit pas les secrets ici**, on vérifie seulement qu'ils sont
+    /// rangés : lire déclencherait la demande d'autorisation du Trousseau à
+    /// chaque démarrage, pour rien si la source n'est pas configurée.
+    private func startCounterSources() {
+        guard counterPollers.isEmpty else { return }
+
+        if Secrets.exists(service: Secrets.Steam.service, account: Secrets.Steam.apiKey),
+            Secrets.exists(service: Secrets.Steam.service, account: Secrets.Steam.steamID)
+        {
+            let poller = CounterPoller(source: SteamSource(), store: store)
+            counterPollers[.steam] = poller
+            poller.start()
+        }
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -285,6 +319,12 @@ private struct MenuContent: View {
         } else {
             // Pas « 0 min » : on ne sait pas, et le dire est plus honnête.
             Text("⚠︎ Lecture impossible — \(engine.readFailure ?? "raison inconnue")")
+        }
+
+        // Une source muette n'est pas une source à zéro, et le menu est le seul
+        // endroit où on peut le dire sans attendre l'ouverture de la fenêtre.
+        ForEach(engine.counterFailures, id: \.device) { failure in
+            Text("⚠︎ \(failure.device.label) muette — \(failure.reason)")
         }
 
         Divider()

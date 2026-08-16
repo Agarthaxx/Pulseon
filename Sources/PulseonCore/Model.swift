@@ -17,12 +17,13 @@ public enum Device: String, Codable, CaseIterable, Sendable, Identifiable {
 
     case mac
     case playstation
+    case steam
     case tv
 
     public var kind: SourceKind {
         switch self {
         case .mac, .tv: .interval
-        case .playstation: .counter
+        case .playstation, .steam: .counter
         }
     }
 
@@ -30,6 +31,7 @@ public enum Device: String, Codable, CaseIterable, Sendable, Identifiable {
         switch self {
         case .mac: "Mac"
         case .playstation: "PlayStation"
+        case .steam: "Steam"
         case .tv: "TV"
         }
     }

@@ -28,6 +28,7 @@ public enum PulseonTheme {
         switch device {
         case .mac: Color(red: 0.353, green: 0.847, blue: 0.651)
         case .playstation: Color(red: 0.431, green: 0.561, blue: 1.0)
+        case .steam: Color(red: 0.400, green: 0.780, blue: 0.898)
         case .tv: Color(red: 0.949, green: 0.651, blue: 0.353)
         }
     }
