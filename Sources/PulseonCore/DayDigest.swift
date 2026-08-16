@@ -68,6 +68,13 @@ public struct DayDigest: Sendable {
     public let summedTotal: TimeInterval
     public let coveredTotal: TimeInterval
 
+    /// Vrai dès qu'une source a écrit quelque chose ce jour-là.
+    ///
+    /// Distingue « le collecteur était éteint » de « journée à zéro », ce que
+    /// l'UI ne doit jamais confondre — et ce qui décide aussi des journées
+    /// admises dans une moyenne.
+    public var hasMeasuredSource: Bool { lanes.contains(where: \.isConnected) }
+
     public init(
         date: DateComponents,
         lanes: [Lane],
