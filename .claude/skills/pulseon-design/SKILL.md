@@ -1,135 +1,111 @@
 ---
 name: pulseon-design
-description: La direction visuelle de Pulseon — à charger avant de dessiner ou modifier la moindre vue SwiftUI du projet. Contient les couleurs, la typographie, les règles non négociables et ce qui est interdit.
+description: Les règles de dessin non négociables de Pulseon et l'état de sa direction visuelle — à charger avant de toucher à une vue SwiftUI du projet.
 ---
 
-# Le design de Pulseon
+# Le dessin de Pulseon
 
-À charger **avant** de toucher à une vue. Sans ça, chaque session redécouvre la
-direction et l'app dérive vers le dashboard générique que ce fichier existe pour
-éviter.
+À charger **avant** de toucher à une vue.
 
-## Le parti pris, en une phrase
+## La direction visuelle est en attente, et ce n'est pas à nous de la choisir
 
-L'app « Temps d'écran » d'Apple dit **combien**. Pulseon montre **quand**.
+**Arthur fournira ses maquettes.** Le 2026-08-16 il a écarté trois propositions
+successives, dont une tirée d'une référence qu'il avait lui-même apportée, et a
+tranché ainsi :
 
-Tout découle de là. Un total en gros chiffres, c'est ce que fait déjà le
-système ; ce que Pulseon apporte, c'est la journée déployée sur un axe de temps,
-avec ses chevauchements et ses trous.
+> « On fait le cœur du métier, et je verrai après pour une maquette magnifique.
+> Le front-end se bosse aussi, c'est un vrai métier. »
 
-## La direction : l'instrument de mesure
+**Donc : ne pas proposer de direction visuelle, ne pas restyler spontanément, ne
+pas « améliorer » une vue au passage.** Le travail utile est la logique —
+collecte, agrégation, fiabilité, nouvelles sources. Quand ses maquettes arrivent,
+les implémenter fidèlement et ne vérifier qu'une chose : qu'elles ne cassent pas
+les règles ci-dessous.
 
-Le vocabulaire du projet était déjà celui d'un séquenceur — « multipiste »,
-« piste », « signal », « marqueur d'heure courante », une icône `waveform`. La
-direction va au bout de cette métaphore : **la journée est un rack d'appareil de
-mesure**, posé dans une fenêtre native.
+### Ce qui a été essayé et écarté
 
-Ce n'est pas une décoration plaquée. Un séquenceur affiche du temps sur un axe
-horizontal, ce qui est exactement le besoin — et c'est ce qui rend la direction
-non transposable à un autre projet.
+Pour ne pas le reproposer par morceaux :
 
-**Le rack reste sombre même en apparence claire.** Un instrument ne change pas
-de couleur avec le papier peint, et les blocs d'activité ne se lisent qu'en
-couleur saturée sur fond sombre. Le reste de la fenêtre suit le système, comme
-n'importe quelle app native.
+1. **« L'instrument de mesure »** — rack sombre, sérigraphie en capitales
+   espacées, monospace partout, hachures, cartouche rouge vif, une piste par
+   appareil. Rejeté : « c'est pas beau du tout, c'est pas épuré, visuellement
+   c'est hard, le consommateur pète un plomb en voyant ça ». **Les versions
+   anciennes de ce fichier décrivaient cette direction comme la bonne** — elle ne
+   l'est plus.
+2. **Une version épurée** en cartes claires sur iPhone. Écartée sans détail.
+3. **Fond noir à accent vert acide**, d'après une référence qu'Arthur avait
+   apportée. Implémentée entièrement (PR #22), puis : « j'aime pas du tout ».
 
-## Les références, et ce qu'on en retient
+Les tentations à ne pas suivre : remettre du monospace pour « faire technique »,
+des étiquettes en capitales espacées, des hachures plutôt qu'un pointillé, une
+couleur par appareil.
 
-**Flighty** (suivi de vols) — la couleur y est **sémantique**, jamais
-décorative : rouge = retard, vert = à l'heure, orange = attention. La hiérarchie
-typographique est brutale et sans milieu : une heure énorme à côté d'un « 10m
-Late » minuscule, un `45` géant surmontant un `MINUTES` en petites capitales.
-Chaque ligne est **dense en faits utiles** — terminal, retard, prédiction — sans
-jamais être décorative.
+## Ce qui survit à n'importe quelle maquette
 
-**Notion Calendar** — la même philosophie à température opposée : gris neutres,
-cartes discrètes, typographie petite et dense, couleur réduite à des pastilles
-de catégorie.
+Le parti pris produit ne bouge pas : **« Temps d'écran » dit *combien*, Pulseon
+montre *quand*.**
 
-Ce que les deux partagent, et qui est la règle : **la donnée est le design.**
-Aucun ornement. Ce qui occupe de la place à l'écran est une information.
+### Règles non négociables
 
-Conséquence directe pour Pulseon : **viser la densité de Flighty.** Un écran
-aéré avec trois chiffres est un écran qui n'a pas assez à dire. Chaque piste et
-chaque ligne doit porter un fait que l'utilisateur ne connaissait pas.
-
-## Couleurs
-
-Définies dans `PulseonTheme` (`Sources/PulseonUI/PulseonTheme.swift`) — **s'y
-référer, ne jamais écrire une couleur en dur dans une vue.**
-
-| Rôle | Usage |
-|---|---|
-| `rack` | Le panneau qui porte les pistes |
-| `lane` | Le fond d'une piste : la journée qu'on n'a pas passée là |
-| `grid` | Les graduations horaires |
-| `color(for: device)` | **Une couleur par appareil.** Elle dit de quel écran on parle : elle porte de l'information et ne se choisit pas à l'humeur |
-| `playhead` | Le rouge de la tête de lecture, emprunté à l'enregistrement en cours sur une station audio. **Réservé à ça** — aucun autre élément ne le porte |
-
-Règle générale, tirée des références : **une couleur doit signifier quelque
-chose.** Si elle n'encode ni un appareil, ni un état, ni l'instant courant, elle
-n'a rien à faire là.
-
-## Typographie
-
-- **Les grands nombres** : `PulseonTheme.readout(_:)` — caractères comprimés
-  (`.width(.compressed)`) et à chasse fixe. Comprimés parce que c'est le dessin
-  des afficheurs d'instruments ; chasse fixe pour que les chiffres ne tremblent
-  pas quand ils défilent.
-- **Étiquettes et règle horaire** : `PulseonTheme.stencil` — petites capitales
-  espacées, le vocabulaire de la sérigraphie sur un boîtier.
-- **Hiérarchie sans milieu**, comme Flighty : ce qui compte est énorme, le reste
-  est minuscule et gris. Éviter la gamme de tailles intermédiaires qui aplatit
-  tout.
-
-## Règles non négociables
-
-1. **Ne jamais inventer de placement horaire.** Une source à compteur (la
-   PlayStation) ne connaît pas ses horaires : son bloc est **centré**, sa piste
-   n'a **pas de graduations**, et le libellé dit « heure inconnue ». Calé à
-   gauche, il se lisait « joué de minuit à 1 h 48 » — la première version de la
-   vue commettait exactement cette faute. Les hachures ne suffisent pas si la
-   *position* ment.
+1. **Ne jamais inventer de placement horaire.** Une source à compteur (Steam, la
+   PlayStation) ne connaît pas ses horaires. Et **centrer son bloc ne suffit
+   pas** : centré sous un axe des heures, il tombait pile sous « 12 h » et se
+   lisait « joué vers midi ». Il faut cumuler un filet, un titre de section
+   explicite, le bloc centré, son libellé centré dessous, et un contour
+   pointillé.
 2. **« Pas encore branchée » ≠ « journée à zéro ».** Deux états visuellement
-   distincts, toujours.
+   distincts, toujours. Zéro est une affirmation ; « rien de mesuré » n'en est
+   pas une.
 3. **Les durées sont tronquées, jamais arrondies.** Afficher 1 h à 59 min 40
    annoncerait du temps qui n'a pas eu lieu.
-4. **Une lecture qui échoue se dit.** Un tiret, jamais un zéro : zéro est une
-   affirmation, et on ne sait pas.
-5. **La tête de lecture n'existe que sur aujourd'hui.** Une journée passée est
-   entièrement jouée.
-6. **Rien d'AppKit dans `PulseonUI`.** Ces vues serviront à l'app iOS telles
-   quelles — `.buttonStyle(.link)` s'y est déjà fait refuser.
+4. **Une lecture qui échoue se dit.** Un tiret ou un message, jamais un zéro.
+5. **Le marqueur d'instant courant n'existe que sur aujourd'hui.** Une journée
+   passée est entièrement jouée.
+6. **Un seul rail pour la journée, jamais une piste par appareil.** Décision
+   prise après la critique d'Arthur — « à plusieurs devices c'est illisible » — et
+   elle est structurelle, pas esthétique : une piste par appareil allonge l'écran
+   et transforme les simultanéités en mur dès le troisième écran. Le rail garde
+   une hauteur fixe et se divise en hauteur. L'implémentation vit dans
+   `RailLayout` (PR #22, non mergée à ce jour).
+7. **Aucune comparaison ne juge.** Pulseon mesure l'usage, il ne dit pas si c'est
+   bien : pas de rouge sur un dépassement de moyenne, ce serait transformer un
+   miroir en juge.
+8. **Rien d'AppKit dans `PulseonUI`.** Ces vues serviront à l'app iOS telles
+   quelles — `.buttonStyle(.link)` s'y est déjà fait refuser. Corollaire pour les
+   icônes d'apps : elles n'entrent pas ici en `NSImage`, mais par une fonction
+   injectée que chaque plateforme fournit.
 
-## Interdits
+### Couleurs et typographie
 
-Ce qui trahit un design généré, et n'entre pas ici :
-
-- Les trois clichés : fond crème + serif à fort contraste + accent terracotta ;
-  noir presque pur + un seul accent acide ; mise en page journal à filets d'un
-  pixel.
-- Dégradés violets, Inter/Roboto, emojis en guise d'icônes, ombres portées
-  décoratives, cartes toutes identiques.
-- Le gros chiffre isolé au-dessus de trois stats secondaires, sans rien à dire
-  de plus.
-- Toute couleur qui n'encode rien.
-
-## Sur iOS, le piège s'inverse
-
-Le réflexe « faire du beau design » pousse à importer des habitudes web dans une
-app native, et ça se voit immédiatement. Une app iOS crédible respecte SF Pro et
-ses variantes de graisse et de largeur, les matériaux système, Dynamic Type et
-les safe areas. La distinction se joue ensuite sur **un** élément signature — ici
-la tête de lecture — pas sur une réinvention des conventions.
-
-Flighty, encore, montre la cible produit : l'information arrive sur l'écran
-verrouillé sans ouvrir l'app. L'équivalent iOS de la barre de menu macOS est une
-Live Activity ou un widget.
+Tout vit dans `PulseonTheme` (`Sources/PulseonUI/PulseonTheme.swift`) — **s'y
+référer, ne jamais écrire une couleur en dur dans une vue.** Son contenu changera
+avec les maquettes d'Arthur ; l'endroit, non.
 
 ## Regarder avant de livrer
 
 Un design qu'on ne regarde pas est un design qu'on ne corrige pas. Utiliser la
-skill **`pulseon-preview`** pour rendre les vues en PNG et les examiner : elle a
-trouvé, en une session, une étiquette coupée, un bloc qui mentait sur l'heure et
-une grille horaire qui partait de midi — trois défauts qu'aucun test n'attrapait
-et que le compilateur ne signalait pas.
+skill **`pulseon-preview`**.
+
+Ce qu'elle a déjà trouvé, et qu'aucun test ni compilateur ne signalait :
+
+- **`ImageRenderer` ne rend pas le contenu d'un `ScrollView`.** Une refonte est
+  sortie en PNG entièrement noir — le fond seul. **Toute vue défilante doit garder
+  son contenu extractible** (`DayDashboardContent`), sinon elle est invisible à la
+  preview.
+- Les boutons ne se rendent qu'avec **`.buttonStyle(.plain)`** ; avec le style par
+  défaut, `ImageRenderer` sort des carrés jaunes à leur place.
+- Un accent unique **décliné en opacités** donne un olive sale sur fond sombre :
+  ça se lit « sali », pas « différent ».
+- L'unité d'un grand nombre (« h » dans « 13h15 ») tombe en indice de formule
+  chimique si elle partage la ligne de base des chiffres.
+- Un bloc « heure inconnue » **centré** qui se lit quand même « vers midi ».
+- Une étiquette « PLAYSTATIO/N » coupée, et une grille horaire qui partait de
+  midi — **un `ZStack` de rectangles d'un point ne mesure qu'un point de large**.
+
+## Sur iOS, le piège s'inverse
+
+Le réflexe « faire du beau design » pousse à importer des habitudes web dans une
+app native, et ça se voit immédiatement. Une app iOS crédible respecte SF Pro, les
+matériaux système, Dynamic Type et les safe areas. La distinction se joue ensuite
+sur **un** élément signature — ici le rail de la journée — pas sur une
+réinvention des conventions.

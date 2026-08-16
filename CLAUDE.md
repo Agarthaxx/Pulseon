@@ -537,52 +537,87 @@ tout le parti pris visuel ci-dessus.
 6. Collecteur PlayStation, puis TV.
 7. Réévaluer l'intégration iPhone.
 
-### État au 2026-08-16 (fin de session de nuit)
+### État au 2026-08-16 (fin de deuxième session)
 
-Ce qui tourne : le collecteur Mac est installé dans `/Applications`, démarre à
-l'ouverture de session, et affiche le total du jour dans la barre de menu — qui
-**défile désormais à la seconde** (`3h07:12`). Le **dashboard existe** : fenêtre
-macOS ouverte depuis le menu (« Ouvrir la journée », ⌘J), avec la journée en
-multipiste. 52 tests verts sur `main`.
+**Ce qui tourne pour de vrai** : le collecteur Mac est installé dans
+`/Applications`, démarre à l'ouverture de session, affiche le total du jour qui
+défile à la seconde dans la barre de menu, et la fenêtre du dashboard s'ouvre par
+⌘J. **Vérifié à l'œil par Arthur** : l'icône Dock, la barre de menus et ⌘W
+apparaissent bien quand la fenêtre est ouverte, et disparaissent ensuite
+(`DockPresence`). Le doute sur les chevrons ‹ › est levé : ils se rendent, y
+compris en PNG, à condition d'utiliser `.buttonStyle(.plain)`.
 
-Livré cette nuit, tout mergé (PR #17 et #18) : le libellé de la barre de menu
-qui ne s'affichait pas, le compteur à la seconde, les pauses courtes comptées
-comme du temps d'écran, et l'ébauche du dashboard.
+**Mergé** : PR #17 à #20. La dernière est la bascule de politique d'activation.
 
-Ce qui n'a **pas** été vérifié à l'œil : le dashboard n'a été regardé qu'en PNG
-rendus hors écran, jamais dans la vraie fenêtre avec les vraies données. À faire
-au prochain démarrage — les chevrons de navigation ‹ › en particulier, que
-`ImageRenderer` ne sait pas rendre.
+**Quatre PR ouvertes, à relire dans cet ordre de valeur :**
 
-Ce qui bloque, et sur quoi :
+| PR | Sujet | Tests |
+|---|---|---|
+| #24 | **Steam**, la première source à compteur qui tourne | 67 |
+| #23 | **La comparaison** entre journées | 68 |
+| #21 | **Catégories et identité des apps** | 83 |
+| #22 | Refonte visuelle — **à ne pas merger telle quelle** | 65 |
 
-- **PlayStation** : toute la plomberie est prête (`CounterSource`,
-  `CounterPoller`, `record()` dédoublonné, `PlayDuration`, `Secrets`). Il ne
-  manque que le client HTTP — et le jeton, qu'Arthur n'a pas pu récupérer,
-  n'arrivant plus à se connecter à son compte PSN. Le jeton se dépose à la
-  main dans le Trousseau, **jamais dans la conversation ni dans un fichier**.
-- **TV** : bloquée matériellement, pas de prise connectée. Viser une Shelly
-  (API HTTP locale, sans cloud). Ce sera une source à **intervalles**, pas à
-  compteur : `openSession` / `closeOpenSession`, comme le Mac.
-- **Widget macOS** (le vrai, centre de notifications) : extension d'app, donc
-  projet Xcode et signature — même mur que CloudKit.
+Elles sont toutes indépendantes et partent de `main`. Les compteurs de tests ne
+s'additionnent pas : chaque branche compte les siens plus ceux de `main` (55).
 
-~~Point en suspens : le texte de la barre de menu s'affiche-t-il sans
-cliquer ?~~ **Non, il ne s'affichait pas** — le doute était fondé. Corrigé
-depuis (`Label` → `Text` interpolé, voir « Ce que la barre de menu affiche »),
-et le compteur défile désormais à la seconde. À retenir : quand Arthur décrit
-un comportement observé, prendre la formulation au pied de la lettre plutôt
-que la reformuler dans le sens attendu.
+**Sur la #22, décision prise avec Arthur** : il ne retient pas la direction
+visuelle proposée et fournira sa propre maquette. La PR mélange donc de
+l'habillage à jeter (`PulseonTheme`, le style du dashboard) et trois corrections
+de **structure** qui survivront à n'importe quelle maquette :
 
-Dette de doc connue : la visite guidée du code (lien plus haut) décrit
-744 lignes et sept fichiers de moins que la réalité — dix maintenant, avec
-`PulseonUI`. À reprendre, puisqu'elle sert à Arthur pour lire son propre code.
+- `RailLayout` — le rail unique découpé par balayage, qui règle le vrai défaut de
+  conception : une piste par appareil s'écroule au troisième écran simultané ;
+- la séparation `DayDashboardContent` / `DayDashboard` — sans elle,
+  `ImageRenderer` ne rend **rien** d'une vue défilante et toute preview est
+  aveugle ;
+- `TimelineGeometry.hourLabels()`.
 
-Références visuelles données par Arthur le 2026-08-16, à respecter quand le
-design évolue : **Flighty** (couleur strictement sémantique, hiérarchie
-typographique sans milieu, forte densité de faits utiles par ligne) et **Notion
-Calendar** (même philosophie en neutre et discret). Le point commun, qui est la
-règle : *la donnée est le design*. Voir la skill `pulseon-design`.
+À extraire proprement quand la maquette arrivera, ou à réécrire par-dessus.
+
+**Le front est en pause, à la demande d'Arthur** : « on fait le cœur du métier, et
+je verrai après pour une maquette magnifique. Le front-end se bosse aussi, c'est
+un vrai métier. » Ne pas proposer de direction visuelle, ne pas restyler
+spontanément. Quand ses maquettes arrivent, les implémenter fidèlement et
+vérifier seulement qu'elles ne cassent pas les règles non négociables.
+
+**Ce qui bloque, et sur quoi :**
+
+- **Steam** : plus rien côté code. Il manque la clé d'API et le SteamID64, à
+  déposer dans le Trousseau sous le service
+  `com.arthurlanllier.pulseon.steam` (comptes `apiKey` et `steamID`) — la
+  procédure exacte arrive avec la #24. Sans eux le poller ne démarre pas du tout,
+  ce qui est voulu.
+- **PlayStation** : jeton `npsso` indisponible, et de toute façon indistribuable
+  en l'état — demander à un inconnu de l'extraire à la main d'un navigateur ferait
+  perdre tout le monde. Il faudrait un vrai parcours de connexion.
+- **TV** : pas de prise connectée. La **détection réseau** est désormais la voie
+  préférée (gratuite, passe à l'échelle) mais reste à tester : certaines TV
+  gardent le Wi-Fi en veille et compteraient une télé éteinte.
+- **Widget macOS, CloudKit, app iOS, distribution** : même mur, le compte Apple
+  payant (~99 €/an). Il couvre un nombre illimité d'apps, sans frais par app.
+
+**Ce que je ferais ensuite, par ordre de rendement :**
+
+1. **L'anatomie de la journée** — premier écran, dernier écran, plus longue
+   traite, coupures. Pur `PulseonCore`, testable sans simulateur, aucun design, et
+   c'est la substance que n'importe quelle maquette affichera. Plus propre après
+   la #21, qui extrait `IntervalMath`.
+2. **L'export CSV/JSON** — du core pur, et l'argument « tes données
+   t'appartiennent ».
+3. **La TV par détection réseau** — une soirée de test tranche.
+
+**Dette de doc connue** : la visite guidée du code (lien plus haut) décrit
+744 lignes et sept fichiers, alors qu'il y en a une douzaine et plus de
+2 500 lignes. Elle sert à Arthur pour lire son propre Swift, donc c'est la dette
+qui lui coûte le plus.
+
+**Références visuelles données par Arthur le 2026-08-16** : **Flighty** (couleur
+strictement sémantique, hiérarchie typographique sans milieu, forte densité de
+faits utiles par ligne), **Notion Calendar** (même philosophie en neutre), et une
+app de fitness fond noir à accent vert acide qu'il a apportée puis dont il n'a pas
+retenu l'implémentation. La règle commune, elle, tient : *la donnée est le
+design*. Détail dans la skill `pulseon-design`.
 
 ## Continuité entre sessions Claude
 
@@ -597,11 +632,12 @@ Ne pas relancer la discussion iPhone sans relire la section contrainte.
 
 ### Maison (à charger avant de toucher aux vues)
 
-- **`pulseon-design`** — la direction visuelle : l'instrument de mesure, les
-  couleurs par appareil, la typographie d'afficheur, les règles non négociables
-  (ne jamais inventer un horaire, « pas branchée » ≠ « zéro », tronquer et non
-  arrondir) et la liste de ce qui trahit un design généré. Sans elle, chaque
-  session redécouvre la direction et l'app dérive.
+- **`pulseon-design`** — les règles non négociables du dessin (ne jamais inventer
+  un horaire, « pas branchée » ≠ « zéro », tronquer et non arrondir, un seul rail
+  et non une piste par appareil, aucune comparaison qui juge) et ce que les
+  previews ont déjà trouvé. **La direction visuelle elle-même est en attente des
+  maquettes d'Arthur** : la skill liste les trois directions essayées et écartées,
+  pour qu'aucune session ne les repropose.
 - **`pulseon-preview`** — `./Scripts/preview.sh` rend les vues en PNG hors
   écran, puis on les regarde. Lancer l'app à la place corromprait la base (deux
   collecteurs sur le même store) et suppose quelqu'un devant l'écran. A trouvé
