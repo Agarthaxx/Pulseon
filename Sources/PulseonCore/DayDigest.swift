@@ -6,11 +6,22 @@ public struct TraceBlock: Sendable, Equatable {
     /// Secondes écoulées depuis minuit local.
     public let startOffset: TimeInterval
     public let duration: TimeInterval
+
+    public init(entity: String?, startOffset: TimeInterval, duration: TimeInterval) {
+        self.entity = entity
+        self.startOffset = startOffset
+        self.duration = duration
+    }
 }
 
 public struct EntityTotal: Sendable, Equatable {
     public let entity: String
     public let total: TimeInterval
+
+    public init(entity: String, total: TimeInterval) {
+        self.entity = entity
+        self.total = total
+    }
 }
 
 public struct Lane: Sendable, Equatable {
@@ -24,6 +35,20 @@ public struct Lane: Sendable, Equatable {
     public let isConnected: Bool
 
     public var kind: SourceKind { device.kind }
+
+    public init(
+        device: Device,
+        total: TimeInterval,
+        blocks: [TraceBlock],
+        topEntities: [EntityTotal],
+        isConnected: Bool
+    ) {
+        self.device = device
+        self.total = total
+        self.blocks = blocks
+        self.topEntities = topEntities
+        self.isConnected = isConnected
+    }
 }
 
 /// Une journée agrégée, prête à afficher.
@@ -42,6 +67,18 @@ public struct DayDigest: Sendable {
     public let lanes: [Lane]
     public let summedTotal: TimeInterval
     public let coveredTotal: TimeInterval
+
+    public init(
+        date: DateComponents,
+        lanes: [Lane],
+        summedTotal: TimeInterval,
+        coveredTotal: TimeInterval
+    ) {
+        self.date = date
+        self.lanes = lanes
+        self.summedTotal = summedTotal
+        self.coveredTotal = coveredTotal
+    }
 }
 
 public struct DayDigestBuilder: Sendable {

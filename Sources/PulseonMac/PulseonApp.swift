@@ -1,5 +1,6 @@
 import PulseonCore
 import PulseonMacKit
+import PulseonUI
 import SwiftData
 import SwiftUI
 
@@ -29,6 +30,41 @@ struct PulseonApp: App {
         }
         .menuBarExtraStyle(.menu)
         .modelContainer(engine.container)
+
+        // La fenêtre du dashboard. Elle n'existe que si on l'ouvre : l'app
+        // reste un agent, et la collecte n'a jamais dépendu d'une fenêtre.
+        Window("Pulseon", id: DashboardWindow.id) {
+            DashboardWindow(browser: engine.browser)
+        }
+        .defaultSize(width: 860, height: 560)
+        .modelContainer(engine.container)
+    }
+}
+
+/// La fenêtre du dashboard, et rien d'autre : elle relit la journée à
+/// l'ouverture et chaque minute, puis laisse `DayDashboard` dessiner.
+private struct DashboardWindow: View {
+    static let id = "dashboard"
+
+    let browser: DayBrowser
+
+    /// La journée en cours grandit pendant qu'on la regarde. Une minute suffit
+    /// — un bloc d'une minute fait moins d'un point de large sur 24 h, donc
+    /// rafraîchir plus vite ne changerait rien à ce qu'on voit. Ici, à la
+    /// différence de la barre de menu, ce sont de vraies lectures de base.
+    private let refresh = Timer.publish(every: 60, tolerance: 15, on: .main, in: .common)
+        .autoconnect()
+
+    var body: some View {
+        DayDashboard(
+            load: browser.load,
+            canGoForward: browser.canGoForward,
+            onPrevious: browser.goToPreviousDay,
+            onNext: browser.goToNextDay,
+            onToday: browser.goToToday
+        )
+        .onAppear { browser.reload() }
+        .onReceive(refresh) { _ in browser.reload() }
     }
 }
 
@@ -58,6 +94,10 @@ final class CollectionEngine {
     /// une fois par seconde quand le compteur est gelé.
     private(set) var menuBarTitle = "—"
 
+    /// Ce qui alimente la fenêtre du dashboard. Détenu par le moteur pour que
+    /// la journée affichée survive à la fermeture de la fenêtre.
+    let browser: DayBrowser
+
     private let monitor: ActivityMonitor
     private let store: SessionStore
     private var reloadTimer: Timer?
@@ -86,6 +126,7 @@ final class CollectionEngine {
         let store = SessionStore(context: container.mainContext)
         self.store = store
         self.monitor = ActivityMonitor(store: store)
+        self.browser = DayBrowser(store: store)
         start()
         startRefreshing()
     }
@@ -216,6 +257,7 @@ final class CollectionEngine {
 
 private struct MenuContent: View {
     let engine: CollectionEngine
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         // On lit la journée déjà relue par le moteur, sans relancer de requête
@@ -236,6 +278,17 @@ private struct MenuContent: View {
             // Pas « 0 min » : on ne sait pas, et le dire est plus honnête.
             Text("⚠︎ Lecture impossible — \(engine.readFailure ?? "raison inconnue")")
         }
+
+        Divider()
+
+        Button("Ouvrir la journée") {
+            engine.browser.goToToday()
+            openWindow(id: DashboardWindow.id)
+            // Sans ça la fenêtre s'ouvre derrière : une app en barre de menu
+            // n'est pas active au moment du clic.
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
+        .keyboardShortcut("j")
 
         Divider()
 
