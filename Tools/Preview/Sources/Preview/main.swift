@@ -14,15 +14,69 @@ let day: TimeInterval = 86_400
 let dayStart = Calendar.current.startOfDay(for: Date())
 let outputDirectory = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "/tmp"
 
-// MARK: - Une journée de démonstration
+// MARK: - Fabrique de journées
 
-private func block(_ startHour: Double, _ hours: Double, _ entity: String) -> TraceBlock {
+private func block(_ startHour: Double, _ hours: Double, _ entity: String?) -> TraceBlock {
     TraceBlock(entity: entity, startOffset: startHour * 3600, duration: hours * 3600)
 }
 
+private func intervalLane(_ device: Device, _ blocks: [TraceBlock], top: [EntityTotal] = []) -> Lane {
+    Lane(
+        device: device,
+        total: blocks.reduce(0) { $0 + $1.duration },
+        blocks: blocks,
+        topEntities: top,
+        isConnected: !blocks.isEmpty
+    )
+}
+
+private func counterLane(_ device: Device, _ entity: String, _ hours: Double) -> Lane {
+    Lane(
+        device: device, total: hours * 3600, blocks: [],
+        topEntities: [EntityTotal(entity: entity, total: hours * 3600)],
+        isConnected: true
+    )
+}
+
+private func unplugged(_ device: Device) -> Lane {
+    Lane(device: device, total: 0, blocks: [], topEntities: [], isConnected: false)
+}
+
+/// Assemble un digest en recalculant les deux totaux comme le vrai agrégateur,
+/// pour que la maquette ne mente pas sur des chiffres qu'on va regarder.
+private func digest(_ lanes: [Lane]) -> DayDigest {
+    let intervals = lanes.filter { $0.kind == .interval }.flatMap(\.blocks)
+    let counters = lanes.filter { $0.kind == .counter }.reduce(0) { $0 + $1.total }
+
+    let ranges = intervals
+        .map { ($0.startOffset, $0.startOffset + $0.duration) }
+        .sorted { $0.0 < $1.0 }
+    var covered: TimeInterval = 0
+    var open: (Double, Double)?
+    for range in ranges {
+        if var current = open, range.0 <= current.1 {
+            current.1 = max(current.1, range.1)
+            open = current
+        } else {
+            if let current = open { covered += current.1 - current.0 }
+            open = range
+        }
+    }
+    if let current = open { covered += current.1 - current.0 }
+
+    return DayDigest(
+        date: Calendar.current.dateComponents([.year, .month, .day], from: dayStart),
+        lanes: lanes,
+        summedTotal: lanes.reduce(0) { $0 + $1.total },
+        coveredTotal: covered + counters
+    )
+}
+
+// MARK: - Les journées de démonstration
+
 /// Une journée plausible : matinée hachée, coupure du midi, après-midi dense,
-/// film le soir, et une partie de PlayStation sans horaire connu. Les blocs
-/// très courts sont là exprès — c'est le cas qui casse les mises en page.
+/// film le soir, et une partie de PlayStation sans horaire connu. Les blocs très
+/// courts sont là exprès — c'est le cas qui casse les mises en page.
 let macBlocks: [TraceBlock] = [
     block(8.6, 0.4, "Mail"), block(9.1, 1.4, "Xcode"), block(10.6, 0.2, "Brave Browser"),
     block(10.9, 1.1, "Xcode"), block(12.2, 0.3, "Slack"),
@@ -31,41 +85,32 @@ let macBlocks: [TraceBlock] = [
     block(23.2, 0.05, "Ghostty"),
 ]
 
-let macTotal = macBlocks.reduce(0) { $0 + $1.duration }
-let psTotal: TimeInterval = 1.8 * 3600
+let macTop = [
+    EntityTotal(entity: "Xcode", total: 4.8 * 3600),
+    EntityTotal(entity: "Ghostty", total: 1.2 * 3600),
+]
 
-let digest = DayDigest(
-    date: Calendar.current.dateComponents([.year, .month, .day], from: dayStart),
-    lanes: [
-        Lane(
-            device: .mac, total: macTotal, blocks: macBlocks,
-            topEntities: [
-                EntityTotal(entity: "Xcode", total: 4.8 * 3600),
-                EntityTotal(entity: "Ghostty", total: 1.2 * 3600),
-                EntityTotal(entity: "Brave Browser", total: 0.8 * 3600),
-            ],
-            isConnected: true
-        ),
-        Lane(
-            device: .playstation, total: psTotal, blocks: [],
-            topEntities: [EntityTotal(entity: "Elden Ring", total: psTotal)],
-            isConnected: true
-        ),
-        Lane(device: .tv, total: 0, blocks: [], topEntities: [], isConnected: false),
-    ],
-    summedTotal: macTotal + psTotal,
-    coveredTotal: macTotal
-)
+let today = digest([
+    intervalLane(.mac, macBlocks, top: macTop),
+    counterLane(.playstation, "Elden Ring", 1.8),
+    unplugged(.tv),
+])
+
+/// **Le cas qui a motivé le rail unique** : deux appareils allumés en même
+/// temps. Le rail doit se diviser en hauteur, et sa hauteur ne doit pas changer.
+let simultaneous = digest([
+    intervalLane(.mac, macBlocks, top: macTop),
+    intervalLane(
+        .tv,
+        [block(17.0, 1.5, nil), block(19.5, 3.2, nil)],
+        top: []
+    ),
+    counterLane(.playstation, "Elden Ring", 1.8),
+])
 
 /// Une journée sans rien : aucune source branchée. L'état qu'on oublie de
 /// dessiner, et celui qu'on voit le premier jour d'utilisation.
-let emptyDigest = DayDigest(
-    date: digest.date,
-    lanes: Device.allCases.map {
-        Lane(device: $0, total: 0, blocks: [], topEntities: [], isConnected: false)
-    },
-    summedTotal: 0, coveredTotal: 0
-)
+let emptyDay = digest(Device.allCases.map(unplugged))
 
 // MARK: - Rendu
 
@@ -94,55 +139,68 @@ func shoot(_ view: some View, size: CGSize, named name: String) {
     }
 }
 
-/// Le fond de fenêtre n'est pas peint par `ImageRenderer` : sans lui, le mode
-/// sombre se rend en texte clair sur fond blanc et paraît cassé à tort.
+/// On rend `DayDashboardContent` et non `DayDashboard` : **`ImageRenderer` ne
+/// rend pas le contenu d'un `ScrollView`** — la première version de la refonte
+/// est sortie en PNG entièrement noir à cause de ça.
+///
+/// Pulseon est sombre en toute circonstance, donc il n'y a plus de variante
+/// claire à rendre : c'est un choix de direction, pas un oubli. Le fond doit être
+/// peint ici, `ImageRenderer` ne peignant pas celui de la fenêtre.
 @MainActor
-func dashboard(_ load: DayDashboard.Load, canGoForward: Bool, scheme: ColorScheme) -> some View {
-    DayDashboard(
+func dashboard(_ load: DayDashboard.Load, canGoForward: Bool) -> some View {
+    DayDashboardContent(
         load: load, canGoForward: canGoForward,
         onPrevious: {}, onNext: {}, onToday: {}
     )
-    .environment(\.colorScheme, scheme)
-    .background(
-        scheme == .dark
-            ? Color(red: 0.117, green: 0.117, blue: 0.125)
-            : Color(red: 0.965, green: 0.965, blue: 0.969)
-    )
+    .environment(\.colorScheme, .dark)
+    .background(PulseonTheme.ground)
 }
 
 MainActor.assumeIsolated {
     let now = dayStart.addingTimeInterval(19.4 * 3600)
-    let today = DayPresentation(digest: digest, dayStart: dayStart, dayLength: day, now: now)
+
+    let presentation = DayPresentation(
+        digest: today, dayStart: dayStart, dayLength: day, now: now
+    )
+    shoot(
+        dashboard(.loaded(presentation), canGoForward: false),
+        size: CGSize(width: 860, height: 620), named: "pulseon-today"
+    )
 
     shoot(
-        dashboard(.loaded(today), canGoForward: false, scheme: .dark),
-        size: CGSize(width: 860, height: 520), named: "pulseon-dark"
-    )
-    shoot(
-        dashboard(.loaded(today), canGoForward: true, scheme: .light),
-        size: CGSize(width: 860, height: 520), named: "pulseon-light"
-    )
-
-    // Une journée passée et vide : pas de tête de lecture, rien de branché.
-    let empty = DayPresentation(
-        digest: emptyDigest, dayStart: dayStart.addingTimeInterval(-3 * day),
-        dayLength: day, now: nil
-    )
-    shoot(
-        dashboard(.loaded(empty), canGoForward: true, scheme: .dark),
-        size: CGSize(width: 860, height: 440), named: "pulseon-empty"
+        dashboard(
+            .loaded(
+                DayPresentation(digest: simultaneous, dayStart: dayStart, dayLength: day, now: now)
+            ),
+            canGoForward: false
+        ),
+        size: CGSize(width: 860, height: 620), named: "pulseon-simultaneous"
     )
 
-    // L'échec de lecture, qui ne doit pas ressembler à une journée à zéro.
+    // Une journée passée et vide : pas de marqueur d'instant courant, rien de
+    // branché. Doit rester visuellement distinct d'une journée à zéro.
     shoot(
-        dashboard(.failed("Base introuvable"), canGoForward: true, scheme: .dark),
-        size: CGSize(width: 860, height: 400), named: "pulseon-failed"
+        dashboard(
+            .loaded(
+                DayPresentation(
+                    digest: emptyDay, dayStart: dayStart.addingTimeInterval(-3 * day),
+                    dayLength: day, now: nil
+                )
+            ),
+            canGoForward: true
+        ),
+        size: CGSize(width: 860, height: 480), named: "pulseon-empty"
     )
 
-    // Une fenêtre étroite : la règle horaire doit s'alléger, les étiquettes
-    // tenir, et rien ne doit déborder.
     shoot(
-        dashboard(.loaded(today), canGoForward: false, scheme: .dark),
-        size: CGSize(width: 620, height: 500), named: "pulseon-narrow"
+        dashboard(.failed("Base introuvable"), canGoForward: true),
+        size: CGSize(width: 860, height: 420), named: "pulseon-failed"
+    )
+
+    // Une fenêtre étroite : l'axe des heures doit s'alléger, les lignes tenir,
+    // et rien ne doit déborder.
+    shoot(
+        dashboard(.loaded(presentation), canGoForward: false),
+        size: CGSize(width: 600, height: 620), named: "pulseon-narrow"
     )
 }

@@ -53,4 +53,20 @@ public struct TimelineGeometry: Equatable, Sendable {
         }
         return stride(from: 0, through: 24, by: step).map { $0 }
     }
+
+    /// Les heures **écrites** sous le rail, bien plus rares que les graduations.
+    ///
+    /// Un axe sert à situer un bloc à vue de nez, pas à lire une heure exacte —
+    /// pour ça il y a l'infobulle et le total. Trop d'heures écrites, et l'axe
+    /// devient la chose la plus bruyante de l'écran, ce qui était le défaut de la
+    /// version précédente.
+    public func hourLabels() -> [Int] {
+        let step: Int
+        switch width {
+        case ..<300: step = 12
+        case ..<560: step = 8
+        default: step = 6
+        }
+        return stride(from: 0, through: 24, by: step).map { $0 }
+    }
 }

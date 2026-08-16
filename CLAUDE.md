@@ -283,7 +283,7 @@ Un vrai *Widget* macOS (centre de notifications, bureau) est autre chose : une
 extension d'app, qui suppose un projet Xcode et une signature — même mur que
 CloudKit.
 
-### Le dashboard : la journée en multipiste
+### Le dashboard : la journée sur un rail unique
 
 Vit dans **`PulseonUI`**, un paquet à part et non dans l'app macOS, parce que
 ce sont *les mêmes vues* qui serviront à l'app iOS : le jour où la cible iOS
@@ -291,42 +291,65 @@ existera, elle consomme ce paquet sans qu'une ligne de dessin soit réécrite.
 D'où l'interdiction d'y toucher à AppKit, qui n'existe pas sur iPhone —
 `.buttonStyle(.link)` s'y est déjà fait refuser.
 
-**Direction visuelle : la station de travail.** Le vocabulaire du projet était
-déjà celui d'un séquenceur (« multipiste », « piste », « signal », « marqueur
-d'heure courante », une icône `waveform`), donc la journée est dessinée comme
-un rack d'appareil de mesure. Le rack **reste sombre même en apparence
-claire** : un instrument ne change pas de couleur avec le papier peint, et les
-blocs d'activité ne se lisent qu'en couleur saturée sur fond sombre. Le reste
-de la fenêtre suit le système, comme n'importe quelle app native.
+**Direction visuelle : noir, un seul accent, des cartes.** Choisie par Arthur le
+2026-08-16 sur une référence qu'il a apportée. Elle remplace « l'instrument de
+mesure » (rack, sérigraphie, hachures, monospace, cartouche rouge), rejeté en ces
+termes : « c'est pas beau du tout, c'est pas épuré, visuellement c'est hard, le
+consommateur pète un plomb en voyant ça ». Le détail vit dans la skill
+`pulseon-design`, qui est la référence — ne pas dupliquer ici.
 
-La signature est **la tête de lecture** : une ligne rouge qui traverse les
-pistes à l'heure courante, avec l'heure en cartouche. Rouge parce que c'est la
-couleur de l'enregistrement en cours sur une station audio — ici, la journée
-en train de s'écrire. Elle n'apparaît **que sur aujourd'hui** : une journée
-passée est entièrement jouée, y planter une tête de lecture ne voudrait rien
-dire. Ce rouge ne sert qu'à ça, aucun autre élément ne le porte.
+**Pulseon est sombre en toute circonstance**, y compris en apparence claire.
+L'ancienne règle ne concernait que le rack ; elle s'étend à toute la fenêtre.
 
-**Les couleurs portent de l'information** : une par appareil, tenue partout
-(pastille du détail comprise). Elles ne se choisissent pas à l'humeur.
+**Un seul rail, jamais une piste par appareil.** C'est une correction de
+conception, pas un choix esthétique, et elle vient d'une critique d'Arthur : une
+piste par appareil « à plusieurs devices, c'est illisible ». L'écran s'allonge, les
+étiquettes se répètent, les simultanéités deviennent un mur.
 
-**Une source à compteur ne doit occuper aucune position dans la journée.** La
-première version calait le bloc PlayStation à gauche : hachuré, certes, mais il
-se lisait « joué de minuit à 1 h 48 ». Les hachures ne suffisent pas si la
-*position*, elle, ment. Le bloc est donc **centré**, sa piste n'a **pas de
-graduations horaires** — une grille donnerait un sens à une position qui n'en a
-aucun — et le libellé « heure inconnue » est posé à côté, où il reste lisible
-même quand le bloc est court.
+`RailLayout` découpe donc la journée par **balayage** : un événement par
+frontière de bloc, puis on avance dans le temps en maintenant qui est actif. Il
+en sort des segments portant chacun la liste des appareils actifs, et le rail
+**garde une hauteur fixe** — un appareil l'occupe entièrement, deux se partagent
+la hauteur, trois la divisent en trois. Trois détails qui comptent :
 
-**Voir les vues sans lancer l'app.** `ImageRenderer` rend n'importe quelle vue
-en PNG hors écran, ce qui permet de regarder le résultat sans fenêtre, sans
-simulateur, et sans lancer une seconde instance du collecteur — qui écrirait
-dans la même base. Ça a trouvé deux défauts qu'aucun test ne pouvait voir :
-une étiquette « PLAYSTATIO/N » coupée, et une grille horaire qui partait de
-midi. Ce dernier mérite d'être retenu : **un `ZStack` de rectangles d'un point
-ne mesure qu'un point de large**, donc l'`overlay` le centrait dans la piste et
-toute la matinée n'avait aucune graduation. Rien ne le signale, ni le
-compilateur ni les tests. D'où `.frame(maxWidth: .infinity, alignment:
-.leading)`.
+- le comptage est **par appareil et non un simple ensemble**, parce que deux
+  blocs du même appareil peuvent se chevaucher et ne doivent pas dédoubler sa
+  couche ;
+- les segments voisins identiques sont **fusionnés**, sinon une journée normale
+  produirait des dizaines de segments collés dont chaque jointure dessinerait un
+  liseré parasite ;
+- l'ordre des couches est **stable** (`Device.allCases`), sinon un appareil
+  sauterait de haut en bas au fil de la journée et la texture deviendrait
+  illisible.
+
+**Une source à compteur ne doit occuper aucune position dans la journée, et
+centrer son bloc ne suffit pas.** La première version le calait à gauche : il se
+lisait « joué de minuit à 1 h 48 ». La deuxième le centrait — et, tombant pile
+sous le « 12 h » de l'axe, il se lisait « joué vers midi ». Vu en PNG, pas
+deviné. Il faut donc **cumuler** : un filet et un titre « Sans horaire connu »
+qui coupent le lien avec l'axe, le bloc centré, son libellé centré dessous, et un
+contour pointillé — qui remplace les hachures, même message sans le vacarme.
+
+**Voir les vues sans lancer l'app.** `ImageRenderer` rend n'importe quelle vue en
+PNG hors écran : sans fenêtre, sans simulateur, et sans lancer une seconde
+instance du collecteur, qui écrirait dans la même base. Ce que ça a trouvé et
+qu'aucun test ne pouvait voir :
+
+- **`ImageRenderer` ne rend pas le contenu d'un `ScrollView`.** La refonte est
+  sortie en PNG entièrement noir — le fond seul. D'où `DayDashboardContent`,
+  séparé du conteneur défilant et rendable seul. Toute nouvelle vue défilante doit
+  garder son contenu extractible, sinon elle devient invisible à la preview.
+- Un accent unique **décliné en opacités** donne un olive sale sur fond sombre :
+  ça se lit « sali », pas « différent ». D'où une seconde teinte solide pour un
+  appareil simultané — et deux au total, pas trois.
+- L'unité d'un grand nombre (« h » dans « 13h15 ») tombe en indice de formule
+  chimique si elle partage la ligne de base des chiffres : il lui faut un
+  `baselineOffset`.
+- Les boutons ne se rendent qu'avec `.buttonStyle(.plain)` ; sinon
+  `ImageRenderer` sort des carrés jaunes à leur place.
+- Et, sur l'ancienne version : une étiquette « PLAYSTATIO/N » coupée, plus une
+  grille horaire qui partait de midi parce qu'**un `ZStack` de rectangles d'un
+  point ne mesure qu'un point de large**.
 
 `TimelineGeometry` tient tout le calcul de placement, séparé des vues pour être
 testable sans simulateur — même raison que `PulseonCore`. La longueur du jour
@@ -334,7 +357,9 @@ lui est **fournie**, jamais supposée égale à 86 400 : les journées de
 changement d'heure font 23 ou 25 h, et une timeline qui l'ignore décale toute
 la soirée de ces jours-là. Elle garantit aussi qu'une minute d'activité reste
 visible (plancher de 2 points) : 60 s sur 24 h font 0,7 point, et une minute
-invisible reviendrait à dire qu'elle n'a pas eu lieu.
+invisible reviendrait à dire qu'elle n'a pas eu lieu. Elle distingue enfin les
+**graduations** des heures **écrites** (`hourLabels`), bien plus rares : un axe
+trop bavard devenait la chose la plus bruyante de l'écran.
 
 `DayBrowser` (dans `PulseonMacKit`) choisit la journée affichée et va la
 chercher. Il interdit de naviguer dans le futur — aucune donnée ne peut exister
@@ -439,11 +464,11 @@ utile — le processus meurt sur un signal, c'est tout :
 L'app native « Temps d'écran » de macOS dit **combien**. Pulseon montre
 **quand**.
 
-L'élément signature est **la journée en multipiste** : une piste par
-appareil sur 24 h, l'activité tracée en signal, avec un marqueur sur l'heure
-courante. On y voit les chevauchements et les trous — ce qu'un total en
-barres ne dira jamais. La donnée est faite d'intervalles parallèles, le
-multipiste est sa forme naturelle.
+L'élément signature est **la journée sur un rail unique** : 24 h en une ligne,
+l'activité tracée en signal, un marqueur sur l'heure courante, et le rail qui se
+divise en hauteur quand deux écrans tournaient ensemble. On y voit les
+chevauchements et les trous — ce qu'un total en barres ne dira jamais. La donnée
+est faite d'intervalles parallèles, un axe de temps est sa forme naturelle.
 
 **Règle à tenir, non négociable : ne jamais inventer de placement horaire.**
 La PlayStation n'expose qu'un total cumulé sans horaires. Sa piste doit
@@ -522,7 +547,7 @@ tout le parti pris visuel ci-dessus.
    tests.
 3. ~~App macOS~~ — agent barre de menu, collecte vérifiée, empaqueté en
    `.app`, démarrage automatique par `LaunchAgent`.
-4. Dashboard : la journée en multipiste. **Ébauche livrée côté macOS**
+4. Dashboard : la journée sur un rail unique. **Ébauche livrée côté macOS**
    (`PulseonUI`), volontairement d'abord dans une fenêtre Mac — l'app existe,
    elle a les vraies données en local, et ça ne demande ni compte payant ni
    projet Xcode. Reste **en attente de la liste d'Arthur** pour la suite : ne
