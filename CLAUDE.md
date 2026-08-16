@@ -7,7 +7,7 @@ App native Apple pour suivre le temps passé sur Mac, PlayStation, TV, et
 
 | Source      | Statut  | Méthode                                                                 |
 |-------------|---------|-------------------------------------------------------------------------|
-| Mac         | À faire | `NSWorkspace` (app active) + `Quartz` (inactivité), depuis l'app macOS  |
+| Mac         | **Tourne** | `NSWorkspace` (app active) + `Quartz` (inactivité) + assertion vidéo, depuis l'app macOS |
 | PlayStation | À faire | API non-officielle PSN — poll de `playDuration` par jeu, temps journalier = delta entre deux relevés |
 | TV          | À faire | Prise connectée avec mesure de conso (type Shelly / TP-Link Kasa) — détecte allumage/extinction |
 | iPhone      | Différé | Voir contrainte ci-dessous                                              |
@@ -553,12 +553,17 @@ compris en PNG, à condition d'utiliser `.buttonStyle(.plain)`.
 
 | PR | Sujet | Tests |
 |---|---|---|
+| #26 | **La TV par son API locale** — nouvelle source qui tourne | 69 |
+| #25 | Cette section, et la skill `pulseon-design` remise d'aplomb | — |
 | #23 | **La comparaison** entre journées | 68 |
 | #21 | **Catégories et identité des apps** | 83 |
 | #22 | Refonte visuelle — **à ne pas merger telle quelle** | 65 |
 
 Elles sont toutes indépendantes et partent de `main`. Les compteurs de tests ne
 s'additionnent pas : chaque branche compte les siens plus ceux de `main` (55).
+
+**Cinq PR en attente commencent à peser.** La #21 en particulier bloque
+l'anatomie de la journée, qui a besoin du `IntervalMath` qu'elle extrait.
 
 **La PR #24 (Steam) a été fermée sans être mergée**, et c'est une leçon à retenir
 plutôt qu'un incident : elle a été écrite sans qu'Arthur l'ait demandée. « On fait
@@ -595,11 +600,23 @@ vérifier seulement qu'elles ne cassent pas les règles non négociables.
 - **PlayStation** : jeton `npsso` indisponible, et de toute façon indistribuable
   en l'état — demander à un inconnu de l'extraire à la main d'un navigateur ferait
   perdre tout le monde. Il faudrait un vrai parcours de connexion.
-- **TV** : pas de prise connectée. La **détection réseau** est désormais la voie
-  préférée (gratuite, passe à l'échelle) mais reste à tester : certaines TV
-  gardent le Wi-Fi en veille et compteraient une télé éteinte.
+- **TV** : **plus bloquée, et sans acheter de matériel** (PR #26). La détection
+  réseau a été testée sur la vraie télé, et l'idée du ping s'est révélée fausse :
+  la puce réseau répond même éteinte, donc un ping aurait compté une télé en
+  veille toute la nuit. Le bon signal est l'API HTTP locale de la télé, qui
+  annonce `PowerState`. Voir « La TV : ce que le réseau dit, et ce qu'il ne dit
+  pas ». **Il reste un geste à faire côté Arthur** :
+  `defaults write com.arthurlanllier.pulseon TVHost "Samsung.local"` — sans ce
+  réglage le collecteur ne démarre pas.
 - **Widget macOS, CloudKit, app iOS, distribution** : même mur, le compte Apple
   payant (~99 €/an). Il couvre un nombre illimité d'apps, sans frais par app.
+
+**Un bug trouvé grâce au deuxième collecteur à intervalles** :
+`closeOpenSession(at:)` fermait les sessions de *tous* les appareils. Invisible
+avec le Mac seul ; avec la TV, la mise en veille du Mac aurait clos la session
+d'une télé restée allumée, sans que rien ne le signale. Chaque collecteur ferme
+désormais la sienne. À retenir comme principe : **une API qui agit sur « tous les
+appareils » est un piège dès qu'il y en a deux.**
 
 **Ce que je ferais ensuite, par ordre de rendement :**
 
