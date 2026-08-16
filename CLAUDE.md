@@ -189,6 +189,34 @@ et elle apparaît proprement dans Réglages > Général > Ouverture.
 sur une autre machine sans avertissement Gatekeeper. Sans objet tant que
 Pulseon ne tourne que sur le Mac d'Arthur.
 
+### Une vraie app, mais seulement le temps d'une fenêtre
+
+`LSUIElement` ne retire pas seulement l'icône du Dock : il retire **la barre de
+menus**. Constaté à l'usage le 2026-08-16 — la fenêtre du dashboard s'ouvrait
+sans menu « Pulseon », donc sans menu Fenêtre, donc sans ⌘W, sans plein écran,
+et sans ⌘Tab pour la retrouver une fois passée derrière une autre app.
+
+**Retirer `LSUIElement` coûterait plus cher que ça ne rapporte** : le réflexe
+⌘Q arrêterait la collecte, et une app de mesure qui s'arrête avec sa fenêtre ne
+mesure plus rien — c'est la règle fondatrice du projet. `DockPresence` bascule
+donc en `.regular` tant qu'une fenêtre vit, et revient en `.accessory` ensuite.
+Au démarrage, rien n'apparaît : ⌘Q n'est jamais à portée de doigt.
+
+Deux pièges tenus dans le code, tous deux invisibles à la compilation :
+
+- Au moment de `willCloseNotification`, la fenêtre qui se ferme est **encore
+  visible et encore dans `NSApp.windows`**. Sans l'exclure explicitement, on
+  reste en `.regular` pour toujours et l'icône Dock ne part plus jamais.
+- **L'élément de barre de menu porte lui aussi une fenêtre.** La compter
+  allumerait l'icône Dock en permanence, ce qui annule `LSUIElement`. D'où le
+  critère `.titled`, seul point testable de la classe et donc `nonisolated`.
+
+**Et une leçon sur la vérification** : `lsappinfo info -only ApplicationType`
+répond `Foreground` dès que l'app est active, *quelle que soit* sa politique
+d'activation. Ça ne distingue pas `.regular` de `.accessory` — le relevé
+automatique n'a rien prouvé, c'est l'œil d'Arthur qui a validé. À retenir avant
+de bâtir une sonde : vérifier qu'elle mesure bien ce qu'on croit.
+
 ### Ce que la barre de menu affiche
 
 Le libellé porte **l'icône et le total du jour, qui défile à la seconde**

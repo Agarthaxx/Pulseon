@@ -11,6 +11,14 @@ import SwiftUI
 struct PulseonApp: App {
     @State private var engine = CollectionEngine()
 
+    init() {
+        // L'agent devient une vraie app tant qu'une fenêtre est ouverte : icône
+        // Dock, menus, ⌘W, ⌘Tab, plein écran. Puis il redevient invisible, pour
+        // que ⌘Q ne soit jamais à portée de main — la collecte ne doit pas
+        // pouvoir s'arrêter en fermant une fenêtre.
+        DockPresence.shared.start()
+    }
+
     var body: some Scene {
         MenuBarExtra {
             MenuContent(engine: engine)
@@ -283,6 +291,9 @@ private struct MenuContent: View {
 
         Button("Ouvrir la journée") {
             engine.browser.goToToday()
+            // Devenir une vraie app *avant* d'ouvrir, sinon la fenêtre apparaît
+            // un instant sans sa barre de menus. Voir `DockPresence`.
+            DockPresence.shared.prepareForWindow()
             openWindow(id: DashboardWindow.id)
             // Sans ça la fenêtre s'ouvre derrière : une app en barre de menu
             // n'est pas active au moment du clic.
