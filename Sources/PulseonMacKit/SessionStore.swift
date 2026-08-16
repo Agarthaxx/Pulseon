@@ -96,7 +96,7 @@ public enum StoreLocation {
                 at: directory, withIntermediateDirectories: true
             )
             let container = try ModelContainer(
-                for: StoredSession.self, StoredCounterSample.self,
+                for: StoredSession.self, StoredCounterSample.self, StoredApp.self,
                 configurations: ModelConfiguration(url: storeURL)
             )
             return (container, nil)
@@ -105,7 +105,7 @@ public enum StoreLocation {
             // lui-même est invalide — une erreur de programmation, qui doit
             // se voir tout de suite.
             let fallback = try! ModelContainer(
-                for: StoredSession.self, StoredCounterSample.self,
+                for: StoredSession.self, StoredCounterSample.self, StoredApp.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: true)
             )
             return (fallback, error.localizedDescription)
@@ -155,6 +155,42 @@ public final class SessionStore {
             close(current, at: date)
         }
         context.insert(StoredSession(device: device, entity: entity, start: date))
+        save()
+    }
+
+    /// Retient ce qu'on sait d'une app : identifiant de bundle et catégorie
+    /// déclarée, de quoi lui trouver une icône et la classer plus tard.
+    ///
+    /// **N'écrit rien si rien n'a changé**, exactement comme `record` pour les
+    /// relevés de compteur. Une app est activée des centaines de fois par jour
+    /// et son identité ne bouge jamais : réécrire la même ligne à chaque
+    /// activation refait l'erreur du `lastSeen` en base, celle qui coûtait 78 Ko
+    /// par écriture pour une information inchangée.
+    public func noteApp(name: String, bundleID: String?, declaredCategory: String?, at date: Date) {
+        var descriptor = FetchDescriptor<StoredApp>(
+            predicate: #Predicate { $0.appName == name }
+        )
+        descriptor.fetchLimit = 1
+
+        guard let existing = try? context.fetch(descriptor).first else {
+            context.insert(
+                StoredApp(
+                    appName: name,
+                    bundleID: bundleID,
+                    declaredCategory: declaredCategory,
+                    firstSeen: date
+                )
+            )
+            save()
+            return
+        }
+
+        // Une mise à jour n'arrive qu'après une mise à jour de l'app elle-même,
+        // ou quand une session ancienne portait un nom sans identité connue.
+        guard existing.bundleID != bundleID || existing.declaredCategory != declaredCategory
+        else { return }
+        existing.bundleID = bundleID
+        existing.declaredCategory = declaredCategory
         save()
     }
 
