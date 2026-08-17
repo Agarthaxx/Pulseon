@@ -153,6 +153,81 @@ de « quelqu'un tapait ». Ni l'un ni l'autre ne sait si tu t'es endormi
 devant — on mesure l'usage de l'appareil, pas l'attention, et on ne prétend
 pas le contraire.
 
+### À quoi le temps a servi : identité des apps et catégories
+
+Le collecteur n'écrivait que le **nom affiché** de l'app. C'est la bonne matière
+première et une mauvaise réponse : au bout de trente apps dans la journée, la
+liste devient du bruit, et surtout **elle ne se compare pas d'un jour à
+l'autre**. « 6 h 12 de dev, 47 min de messages » se compare ; une liste de noms
+non.
+
+**`StoredApp` est une table à part**, et non des colonnes ajoutées à
+`StoredSession`. Le nom est déjà répété sur chaque session : y coller
+l'identifiant de bundle et la catégorie recopierait la même information des
+milliers de fois. Prix assumé, documenté dans le code : deux apps de même nom
+affiché seraient confondues, ce qui n'arrive pas sur une machine donnée.
+
+Trois décisions qui ne se devinent pas à la lecture :
+
+- **`noteApp` n'écrit rien quand rien n'a changé.** Une app est activée des
+  centaines de fois par jour et son identité ne bouge jamais. Réécrire à chaque
+  activation refait exactement l'erreur du `lastSeen` en base.
+- **Pas d'`@Attribute(.unique)`** sur le nom : les contraintes d'unicité ne sont
+  pas supportées par CloudKit, qui est la cible de synchronisation. L'unicité est
+  tenue à la main.
+- **La catégorie brute d'Apple est stockée telle quelle**, pas notre
+  interprétation. Si la table de correspondance change d'avis, tout l'historique
+  se reclasse sans avoir rien perdu.
+
+**La catégorie déclarée par macOS est un point de départ, pas la vérité**, et
+c'est vérifié sur la machine d'Arthur plutôt que supposé : Xcode, VS Code,
+Ghostty et Docker déclarent `developer-tools` (juste) ; Discord
+`social-networking` (juste) ; **Firefox et Safari déclarent `productivity`**,
+ce qui est faux ; **Brave ne déclare rien du tout**. D'où l'ordre de décision de
+`AppCategoryRules` : correction manuelle, puis liste des navigateurs connus,
+puis déclaration de macOS, puis `other`.
+
+**Un navigateur n'est pas une activité**, et aucune catégorie déclarée ne le
+dira. Trois heures de Firefox peuvent être de la documentation ou du YouTube.
+Trancher demanderait de lire l'URL ou le titre de fenêtre — permission
+Accessibilité, nettement plus intrusive, et interdite en pratique dans le bac à
+sable de l'App Store. Les navigateurs ont donc leur propre catégorie et **on ne
+prétend rien de plus**. On ne classe jamais d'après la ressemblance du nom :
+« Mail Designer » n'est pas un client mail, et un faux rangement est pire qu'un
+`other` honnête.
+
+**Ce que les totaux par catégorie veulent dire, exactement.** Chaque catégorie
+est fusionnée sur elle-même : deux apps de dev en parallèle ne comptent qu'une
+fois. Mais deux catégories simultanées comptent chacune leur temps — coder en
+regardant un film donne du développement *et* de la vidéo. La somme des
+catégories peut donc dépasser le `coveredTotal`, exactement comme `summedTotal`
+entre appareils. Le seul autre choix serait d'attribuer arbitrairement l'instant
+partagé à l'une des deux, ce qui serait une invention.
+
+**Le classement n'est pas décidé dans `PulseonCore`.** Le cœur ne sait pas ce
+qu'est un navigateur et n'a pas à le savoir : il reçoit une fonction de
+classement. Même règle que pour la définition d'« actif », que chaque collecteur
+décide pour son appareil. Le côté macOS résout tout **une fois** dans un
+`CategoryAssignment` — une valeur figée — plutôt que d'être interrogé depuis la
+boucle d'agrégation : même leçon que les frontières de journées calculées une
+fois puis parcourues par dichotomie.
+
+**Les icônes d'apps sont l'équivalent, chez Pulseon, des photos d'une app grand
+public.** Une rangée d'icônes se reconnaît en un coup d'œil là où une liste de
+noms se déchiffre, et macOS les fournit sans réseau — donc sans rien révéler à
+personne. `AppRegistry` les résout par identifiant de bundle et les met en cache
+(trouver l'app sur le disque puis la rasteriser ne doit pas se refaire à chaque
+image d'une liste qui défile). **Rendre `nil` est une vraie réponse** : une app
+désinstallée n'a plus d'icône, un jeu PlayStation n'en a jamais eu. À l'appelant
+d'afficher un repli, jamais un carré vide.
+
+**Les favicons de sites, en revanche, sont un autre sujet** — et le piège est
+identifié : appeler une API publique de favicons revient à dire à un tiers quels
+sites on visite, ce qui détruit la promesse « rien ne sort de ta machine ».
+Solutions propres : embarquer un jeu de logos, ou piocher dans le cache de
+favicons du navigateur lui-même (gratuit si on lit déjà son historique). Hors
+sujet pour la v1, qui s'en tient aux icônes d'apps.
+
 ### Empaquetage et démarrage automatique
 
 `Scripts/build-app.sh` fabrique `Pulseon.app` à partir de l'exécutable
@@ -601,6 +676,15 @@ swift build && swift test
 (`@Model`) ne s'expansent pas — le plugin n'existe que dans Xcode complet —
 et le build casse sur une cascade d'erreurs `PersistentModel` trompeuses,
 qui pointent le code alors que le problème est la toolchain.
+
+**Piège de `#expect` : un optionnel comparé à une expression arithmétique
+échoue alors que la comparaison est vraie.**
+`#expect(totals.first?.total == 2 * 3600)` rapporte « 7200.0 == 7200 » comme un
+échec. Un littéral seul (`== 1800`) passe, et la même expression sans optionnel
+passe aussi — donc l'erreur ressemble à un bug de calcul et fait chercher au
+mauvais endroit. Vérifié : la comparaison est bien vraie en Swift ordinaire, le
+problème est l'expansion de la macro. Utiliser `try #require` pour déballer
+avant de comparer, ce qui est de toute façon la forme idiomatique.
 
 Aucun `sudo` n'est nécessaire, contrairement à ce qui était noté ici avant :
 la licence est déjà acceptée, `DEVELOPER_DIR` suffit. Pour s'en passer

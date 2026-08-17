@@ -178,9 +178,19 @@ public final class ActivityMonitor {
     }
 
     private func handleActivation(of app: NSRunningApplication?) {
-        guard let name = app?.localizedName else { return }
+        guard let app, let name = app.localizedName else { return }
         isIdle = false
-        store.openSession(device: .mac, entity: name, at: Date())
+        let now = Date()
+        // L'identité est retenue à part de la session : l'icône et la catégorie
+        // ne sont connues que d'ici, où l'app est un vrai objet système. Ne
+        // rien écrire si rien n'a changé est garanti par `noteApp`.
+        store.noteApp(
+            name: name,
+            bundleID: app.bundleIdentifier,
+            declaredCategory: app.declaredCategory,
+            at: now
+        )
+        store.openSession(device: .mac, entity: name, at: now)
     }
 
     private func checkIdle() {

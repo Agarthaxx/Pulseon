@@ -150,7 +150,7 @@ public struct DayDigestBuilder: Sendable {
             date: calendar.dateComponents([.year, .month, .day], from: start),
             lanes: lanes,
             summedTotal: lanes.reduce(0) { $0 + $1.total },
-            coveredTotal: union(of: intervalBlocks) + counterTotal
+            coveredTotal: IntervalMath.mergedDuration(of: intervalBlocks) + counterTotal
         )
     }
 
@@ -205,24 +205,4 @@ public struct DayDigestBuilder: Sendable {
             .sorted { $0.total > $1.total }
     }
 
-    /// Fusionne les intervalles qui se chevauchent pour ne compter le temps
-    /// qu'une fois.
-    private func union(of blocks: [TraceBlock]) -> TimeInterval {
-        let ranges = blocks
-            .map { ($0.startOffset, $0.startOffset + $0.duration) }
-            .sorted { $0.0 < $1.0 }
-        var total: TimeInterval = 0
-        var current: (Double, Double)?
-        for range in ranges {
-            if var open = current, range.0 <= open.1 {
-                open.1 = max(open.1, range.1)
-                current = open
-            } else {
-                if let open = current { total += open.1 - open.0 }
-                current = range
-            }
-        }
-        if let open = current { total += open.1 - open.0 }
-        return total
-    }
 }
