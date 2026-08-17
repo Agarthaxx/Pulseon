@@ -13,14 +13,19 @@ public struct ActivityRing: View {
     public struct Segment: Identifiable {
         public let id: String
         public let value: TimeInterval
-        /// Un dégradé et non un aplat : c'est ce qui donne à l'arc une surface
-        /// plutôt qu'une impression à plat.
-        public let fill: LinearGradient
+        /// Les teintes de l'arc, de la plus claire à la plus sombre.
+        ///
+        /// **Un dégradé *angulaire*, pas linéaire.** Un dégradé linéaire ne se
+        /// voit que d'un arc à l'autre : sur une journée à un seul appareil —
+        /// le cas normal chez Arthur — l'anneau redevenait un aplat uni. Le
+        /// dégradé suit maintenant la courbe, donc il balaie même un cercle
+        /// entier d'une seule couleur.
+        public let tones: [Color]
 
-        public init(id: String, value: TimeInterval, fill: LinearGradient) {
+        public init(id: String, value: TimeInterval, tones: [Color]) {
             self.id = id
             self.value = value
-            self.fill = fill
+            self.tones = tones
         }
     }
 
@@ -67,7 +72,14 @@ public struct ActivityRing: View {
                     Circle()
                         .trim(from: arc.start, to: arc.end)
                         .stroke(
-                            segment.fill,
+                            // Le dégradé est calé sur le tour entier, pas sur
+                            // l'arc : deux arcs voisins de la même couleur se
+                            // raccordent ainsi sans marche, et le balayage reste
+                            // continu quel que soit le découpage.
+                            AngularGradient(
+                                gradient: Gradient(colors: segment.tones + [segment.tones[0]]),
+                                center: .center
+                            ),
                             style: StrokeStyle(
                                 lineWidth: thickness,
                                 // Arrondi, comme la maquette. Sur un arc unique

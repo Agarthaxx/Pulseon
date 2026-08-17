@@ -177,6 +177,35 @@ MainActor.assumeIsolated {
         size: CGSize(width: 560, height: 900), named: "pulseon-narrow"
     )
 
+    // **Le cas réel d'Arthur : un seul appareil branché.** C'est la journée
+    // normale sur sa machine, et c'est celle qui montrait un anneau d'un bleu
+    // uni — le dégradé linéaire ne se voyait qu'entre deux arcs.
+    let macOnlyDigest = DayDigest(
+        date: digest.date,
+        lanes: [
+            Lane(
+                device: .mac, total: macTotal, blocks: macBlocks,
+                topEntities: [EntityTotal(entity: "Firefox Developer Edition", total: 2.1 * 3600)],
+                isConnected: true
+            ),
+            Lane(device: .playstation, total: 0, blocks: [], topEntities: [], isConnected: false),
+            Lane(device: .tv, total: 0, blocks: [], topEntities: [], isConnected: false),
+        ],
+        summedTotal: macTotal, coveredTotal: macTotal
+    )
+    shoot(
+        dashboard(
+            .loaded(
+                DayPresentation(
+                    digest: macOnlyDigest, dayStart: dayStart, dayLength: day, now: now,
+                    categories: Array(categories.prefix(3))
+                )
+            ),
+            canGoForward: false, scheme: .dark
+        ),
+        size: CGSize(width: 1000, height: 900), named: "pulseon-mac-only"
+    )
+
     // **La vraie fenêtre d'Arthur fait 1512 points de large.** Ne regarder que
     // des rendus étroits avait laissé passer une mise en page étirée, où
     // l'anneau se perd au milieu d'une carte immense.
