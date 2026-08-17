@@ -194,7 +194,29 @@ public final class SessionStore {
         save()
     }
 
-    public func closeOpenSession(at date: Date) {
+    /// Ferme la session en cours d'**un** appareil.
+    ///
+    /// Il a fallu cette version le jour où un deuxième collecteur à intervalles
+    /// est apparu (la TV) : `closeOpenSession(at:)` ferme *tous* les appareils,
+    /// donc la mise en veille du Mac aurait clos la session de la télé restée
+    /// allumée. Rien ne l'aurait signalé — la base se serait simplement mise à
+    /// sous-compter la télé.
+    public func closeOpenSession(device: Device, at date: Date) {
+        guard let current = openSession(for: device) else { return }
+        close(current, at: date)
+        save()
+    }
+
+    /// Vrai si une session est ouverte pour cet appareil.
+    public func hasOpenSession(for device: Device) -> Bool {
+        openSession(for: device) != nil
+    }
+
+    /// Ferme les sessions en cours de **tous** les appareils.
+    ///
+    /// Réservé à l'extinction de l'agent : chaque collecteur ne doit fermer que
+    /// la sienne. Voir `closeOpenSession(device:at:)`.
+    public func closeAllOpenSessions(at date: Date) {
         for device in Device.allCases {
             if let current = openSession(for: device) {
                 close(current, at: date)

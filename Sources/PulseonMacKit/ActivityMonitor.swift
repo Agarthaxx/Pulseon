@@ -83,7 +83,11 @@ public final class ActivityMonitor {
         ] {
             observers.append(
                 center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                    MainActor.assumeIsolated { self?.store.closeOpenSession(at: Date()) }
+                    // Seulement la session du Mac : la télé peut être restée
+                    // allumée pendant que le Mac dort.
+                    MainActor.assumeIsolated {
+                        self?.store.closeOpenSession(device: .mac, at: Date())
+                    }
                 }
             )
         }
@@ -122,7 +126,7 @@ public final class ActivityMonitor {
         let center = NSWorkspace.shared.notificationCenter
         observers.forEach(center.removeObserver)
         observers.removeAll()
-        store.closeOpenSession(at: Date())
+        store.closeOpenSession(device: .mac, at: Date())
     }
 
     /// Secondes depuis la dernière interaction clavier ou souris.
@@ -200,7 +204,7 @@ public final class ActivityMonitor {
 
         if !isActive, !isIdle {
             isIdle = true
-            store.closeOpenSession(at: endOfActivity(now: now, idle: idle))
+            store.closeOpenSession(device: .mac, at: endOfActivity(now: now, idle: idle))
         } else if isActive, isIdle {
             isIdle = false
             handleActivation(of: NSWorkspace.shared.frontmostApplication)

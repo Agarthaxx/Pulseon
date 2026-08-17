@@ -7,9 +7,9 @@ App native Apple pour suivre le temps passé sur Mac, PlayStation, TV, et
 
 | Source      | Statut  | Méthode                                                                 |
 |-------------|---------|-------------------------------------------------------------------------|
-| Mac         | À faire | `NSWorkspace` (app active) + `Quartz` (inactivité), depuis l'app macOS  |
+| Mac         | **Tourne** | `NSWorkspace` (app active) + `Quartz` (inactivité) + assertion vidéo, depuis l'app macOS |
 | PlayStation | À faire | API non-officielle PSN — poll de `playDuration` par jeu, temps journalier = delta entre deux relevés |
-| TV          | À faire | Prise connectée avec mesure de conso (type Shelly / TP-Link Kasa) — détecte allumage/extinction |
+| TV          | **Codée** | API HTTP locale de la télé (Samsung Tizen, port 8001) — `PowerState` dit si l'écran est allumé. Source à intervalles, comme le Mac |
 | iPhone      | Différé | Voir contrainte ci-dessous                                              |
 
 ## Décisions et contraintes connues
@@ -452,6 +452,51 @@ la requête rend une liste vide impossible à distinguer d'une journée sans
 activité. C'est pour ça que `sessions` et `samples` sont désormais `throws` :
 une lecture qui échoue doit se voir, pas se déguiser en zéro.
 
+### Comparer une journée aux précédentes
+
+Un total seul ne veut rien dire, et c'est le manque qu'Arthur a ressenti en
+ouvrant la fenêtre : « 9 h 39 », est-ce beaucoup ou est-ce sa normale ?
+`DayComparison` répond, et `DayBrowser` l'expose à côté de la journée.
+
+**La règle qui justifie tout le mécanisme : on compare à la même heure du
+jour.** Une journée en cours confrontée à des journées entières donnerait
+« toujours en dessous de ta moyenne » à 11 h du matin — un constat mécanique qui
+n'apprend rien. Les journées de référence sont donc arrêtées à l'heure écoulée
+de la journée affichée (`isPartial`), et seulement entières quand on regarde un
+jour passé.
+
+**Une journée sans aucune source mesurée est écartée de la moyenne.** Elle veut
+dire « le collecteur était éteint », pas « zéro minute d'écran » : la compter
+tirerait la moyenne vers le bas pour une raison qui n'a aucun rapport avec
+l'usage. À l'inverse, une journée où une source était branchée et n'a rien
+enregistré est un **vrai zéro**, et elle compte. C'est la même distinction que
+`isConnected` porte partout ailleurs, ici sous le nom
+`DayDigest.hasMeasuredSource`.
+
+**En dessous de trois journées mesurées, on ne dit rien.** Une « moyenne » sur
+une journée est cette journée-là présentée sous un nom trompeur. Se taire est
+plus honnête que d'annoncer une tendance qui n'existe pas — et c'est aussi ce
+qui se passe le premier jour d'utilisation.
+
+**La comparaison ne juge pas.** Pulseon mesure l'usage d'un appareil, il ne
+décide pas si c'est bien. Rien dans le type ne qualifie un écart, et **l'UI ne
+doit pas colorer un dépassement en rouge** : ce serait transformer un miroir en
+juge. Un écart de moins de cinq minutes n'est d'ailleurs pas un écart
+(`isTypical`).
+
+Deux détails d'exécution :
+
+- **La comparaison n'est pas recalculée à chaque relecture.** La journée est
+  relue chaque minute ; refaire quatorze requêtes par minute pour un chiffre qui
+  bouge d'une minute serait absurde. Elle est donc recalculée au changement de
+  journée, et au plus une fois toutes les cinq minutes sur la journée en cours.
+  Une journée passée, elle, ne bougera plus jamais.
+- **Limite assumée sur les sources à compteur** : n'ayant aucun horaire, leur
+  total du jour ne peut pas être coupé à une heure précise. Sur une comparaison
+  partielle elles sont donc comptées en entier des deux côtés — ce qui reste
+  cohérent, le total d'aujourd'hui étant lui aussi « ce qui s'est accumulé
+  jusqu'ici ».
+
 ### Sources à compteur : la plomberie commune
 
 `CounterSource` est le contrat que remplit toute source incapable de dire un
@@ -473,6 +518,80 @@ gêne pas l'agrégation, qui cherche « le dernier relevé antérieur au jour »
 un relevé plus ancien fait l'affaire tant que le total n'a pas bougé. Un total
 qui *baisse* est écrit tel quel : c'est ce que la source a dit, et c'est à
 l'agrégation de refuser les deltas négatifs, ce qu'elle fait déjà.
+
+### La TV : ce que le réseau dit, et ce qu'il ne dit pas
+
+Le collecteur TV interroge l'API HTTP locale de la télé —
+`GET http://<hôte>:8001/api/v2/` — qui rend un champ `PowerState`. C'est une
+source à **intervalles**, comme le Mac : elle sait dire *quand* l'écran était
+allumé, donc elle ouvre et ferme de vraies sessions et sa place sur la timeline
+n'est pas inventée.
+
+**Tout ce qui suit a été mesuré sur la télé d'Arthur** (Samsung `TQ55S90CATXXC`,
+Tizen), allumée puis éteinte, le 2026-08-16 — pas déduit d'une documentation :
+
+| Signal | Allumée | Éteinte | Verdict |
+|---|---|---|---|
+| Ping ICMP | répond | **répond aussi** | inutilisable |
+| Annonce mDNS `_airplay._tcp` | présente | **présente aussi** | inutilisable |
+| `GET :8001/api/v2/` | `PowerState: on` | connexion refusée, **ou** `standby` | **le bon signal** |
+| Résolution de `Samsung.local` | résout | **résout aussi** | pas besoin d'IP fixe |
+
+Quatre choses à ne pas perdre :
+
+- **L'idée de départ — détecter la télé au ping — était fausse**, et seule la
+  mesure l'a montré. La puce réseau reste vivante en veille : une détection au
+  ping aurait compté une télé éteinte toute la nuit comme du temps d'écran. C'est
+  exactement le risque qui avait été signalé avant de coder, et il s'est réalisé.
+- **La télé éteinte a deux comportements**, tous deux observés à une heure
+  d'intervalle : le port refuse la connexion, ou il répond `standby`. Sans doute
+  selon la profondeur du sommeil. Les deux valent « éteinte » — n'en traiter qu'un
+  laisserait l'autre mentir.
+- **Interroger la télé ne la rallume pas** (vérifié, ç'aurait été rédhibitoire).
+  Et l'API répond **sans authentification** en lecture : rien à déposer dans le
+  Trousseau, contrairement à la PlayStation.
+- **Viser le nom mDNS et non une IP.** `Samsung.local` résout même en veille, et
+  `URLSession` sait le faire (≈ 0,5 s au premier appel). Une IP serait figée
+  jusqu'au prochain bail DHCP.
+
+**Trois états, pas deux.** `TVReading` distingue `on`, `off` et `unknown`, et le
+troisième est celui qui protège le comptage : sans réseau, on ne sait rien de la
+télé. `NetworkWitness` (sur `NWPathMonitor`) sert uniquement à trancher entre
+« la télé refuse le port, donc elle est éteinte » et « le Mac n'a plus de réseau,
+donc on ignore tout ». Il est **optimiste au démarrage** : avant la première mise à
+jour du chemin réseau il répond « il y a du réseau », ce qui fait pencher le doute
+vers le sous-comptage plutôt que vers une session laissée ouverte.
+
+`TVDecision` porte la règle, pure et testée :
+
+- **une extinction ferme la session au dernier instant où l'écran a été *observé*
+  allumé**, jamais à l'heure courante. Entre deux relevés on ignore à quelle
+  seconde l'écran s'est éteint : sous-compter d'un intervalle est permis, inventer
+  ne l'est pas. Même discipline qu'`ActivityMonitor.endOfActivity` ;
+- **ne rien savoir est toléré deux minutes**, puis la session est fermée au dernier
+  instant observé. Sans tolérance, une micro-coupure Wi-Fi découperait une soirée
+  de film en confettis ; sans limite, une panne d'une nuit compterait huit heures
+  de télé qui n'ont pas eu lieu ;
+- une **réponse incompréhensible** vaut `unknown`, jamais `off` : un changement de
+  firmware ne doit pas effacer une soirée.
+
+**Le nom de la télé se dépose dans les réglages, pas dans le Trousseau** — ce
+n'est pas un secret :
+
+```
+defaults write com.arthurlanllier.pulseon TVHost "Samsung.local"
+```
+
+Sans ce réglage, aucun collecteur TV ne démarre : interroger dans le vide
+n'apporterait qu'une erreur toutes les trente secondes.
+
+**Un bug que ce collecteur a révélé dans l'existant** : `closeOpenSession(at:)`
+fermait les sessions de **tous** les appareils. Avec une seule source à
+intervalles ça ne se voyait pas ; avec deux, la mise en veille du Mac aurait clos
+la session d'une télé restée allumée, et rien ne l'aurait signalé — la base se
+serait simplement mise à sous-compter la télé. Chaque collecteur ferme désormais
+la sienne (`closeOpenSession(device:at:)`), et la version « tous » est réservée à
+l'extinction de l'agent.
 
 ### Les secrets vont dans le Trousseau, pas dans un `.env`
 
@@ -621,52 +740,108 @@ tout le parti pris visuel ci-dessus.
 6. Collecteur PlayStation, puis TV.
 7. Réévaluer l'intégration iPhone.
 
-### État au 2026-08-16 (fin de session de nuit)
+### État au 2026-08-16 (fin de deuxième session)
 
-Ce qui tourne : le collecteur Mac est installé dans `/Applications`, démarre à
-l'ouverture de session, et affiche le total du jour dans la barre de menu — qui
-**défile désormais à la seconde** (`3h07:12`). Le **dashboard existe** : fenêtre
-macOS ouverte depuis le menu (« Ouvrir la journée », ⌘J), avec la journée en
-multipiste. 52 tests verts sur `main`.
+**Ce qui tourne pour de vrai** : le collecteur Mac est installé dans
+`/Applications`, démarre à l'ouverture de session, affiche le total du jour qui
+défile à la seconde dans la barre de menu, et la fenêtre du dashboard s'ouvre par
+⌘J. **Vérifié à l'œil par Arthur** : l'icône Dock, la barre de menus et ⌘W
+apparaissent bien quand la fenêtre est ouverte, et disparaissent ensuite
+(`DockPresence`). Le doute sur les chevrons ‹ › est levé : ils se rendent, y
+compris en PNG, à condition d'utiliser `.buttonStyle(.plain)`.
 
-Livré cette nuit, tout mergé (PR #17 et #18) : le libellé de la barre de menu
-qui ne s'affichait pas, le compteur à la seconde, les pauses courtes comptées
-comme du temps d'écran, et l'ébauche du dashboard.
+**Mergé** : PR #17 à #20. La dernière est la bascule de politique d'activation.
 
-Ce qui n'a **pas** été vérifié à l'œil : le dashboard n'a été regardé qu'en PNG
-rendus hors écran, jamais dans la vraie fenêtre avec les vraies données. À faire
-au prochain démarrage — les chevrons de navigation ‹ › en particulier, que
-`ImageRenderer` ne sait pas rendre.
+**PR ouvertes, à relire dans cet ordre de valeur :**
 
-Ce qui bloque, et sur quoi :
+| PR | Sujet | Tests |
+|---|---|---|
+| #26 | **La TV par son API locale** — nouvelle source qui tourne | 69 |
+| #25 | Cette section, et la skill `pulseon-design` remise d'aplomb | — |
+| #23 | **La comparaison** entre journées | 68 |
+| #21 | **Catégories et identité des apps** | 83 |
+| #22 | Refonte visuelle — **à ne pas merger telle quelle** | 65 |
 
-- **PlayStation** : toute la plomberie est prête (`CounterSource`,
-  `CounterPoller`, `record()` dédoublonné, `PlayDuration`, `Secrets`). Il ne
-  manque que le client HTTP — et le jeton, qu'Arthur n'a pas pu récupérer,
-  n'arrivant plus à se connecter à son compte PSN. Le jeton se dépose à la
-  main dans le Trousseau, **jamais dans la conversation ni dans un fichier**.
-- **TV** : bloquée matériellement, pas de prise connectée. Viser une Shelly
-  (API HTTP locale, sans cloud). Ce sera une source à **intervalles**, pas à
-  compteur : `openSession` / `closeOpenSession`, comme le Mac.
-- **Widget macOS** (le vrai, centre de notifications) : extension d'app, donc
-  projet Xcode et signature — même mur que CloudKit.
+Elles sont toutes indépendantes et partent de `main`. Les compteurs de tests ne
+s'additionnent pas : chaque branche compte les siens plus ceux de `main` (55).
 
-~~Point en suspens : le texte de la barre de menu s'affiche-t-il sans
-cliquer ?~~ **Non, il ne s'affichait pas** — le doute était fondé. Corrigé
-depuis (`Label` → `Text` interpolé, voir « Ce que la barre de menu affiche »),
-et le compteur défile désormais à la seconde. À retenir : quand Arthur décrit
-un comportement observé, prendre la formulation au pied de la lettre plutôt
-que la reformuler dans le sens attendu.
+**Cinq PR en attente commencent à peser.** La #21 en particulier bloque
+l'anatomie de la journée, qui a besoin du `IntervalMath` qu'elle extrait.
 
-Dette de doc connue : la visite guidée du code (lien plus haut) décrit
-744 lignes et sept fichiers de moins que la réalité — dix maintenant, avec
-`PulseonUI`. À reprendre, puisqu'elle sert à Arthur pour lire son propre code.
+**La PR #24 (Steam) a été fermée sans être mergée**, et c'est une leçon à retenir
+plutôt qu'un incident : elle a été écrite sans qu'Arthur l'ait demandée. « On fait
+le cœur du métier » avait été traduit en « une nouvelle source de données », et la
+source choisie était celle qui m'arrangeait techniquement — pas celle dont il a
+besoin. **Les sources du projet sont Mac, PlayStation et TV**, et Steam n'y a
+jamais figuré avant que je l'y ajoute. Le code dort sur la branche
+`feat/steam-source` si le besoin apparaît un jour ; le branchement générique d'un
+`CounterPoller` dans `CollectionEngine` y est réutilisable tel quel pour la
+PlayStation.
 
-Références visuelles données par Arthur le 2026-08-16, à respecter quand le
-design évolue : **Flighty** (couleur strictement sémantique, hiérarchie
-typographique sans milieu, forte densité de faits utiles par ligne) et **Notion
-Calendar** (même philosophie en neutre et discret). Le point commun, qui est la
-règle : *la donnée est le design*. Voir la skill `pulseon-design`.
+**Sur la #22, décision prise avec Arthur** : il ne retient pas la direction
+visuelle proposée et fournira sa propre maquette. La PR mélange donc de
+l'habillage à jeter (`PulseonTheme`, le style du dashboard) et trois corrections
+de **structure** qui survivront à n'importe quelle maquette :
+
+- `RailLayout` — le rail unique découpé par balayage, qui règle le vrai défaut de
+  conception : une piste par appareil s'écroule au troisième écran simultané ;
+- la séparation `DayDashboardContent` / `DayDashboard` — sans elle,
+  `ImageRenderer` ne rend **rien** d'une vue défilante et toute preview est
+  aveugle ;
+- `TimelineGeometry.hourLabels()`.
+
+À extraire proprement quand la maquette arrivera, ou à réécrire par-dessus.
+
+**Le front est en pause, à la demande d'Arthur** : « on fait le cœur du métier, et
+je verrai après pour une maquette magnifique. Le front-end se bosse aussi, c'est
+un vrai métier. » Ne pas proposer de direction visuelle, ne pas restyler
+spontanément. Quand ses maquettes arrivent, les implémenter fidèlement et
+vérifier seulement qu'elles ne cassent pas les règles non négociables.
+
+**Ce qui bloque, et sur quoi :**
+
+- **PlayStation** : jeton `npsso` indisponible, et de toute façon indistribuable
+  en l'état — demander à un inconnu de l'extraire à la main d'un navigateur ferait
+  perdre tout le monde. Il faudrait un vrai parcours de connexion.
+- **TV** : **plus bloquée, et sans acheter de matériel** (PR #26). La détection
+  réseau a été testée sur la vraie télé, et l'idée du ping s'est révélée fausse :
+  la puce réseau répond même éteinte, donc un ping aurait compté une télé en
+  veille toute la nuit. Le bon signal est l'API HTTP locale de la télé, qui
+  annonce `PowerState`. Voir « La TV : ce que le réseau dit, et ce qu'il ne dit
+  pas ». **Il reste un geste à faire côté Arthur** :
+  `defaults write com.arthurlanllier.pulseon TVHost "Samsung.local"` — sans ce
+  réglage le collecteur ne démarre pas.
+- **Widget macOS, CloudKit, app iOS, distribution** : même mur, le compte Apple
+  payant (~99 €/an). Il couvre un nombre illimité d'apps, sans frais par app.
+
+**Un bug trouvé grâce au deuxième collecteur à intervalles** :
+`closeOpenSession(at:)` fermait les sessions de *tous* les appareils. Invisible
+avec le Mac seul ; avec la TV, la mise en veille du Mac aurait clos la session
+d'une télé restée allumée, sans que rien ne le signale. Chaque collecteur ferme
+désormais la sienne. À retenir comme principe : **une API qui agit sur « tous les
+appareils » est un piège dès qu'il y en a deux.**
+
+**Ce que je ferais ensuite, par ordre de rendement :**
+
+1. **L'anatomie de la journée** — premier écran, dernier écran, plus longue
+   traite, coupures. Pur `PulseonCore`, testable sans simulateur, aucun design, et
+   c'est la substance que n'importe quelle maquette affichera. Plus propre après
+   la #21, qui extrait `IntervalMath`.
+2. **L'export CSV/JSON** — du core pur, et l'argument « tes données
+   t'appartiennent ».
+3. **La TV par détection réseau** — une soirée de test tranche.
+
+**Dette de doc connue** : la visite guidée du code (lien plus haut) décrit
+744 lignes et sept fichiers, alors qu'il y en a une douzaine et plus de
+2 500 lignes. Elle sert à Arthur pour lire son propre Swift, donc c'est la dette
+qui lui coûte le plus.
+
+**Références visuelles données par Arthur le 2026-08-16** : **Flighty** (couleur
+strictement sémantique, hiérarchie typographique sans milieu, forte densité de
+faits utiles par ligne), **Notion Calendar** (même philosophie en neutre), et une
+app de fitness fond noir à accent vert acide qu'il a apportée puis dont il n'a pas
+retenu l'implémentation. La règle commune, elle, tient : *la donnée est le
+design*. Détail dans la skill `pulseon-design`.
 
 ## Continuité entre sessions Claude
 
@@ -681,11 +856,12 @@ Ne pas relancer la discussion iPhone sans relire la section contrainte.
 
 ### Maison (à charger avant de toucher aux vues)
 
-- **`pulseon-design`** — la direction visuelle : l'instrument de mesure, les
-  couleurs par appareil, la typographie d'afficheur, les règles non négociables
-  (ne jamais inventer un horaire, « pas branchée » ≠ « zéro », tronquer et non
-  arrondir) et la liste de ce qui trahit un design généré. Sans elle, chaque
-  session redécouvre la direction et l'app dérive.
+- **`pulseon-design`** — les règles non négociables du dessin (ne jamais inventer
+  un horaire, « pas branchée » ≠ « zéro », tronquer et non arrondir, un seul rail
+  et non une piste par appareil, aucune comparaison qui juge) et ce que les
+  previews ont déjà trouvé. **La direction visuelle elle-même est en attente des
+  maquettes d'Arthur** : la skill liste les trois directions essayées et écartées,
+  pour qu'aucune session ne les repropose.
 - **`pulseon-preview`** — `./Scripts/preview.sh` rend les vues en PNG hors
   écran, puis on les regarde. Lancer l'app à la place corromprait la base (deux
   collecteurs sur le même store) et suppose quelqu'un devant l'écran. A trouvé
