@@ -10,15 +10,17 @@ import SwiftUI
 /// confirmée en même temps que la direction visuelle. Le dessin est gardé, le
 /// jugement non.
 public struct ActivityRing: View {
-    public struct Segment: Identifiable, Sendable {
+    public struct Segment: Identifiable {
         public let id: String
         public let value: TimeInterval
-        public let color: Color
+        /// Un dégradé et non un aplat : c'est ce qui donne à l'arc une surface
+        /// plutôt qu'une impression à plat.
+        public let fill: LinearGradient
 
-        public init(id: String, value: TimeInterval, color: Color) {
+        public init(id: String, value: TimeInterval, fill: LinearGradient) {
             self.id = id
             self.value = value
-            self.color = color
+            self.fill = fill
         }
     }
 
@@ -44,7 +46,7 @@ public struct ActivityRing: View {
         self.diameter = diameter
     }
 
-    private var thickness: CGFloat { diameter * 0.105 }
+    private var thickness: CGFloat { diameter * 0.125 }
 
     public var body: some View {
         ZStack {
@@ -54,13 +56,25 @@ public struct ActivityRing: View {
                 .stroke(palette.sunken, lineWidth: thickness)
 
             let arcs = RingLayout.arcs(for: segments.map(\.value))
-            ForEach(Array(zip(segments, arcs)), id: \.0.id) { segment, arc in
+            let drawn = Array(zip(segments, arcs))
+
+            // Les arcs sont posés du dernier au premier pour que l'extrémité
+            // arrondie de chacun passe **sous** son voisin de gauche : dessinés
+            // dans l'ordre, les capuchons se chevaucheraient à l'endroit et
+            // chaque jointure porterait une bosse.
+            ForEach(drawn.reversed(), id: \.0.id) { segment, arc in
                 if let arc {
                     Circle()
                         .trim(from: arc.start, to: arc.end)
                         .stroke(
-                            segment.color,
-                            style: StrokeStyle(lineWidth: thickness, lineCap: .butt)
+                            segment.fill,
+                            style: StrokeStyle(
+                                lineWidth: thickness,
+                                // Arrondi, comme la maquette. Sur un arc unique
+                                // qui fait tout le tour, `.round` n'a aucun
+                                // effet visible — donc rien à traiter à part.
+                                lineCap: .round
+                            )
                         )
                         .rotationEffect(.degrees(-90))
                 }
@@ -69,6 +83,9 @@ public struct ActivityRing: View {
             center
         }
         .frame(width: diameter, height: diameter)
+        // L'ombre ne décore pas : elle décolle l'anneau de la carte, sans quoi
+        // les deux se lisent comme un seul aplat.
+        .shadow(color: palette.shadow.opacity(0.5), radius: 18, y: 6)
     }
 
     @ViewBuilder

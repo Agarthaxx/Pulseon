@@ -26,6 +26,51 @@ public struct PulseonPalette: Sendable {
     public let gold: Color
     /// Le bleu nuit qui lui répond dans l'anneau et l'icône.
     public let navy: Color
+
+    /// Les deux bouts du dégradé d'or, celui de l'icône.
+    ///
+    /// **Une couleur unie n'a pas l'air métallique**, et c'est ce qui manquait
+    /// à la première implémentation de la maquette : Arthur l'a vue « bien
+    /// moins premium ». Un métal se lit à sa variation de clarté sur la
+    /// surface, jamais à sa teinte moyenne.
+    public let goldLight: Color
+    public let goldDeep: Color
+    public let navyLight: Color
+    public let navyDeep: Color
+
+    /// L'ombre portée des cartes. Elle est *portée par la profondeur*, pas
+    /// décorative : c'est elle qui décolle une carte du fond, ce que l'écart de
+    /// gris seul ne faisait pas assez sur un fond aussi sombre.
+    public let shadow: Color
+
+    public var goldGradient: LinearGradient {
+        LinearGradient(
+            colors: [goldLight, gold, goldDeep],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    public var navyGradient: LinearGradient {
+        LinearGradient(
+            colors: [navyLight, navy, navyDeep],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    /// Le léger éclaircissement du haut d'une carte. Une carte parfaitement
+    /// uniforme paraît imprimée ; un dégradé d'un pour cent lui donne une
+    /// surface.
+    public var surfaceGradient: LinearGradient {
+        LinearGradient(
+            colors: [surfaceTop, surface],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    public let surfaceTop: Color
 }
 
 public enum PulseonTheme {
@@ -36,27 +81,39 @@ public enum PulseonTheme {
     /// Le sombre de l'écran 5 de la maquette, et de l'icône : un bleu nuit
     /// presque noir, jamais un gris neutre.
     public static let dark = PulseonPalette(
-        ground: Color(red: 0.043, green: 0.055, blue: 0.086),
-        surface: Color(red: 0.078, green: 0.094, blue: 0.137),
+        ground: Color(red: 0.035, green: 0.045, blue: 0.075),
+        surface: Color(red: 0.075, green: 0.090, blue: 0.133),
         sunken: Color(red: 0.129, green: 0.153, blue: 0.204),
-        hairline: Color(red: 0.169, green: 0.196, blue: 0.255),
-        ink: Color(red: 0.965, green: 0.973, blue: 0.984),
-        inkSoft: Color(red: 0.639, green: 0.678, blue: 0.745),
+        hairline: Color(red: 0.180, green: 0.208, blue: 0.271),
+        ink: Color(red: 0.973, green: 0.980, blue: 0.992),
+        inkSoft: Color(red: 0.655, green: 0.694, blue: 0.761),
         inkFaint: Color(red: 0.435, green: 0.475, blue: 0.549),
-        gold: Color(red: 0.831, green: 0.686, blue: 0.373),
-        navy: Color(red: 0.353, green: 0.463, blue: 0.729)
+        gold: Color(red: 0.839, green: 0.690, blue: 0.361),
+        navy: Color(red: 0.322, green: 0.435, blue: 0.718),
+        goldLight: Color(red: 0.949, green: 0.859, blue: 0.612),
+        goldDeep: Color(red: 0.639, green: 0.478, blue: 0.180),
+        navyLight: Color(red: 0.482, green: 0.588, blue: 0.851),
+        navyDeep: Color(red: 0.157, green: 0.243, blue: 0.510),
+        shadow: Color.black.opacity(0.55),
+        surfaceTop: Color(red: 0.098, green: 0.118, blue: 0.169)
     )
 
     public static let light = PulseonPalette(
-        ground: Color(red: 0.949, green: 0.953, blue: 0.965),
+        ground: Color(red: 0.945, green: 0.949, blue: 0.961),
         surface: .white,
-        sunken: Color(red: 0.902, green: 0.914, blue: 0.937),
-        hairline: Color(red: 0.851, green: 0.867, blue: 0.898),
-        ink: Color(red: 0.055, green: 0.078, blue: 0.129),
-        inkSoft: Color(red: 0.353, green: 0.396, blue: 0.463),
+        sunken: Color(red: 0.898, green: 0.910, blue: 0.933),
+        hairline: Color(red: 0.859, green: 0.875, blue: 0.902),
+        ink: Color(red: 0.043, green: 0.063, blue: 0.114),
+        inkSoft: Color(red: 0.341, green: 0.384, blue: 0.451),
         inkFaint: Color(red: 0.529, green: 0.569, blue: 0.635),
-        gold: Color(red: 0.663, green: 0.518, blue: 0.184),
-        navy: Color(red: 0.114, green: 0.216, blue: 0.451)
+        gold: Color(red: 0.694, green: 0.541, blue: 0.176),
+        navy: Color(red: 0.106, green: 0.204, blue: 0.435),
+        goldLight: Color(red: 0.859, green: 0.729, blue: 0.365),
+        goldDeep: Color(red: 0.522, green: 0.384, blue: 0.098),
+        navyLight: Color(red: 0.216, green: 0.353, blue: 0.620),
+        navyDeep: Color(red: 0.059, green: 0.129, blue: 0.302),
+        shadow: Color(red: 0.055, green: 0.078, blue: 0.129).opacity(0.13),
+        surfaceTop: .white
     )
 
     // MARK: Les appareils
@@ -78,16 +135,73 @@ public enum PulseonTheme {
     /// maquette. **Aucune n'est rouge** : le rouge dirait « trop », et Pulseon
     /// ne juge pas.
     public static func color(for category: AppCategory, in palette: PulseonPalette) -> Color {
+        tones(for: category, in: palette).base
+    }
+
+    /// La teinte claire et la teinte de base d'une catégorie.
+    ///
+    /// **Écrites en clair, jamais dérivées par opacité.** Éclaircir une couleur
+    /// en la rendant translucide la fait « salir » vers le fond — sur un fond
+    /// sombre, un vert translucide donne un olive sale, constaté en PNG. Et
+    /// `Color.mix(with:by:)`, qui ferait le travail proprement, n'existe qu'à
+    /// partir de macOS 15, au-dessus de la cible du projet.
+    private static func tones(
+        for category: AppCategory, in palette: PulseonPalette
+    ) -> (light: Color, base: Color) {
         switch category {
-        case .development: palette.navy
-        case .web: Color(red: 0.345, green: 0.573, blue: 0.769)
-        case .communication: Color(red: 0.522, green: 0.475, blue: 0.741)
-        case .media: Color(red: 0.635, green: 0.435, blue: 0.639)
-        case .creation: Color(red: 0.816, green: 0.545, blue: 0.451)
-        case .productivity: Color(red: 0.427, green: 0.616, blue: 0.612)
-        case .game: palette.gold
-        case .other: palette.inkFaint
+        case .development: (palette.navyLight, palette.navy)
+        case .game: (palette.goldLight, palette.gold)
+        case .web:
+            (Color(red: 0.529, green: 0.741, blue: 0.910), Color(red: 0.286, green: 0.518, blue: 0.741))
+        case .communication:
+            (Color(red: 0.686, green: 0.643, blue: 0.878), Color(red: 0.478, green: 0.427, blue: 0.722))
+        case .media:
+            (Color(red: 0.780, green: 0.596, blue: 0.788), Color(red: 0.588, green: 0.388, blue: 0.596))
+        case .creation:
+            (Color(red: 0.925, green: 0.706, blue: 0.612), Color(red: 0.784, green: 0.494, blue: 0.396))
+        case .productivity:
+            (Color(red: 0.573, green: 0.769, blue: 0.765), Color(red: 0.365, green: 0.573, blue: 0.569))
+        case .other: (palette.inkSoft, palette.inkFaint)
         }
+    }
+
+    private static func deviceTones(
+        for device: Device, in palette: PulseonPalette
+    ) -> (light: Color, base: Color, deep: Color) {
+        switch device {
+        case .mac: (palette.navyLight, palette.navy, palette.navyDeep)
+        case .playstation: (palette.goldLight, palette.gold, palette.goldDeep)
+        case .tv:
+            (
+                Color(red: 0.573, green: 0.769, blue: 0.765),
+                Color(red: 0.427, green: 0.616, blue: 0.612),
+                Color(red: 0.243, green: 0.400, blue: 0.396)
+            )
+        }
+    }
+
+    /// La même couleur, en dégradé, pour tout ce qui a de la surface : un arc
+    /// d'anneau, une jauge. **Un aplat de couleur paraît imprimé** ; c'est la
+    /// variation de clarté qui donne du relief, et c'est ce qui séparait la
+    /// première implémentation de la maquette — « bien moins premium ».
+    public static func gradient(for device: Device, in palette: PulseonPalette) -> LinearGradient {
+        let tones = deviceTones(for: device, in: palette)
+        return LinearGradient(
+            colors: [tones.light, tones.base, tones.deep],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    public static func gradient(
+        for category: AppCategory, in palette: PulseonPalette
+    ) -> LinearGradient {
+        let tones = tones(for: category, in: palette)
+        return LinearGradient(
+            colors: [tones.light, tones.base],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
     }
 
     /// L'icône d'une catégorie, en symbole système : la maquette pose une
