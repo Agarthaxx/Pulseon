@@ -94,33 +94,64 @@ func shoot(_ view: some View, size: CGSize, named name: String) {
     }
 }
 
-/// Le fond de fenêtre n'est pas peint par `ImageRenderer` : sans lui, le mode
-/// sombre se rend en texte clair sur fond blanc et paraît cassé à tort.
+/// **On rend `DayDashboardContent`, jamais `DayDashboard`.** Ce dernier enrobe
+/// son contenu dans un `ScrollView`, dont `ImageRenderer` ne rend rien : la
+/// sortie est alors un rectangle uni de la couleur du fond, et on croit à un
+/// bug de dessin alors que la vue est simplement hors champ.
 @MainActor
 func dashboard(_ load: DayDashboard.Load, canGoForward: Bool, scheme: ColorScheme) -> some View {
-    DayDashboard(
-        load: load, canGoForward: canGoForward,
-        onPrevious: {}, onNext: {}, onToday: {}
+    DayDashboardContent(
+        load: load,
+        canGoForward: canGoForward,
+        palette: PulseonTheme.palette(for: scheme)
     )
     .environment(\.colorScheme, scheme)
-    .background(
-        scheme == .dark
-            ? Color(red: 0.117, green: 0.117, blue: 0.125)
-            : Color(red: 0.965, green: 0.965, blue: 0.969)
-    )
 }
+
+/// À quoi la journée a servi. Calculé ici à la main : le classement réel vit
+/// côté macOS, qui sait lire la catégorie déclarée d'une app.
+let categories: [CategoryTotal] = [
+    CategoryTotal(
+        category: .development, total: 6 * 3600,
+        entities: [
+            EntityTotal(entity: "Xcode", total: 4.8 * 3600),
+            EntityTotal(entity: "Ghostty", total: 1.2 * 3600),
+        ]
+    ),
+    CategoryTotal(
+        category: .media, total: 2.1 * 3600,
+        entities: [EntityTotal(entity: "IINA", total: 2.1 * 3600)]
+    ),
+    CategoryTotal(
+        category: .game, total: psTotal,
+        entities: [EntityTotal(entity: "Elden Ring", total: psTotal)]
+    ),
+    CategoryTotal(
+        category: .web, total: 0.8 * 3600,
+        entities: [EntityTotal(entity: "Brave Browser", total: 0.8 * 3600)]
+    ),
+    // Volontairement minuscule : c'est le cas qui teste le plancher de
+    // visibilité de l'anneau et de la jauge.
+    CategoryTotal(
+        category: .communication, total: 3 * 60,
+        entities: [EntityTotal(entity: "Slack", total: 3 * 60)]
+    ),
+]
 
 MainActor.assumeIsolated {
     let now = dayStart.addingTimeInterval(19.4 * 3600)
-    let today = DayPresentation(digest: digest, dayStart: dayStart, dayLength: day, now: now)
+    let today = DayPresentation(
+        digest: digest, dayStart: dayStart, dayLength: day, now: now,
+        categories: categories
+    )
 
     shoot(
         dashboard(.loaded(today), canGoForward: false, scheme: .dark),
-        size: CGSize(width: 860, height: 520), named: "pulseon-dark"
+        size: CGSize(width: 860, height: 900), named: "pulseon-dark"
     )
     shoot(
         dashboard(.loaded(today), canGoForward: true, scheme: .light),
-        size: CGSize(width: 860, height: 520), named: "pulseon-light"
+        size: CGSize(width: 860, height: 900), named: "pulseon-light"
     )
 
     // Une journée passée et vide : pas de tête de lecture, rien de branché.
@@ -130,7 +161,7 @@ MainActor.assumeIsolated {
     )
     shoot(
         dashboard(.loaded(empty), canGoForward: true, scheme: .dark),
-        size: CGSize(width: 860, height: 440), named: "pulseon-empty"
+        size: CGSize(width: 860, height: 700), named: "pulseon-empty"
     )
 
     // L'échec de lecture, qui ne doit pas ressembler à une journée à zéro.
@@ -143,6 +174,6 @@ MainActor.assumeIsolated {
     // tenir, et rien ne doit déborder.
     shoot(
         dashboard(.loaded(today), canGoForward: false, scheme: .dark),
-        size: CGSize(width: 620, height: 500), named: "pulseon-narrow"
+        size: CGSize(width: 560, height: 900), named: "pulseon-narrow"
     )
 }

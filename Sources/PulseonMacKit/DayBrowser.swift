@@ -43,12 +43,19 @@ public final class DayBrowser {
     private var comparedAt: Date?
     private let comparisonStaleness: TimeInterval = 5 * 60
 
+    /// Sait classer une app par catégorie. Optionnel : sans lui, la journée
+    /// s'affiche quand même, simplement sans sa répartition — c'est le cas des
+    /// tests, qui n'ont pas de registre d'apps.
+    private let registry: AppRegistry?
+
     public init(
         store: SessionStore,
+        registry: AppRegistry? = nil,
         calendar: Calendar = .current,
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = store
+        self.registry = registry
         self.calendar = calendar
         self.clock = clock
         self.dayStart = calendar.startOfDay(for: clock())
@@ -103,7 +110,8 @@ public final class DayBrowser {
                     dayLength: nextDay.timeIntervalSince(dayStart),
                     // La tête de lecture n'a de sens que sur la journée en
                     // cours : une journée passée est entièrement jouée.
-                    now: isToday ? now : nil
+                    now: isToday ? now : nil,
+                    categories: categories(of: digest)
                 )
             )
             refreshComparison(for: digest, isToday: isToday, now: now)
@@ -113,6 +121,18 @@ public final class DayBrowser {
             load = .failed(error.localizedDescription)
             comparison = nil
         }
+    }
+
+    /// À quoi la journée a servi.
+    ///
+    /// Le classement se décide ici et non dans le cœur : `PulseonCore` ne sait
+    /// pas ce qu'est un navigateur et n'a pas à le savoir. Il reçoit une
+    /// fonction de classement, que seul le côté macOS peut fournir.
+    private func categories(of digest: DayDigest) -> [CategoryTotal] {
+        guard let registry else { return [] }
+        let assignment = registry.assignment(for: digest)
+        return CategoryDigestBuilder(classify: assignment.category(for:entity:))
+            .build(from: digest)
     }
 
     // MARK: La comparaison

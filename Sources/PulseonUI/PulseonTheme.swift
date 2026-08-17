@@ -1,57 +1,140 @@
 import PulseonCore
 import SwiftUI
 
-/// L'identité visuelle, tenue en un seul endroit et partagée par les deux apps.
+/// La palette, résolue pour une apparence donnée.
 ///
-/// Parti pris : **le rack reste sombre, même en apparence claire.** Un appareil
-/// de mesure ne change pas de couleur avec le papier peint, et surtout les
-/// blocs d'activité ne se lisent qu'en couleur saturée sur fond sombre. Le
-/// reste de la fenêtre, lui, suit le système comme n'importe quelle app native.
-public enum PulseonTheme {
-    // MARK: Le rack
+/// Une **valeur** et non une collection de constantes globales, parce que la
+/// maquette d'Arthur existe en clair *et* en sombre (écran 5). Une couleur en
+/// `static let` ne peut pas suivre l'apparence du système, et `PulseonUI`
+/// n'a pas le droit d'appeler AppKit pour la résoudre — ces vues doivent
+/// compiler telles quelles pour l'app iOS.
+public struct PulseonPalette: Sendable {
+    /// Le fond de la fenêtre.
+    public let ground: Color
+    /// Une carte posée dessus.
+    public let surface: Color
+    /// Un creux : fond de jauge, piste vide de l'anneau.
+    public let sunken: Color
+    /// Un filet de séparation.
+    public let hairline: Color
 
-    /// Le panneau qui porte les pistes.
-    public static let rack = Color(red: 0.063, green: 0.075, blue: 0.094)
-    /// Le fond d'une piste vide : la journée qu'on n'a pas passée là.
-    public static let lane = Color(red: 0.090, green: 0.110, blue: 0.141)
-    /// Les graduations horaires.
-    public static let grid = Color(red: 0.239, green: 0.278, blue: 0.337)
-    public static let rackText = Color(red: 0.902, green: 0.918, blue: 0.949)
-    public static let rackTextMuted = Color(red: 0.494, green: 0.541, blue: 0.612)
+    public let ink: Color
+    public let inkSoft: Color
+    public let inkFaint: Color
+
+    /// L'or de la maquette. Il ne décore pas : il désigne du temps mesuré.
+    public let gold: Color
+    /// Le bleu nuit qui lui répond dans l'anneau et l'icône.
+    public let navy: Color
+}
+
+public enum PulseonTheme {
+    public static func palette(for scheme: ColorScheme) -> PulseonPalette {
+        scheme == .dark ? dark : light
+    }
+
+    /// Le sombre de l'écran 5 de la maquette, et de l'icône : un bleu nuit
+    /// presque noir, jamais un gris neutre.
+    public static let dark = PulseonPalette(
+        ground: Color(red: 0.043, green: 0.055, blue: 0.086),
+        surface: Color(red: 0.078, green: 0.094, blue: 0.137),
+        sunken: Color(red: 0.129, green: 0.153, blue: 0.204),
+        hairline: Color(red: 0.169, green: 0.196, blue: 0.255),
+        ink: Color(red: 0.965, green: 0.973, blue: 0.984),
+        inkSoft: Color(red: 0.639, green: 0.678, blue: 0.745),
+        inkFaint: Color(red: 0.435, green: 0.475, blue: 0.549),
+        gold: Color(red: 0.831, green: 0.686, blue: 0.373),
+        navy: Color(red: 0.353, green: 0.463, blue: 0.729)
+    )
+
+    public static let light = PulseonPalette(
+        ground: Color(red: 0.949, green: 0.953, blue: 0.965),
+        surface: .white,
+        sunken: Color(red: 0.902, green: 0.914, blue: 0.937),
+        hairline: Color(red: 0.851, green: 0.867, blue: 0.898),
+        ink: Color(red: 0.055, green: 0.078, blue: 0.129),
+        inkSoft: Color(red: 0.353, green: 0.396, blue: 0.463),
+        inkFaint: Color(red: 0.529, green: 0.569, blue: 0.635),
+        gold: Color(red: 0.663, green: 0.518, blue: 0.184),
+        navy: Color(red: 0.114, green: 0.216, blue: 0.451)
+    )
 
     // MARK: Les appareils
 
-    /// Une couleur par appareil, tenue partout : c'est la couleur qui dit de
-    /// quel écran on parle, donc elle porte de l'information et ne se choisit
-    /// pas à l'humeur.
-    public static func color(for device: Device) -> Color {
+    /// Une couleur par appareil, tenue partout : c'est elle qui dit de quel
+    /// écran on parle, donc elle porte de l'information et ne se choisit pas à
+    /// l'humeur. Les trois se lisent aussi en niveaux de gris — un anneau dont
+    /// les arcs ne se distinguent que par la teinte serait illisible pour un
+    /// œil daltonien.
+    public static func color(for device: Device, in palette: PulseonPalette) -> Color {
         switch device {
-        case .mac: Color(red: 0.353, green: 0.847, blue: 0.651)
-        case .playstation: Color(red: 0.431, green: 0.561, blue: 1.0)
-        case .tv: Color(red: 0.949, green: 0.651, blue: 0.353)
+        case .mac: palette.navy
+        case .playstation: palette.gold
+        case .tv: Color(red: 0.427, green: 0.616, blue: 0.612)
         }
     }
 
-    /// Le rouge de la tête de lecture. Emprunté aux stations de travail audio,
-    /// où c'est la couleur de l'enregistrement en cours — ici, la journée en
-    /// train de s'écrire. Réservé à ça : aucun autre élément ne le porte.
-    public static let playhead = Color(red: 1.0, green: 0.294, blue: 0.294)
+    /// Une couleur par catégorie, dérivée du même axe bleu nuit → or que la
+    /// maquette. **Aucune n'est rouge** : le rouge dirait « trop », et Pulseon
+    /// ne juge pas.
+    public static func color(for category: AppCategory, in palette: PulseonPalette) -> Color {
+        switch category {
+        case .development: palette.navy
+        case .web: Color(red: 0.345, green: 0.573, blue: 0.769)
+        case .communication: Color(red: 0.522, green: 0.475, blue: 0.741)
+        case .media: Color(red: 0.635, green: 0.435, blue: 0.639)
+        case .creation: Color(red: 0.816, green: 0.545, blue: 0.451)
+        case .productivity: Color(red: 0.427, green: 0.616, blue: 0.612)
+        case .game: palette.gold
+        case .other: palette.inkFaint
+        }
+    }
+
+    /// L'icône d'une catégorie, en symbole système : la maquette pose une
+    /// pastille colorée devant chaque ligne, et un glyphe s'y lit plus vite
+    /// qu'un aplat.
+    public static func symbol(for category: AppCategory) -> String {
+        switch category {
+        case .development: "chevron.left.forwardslash.chevron.right"
+        case .web: "globe"
+        case .communication: "bubble.left.and.bubble.right.fill"
+        case .media: "play.rectangle.fill"
+        case .creation: "paintbrush.fill"
+        case .productivity: "checkmark.circle.fill"
+        case .game: "gamecontroller.fill"
+        case .other: "square.grid.2x2.fill"
+        }
+    }
+
+    public static func symbol(for device: Device) -> String {
+        switch device {
+        case .mac: "laptopcomputer"
+        case .playstation: "gamecontroller.fill"
+        case .tv: "tv.inset.filled"
+        }
+    }
 
     // MARK: Type
 
-    /// Les grands nombres, en caractères comprimés et à chasse fixe.
+    /// Les grands nombres.
     ///
-    /// Comprimés parce que c'est le dessin des afficheurs d'instruments, et
-    /// parce que ça laisse la place de dire une durée en entier sans la
-    /// rapetisser. Chasse fixe pour que les chiffres ne tremblent pas quand ils
-    /// défilent — un total qui gigote se lit mal et fait bon marché.
+    /// **Plus de caractères comprimés** : c'était le dessin d'un afficheur
+    /// d'instrument, direction abandonnée. La chasse fixe des chiffres reste,
+    /// pour qu'un total qui défile ne tremble pas.
     public static func readout(_ size: CGFloat) -> Font {
-        .system(size: size, weight: .semibold, design: .default)
-            .width(.compressed)
-            .monospacedDigit()
+        .system(size: size, weight: .semibold).monospacedDigit()
     }
 
-    /// Les étiquettes de piste et la règle horaire : petites capitales espacées,
-    /// le vocabulaire de la sérigraphie sur un boîtier.
-    public static let stencil = Font.system(size: 10, weight: .semibold, design: .monospaced)
+    /// L'unité collée au grand nombre, plus petite et plus grise.
+    ///
+    /// Elle a besoin d'un `baselineOffset` à l'usage : partageant la ligne de
+    /// base des grands chiffres, elle tombe sinon tout en bas et se lit comme
+    /// un indice de formule chimique.
+    public static func unit(_ size: CGFloat) -> Font {
+        .system(size: size, weight: .medium)
+    }
+
+    public static let sectionTitle = Font.system(size: 12, weight: .semibold)
+    public static let row = Font.system(size: 13, weight: .medium)
+    public static let caption = Font.system(size: 11)
 }

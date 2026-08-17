@@ -3,10 +3,17 @@ import SwiftUI
 
 /// L'écran d'une journée : ce qu'on voit en ouvrant Pulseon.
 ///
-/// L'ordre de lecture est voulu : d'abord le temps réellement passé devant un
-/// écran, ensuite *quand* il l'a été, enfin le détail par appareil. Le chiffre
-/// répond à la question qu'on se pose en ouvrant l'app ; la timeline répond à
-/// celle qu'on ne savait pas se poser.
+/// **Suit la maquette d'Arthur du 2026-08-17** — fond profond, cartes,
+/// l'anneau en tête, puis la répartition, puis les appareils. Deux écarts
+/// délibérés, tous deux demandés ou imposés par les règles du projet :
+///
+/// - **aucun objectif quotidien, aucun badge « On Track »**. La maquette en
+///   portait ; Arthur a confirmé « on reste sur une application sans
+///   jugement » en même temps qu'il validait le dessin. L'anneau garde donc sa
+///   forme mais dit une composition, pas une progression (voir `RingLayout`) ;
+/// - **la PlayStation n'apparaît sur aucune ligne de temps**. Elle ne connaît
+///   pas ses horaires : elle a sa part dans l'anneau, qui n'est pas une
+///   chronologie, et son total dans les listes.
 public struct DayDashboard: View {
     public enum Load: Sendable {
         case loaded(DayPresentation)
@@ -20,6 +27,8 @@ public struct DayDashboard: View {
     private let onPrevious: () -> Void
     private let onNext: () -> Void
     private let onToday: () -> Void
+
+    @Environment(\.colorScheme) private var scheme
 
     public init(
         load: Load,
@@ -36,76 +45,129 @@ public struct DayDashboard: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            switch load {
-            case .loaded(let day):
-                header(day)
-                readout(day)
-                DayTimeline(day: day)
-                breakdown(day)
-            case .failed(let reason):
-                header(nil)
-                Failure(reason: reason)
-            }
-            Spacer(minLength: 0)
+        // Le contenu vit séparé du conteneur défilant : `ImageRenderer` ne rend
+        // rien de l'intérieur d'un `ScrollView`, donc une vue défilante d'un
+        // seul tenant serait invisible à la preview.
+        ScrollView {
+            DayDashboardContent(
+                load: load,
+                canGoForward: canGoForward,
+                palette: PulseonTheme.palette(for: scheme),
+                onPrevious: onPrevious,
+                onNext: onNext,
+                onToday: onToday
+            )
         }
-        .padding(22)
-        .frame(minWidth: 620, minHeight: 460)
+        .background(PulseonTheme.palette(for: scheme).ground)
+        .frame(minWidth: 640, minHeight: 560)
+    }
+}
+
+/// Le contenu du dashboard, rendable seul — c'est ce que regarde la preview.
+public struct DayDashboardContent: View {
+    let load: DayDashboard.Load
+    let canGoForward: Bool
+    let palette: PulseonPalette
+    let onPrevious: () -> Void
+    let onNext: () -> Void
+    let onToday: () -> Void
+
+    public init(
+        load: DayDashboard.Load,
+        canGoForward: Bool,
+        palette: PulseonPalette,
+        onPrevious: @escaping () -> Void = {},
+        onNext: @escaping () -> Void = {},
+        onToday: @escaping () -> Void = {}
+    ) {
+        self.load = load
+        self.canGoForward = canGoForward
+        self.palette = palette
+        self.onPrevious = onPrevious
+        self.onNext = onNext
+        self.onToday = onToday
     }
 
-    // MARK: En-tête
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            switch load {
+            case .loaded(let day):
+                header(title: day.title, isLive: day.now != nil)
+                RingCard(day: day, palette: palette)
+                if !day.categories.isEmpty {
+                    BreakdownCard(day: day, palette: palette)
+                }
+                DevicesCard(day: day, palette: palette)
+            case .failed(let reason):
+                header(title: "Journée", isLive: false)
+                FailureCard(reason: reason, palette: palette)
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.ground)
+    }
 
     @ViewBuilder
-    private func header(_ day: DayPresentation?) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(day?.title ?? "Journée")
-                .font(.system(size: 20, weight: .semibold))
-                .textCase(.lowercase)
-
-            if let day, day.now != nil {
-                Text("en cours")
-                    .font(PulseonTheme.stencil)
-                    .foregroundStyle(PulseonTheme.playhead)
+    private func header(title: String, isLive: Bool) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(isLive ? "Aujourd'hui" : "Journée")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(palette.ink)
+                Text(title)
+                    .font(PulseonTheme.caption)
+                    .foregroundStyle(palette.inkSoft)
             }
 
             Spacer()
 
-            // `.link` n'existe que sur macOS, et ces vues doivent compiler
-            // telles quelles pour l'app iOS.
-            Button("Aujourd'hui", action: onToday)
-                .buttonStyle(.borderless)
-                .opacity(canGoForward ? 1 : 0)
-
-            HStack(spacing: 4) {
-                Button(action: onPrevious) { Image(systemName: "chevron.left") }
-                    .help("Journée précédente")
-                Button(action: onNext) { Image(systemName: "chevron.right") }
-                    .help("Journée suivante")
-                    .disabled(!canGoForward)
+            if canGoForward {
+                Button("Aujourd'hui", action: onToday)
+                    .buttonStyle(.plain)
+                    .font(PulseonTheme.caption)
+                    .foregroundStyle(palette.gold)
             }
-            .buttonStyle(.borderless)
+
+            // `.buttonStyle(.plain)` n'est pas cosmétique : avec le style par
+            // défaut, `ImageRenderer` sort des carrés jaunes à la place des
+            // chevrons et la preview devient illisible.
+            HStack(spacing: 2) {
+                NavButton(symbol: "chevron.left", palette: palette, action: onPrevious)
+                NavButton(
+                    symbol: "chevron.right",
+                    palette: palette,
+                    isEnabled: canGoForward,
+                    action: onNext
+                )
+            }
         }
     }
+}
 
-    // MARK: Les deux totaux
+// MARK: - L'anneau
 
-    @ViewBuilder
-    private func readout(_ day: DayPresentation) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            if day.isEmpty {
-                // Une journée sans aucune source branchée n'est pas une journée
-                // à zéro : on n'a simplement rien mesuré.
-                Text("Rien de branché ce jour-là")
-                    .font(PulseonTheme.readout(34))
-                    .foregroundStyle(.secondary)
-            } else {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(DurationFormat.compact(day.digest.coveredTotal))
-                        .font(PulseonTheme.readout(56))
-                    Text("devant un écran")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
-                }
+private struct RingCard: View {
+    let day: DayPresentation
+    let palette: PulseonPalette
+
+    var body: some View {
+        let lanes = day.digest.lanes.filter { $0.total > 0 }
+
+        Card(palette: palette) {
+            VStack(spacing: 14) {
+                ActivityRing(
+                    segments: lanes.map {
+                        .init(
+                            id: $0.device.rawValue,
+                            value: $0.total,
+                            color: PulseonTheme.color(for: $0.device, in: palette)
+                        )
+                    },
+                    total: day.isEmpty ? nil : day.digest.coveredTotal,
+                    caption: day.isEmpty ? "rien de branché" : "devant un écran",
+                    palette: palette
+                )
 
                 // Le second total ne s'affiche que s'il dit autre chose : sans
                 // chevauchement, répéter le même chiffre sous un autre nom ne
@@ -114,35 +176,87 @@ public struct DayDashboard: View {
                     Text(
                         "\(DurationFormat.compact(day.digest.summedTotal)) en cumulant les appareils, écrans simultanés comptés deux fois"
                     )
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
+                    .font(PulseonTheme.caption)
+                    .foregroundStyle(palette.inkFaint)
+                    .multilineTextAlignment(.center)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+        }
+    }
+}
+
+// MARK: - La répartition
+
+private struct BreakdownCard: View {
+    let day: DayPresentation
+    let palette: PulseonPalette
+
+    var body: some View {
+        // Les parts se calculent sur la somme des catégories, pas sur le total
+        // de la journée : deux catégories simultanées comptent chacune leur
+        // temps, donc leur somme peut dépasser le temps passé devant un écran.
+        // Rapporter au `coveredTotal` afficherait des pourcentages dépassant
+        // 100 %.
+        let sum = day.categories.reduce(0) { $0 + $1.total }
+
+        Card(palette: palette) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Répartition")
+                    .font(PulseonTheme.sectionTitle)
+                    .foregroundStyle(palette.inkSoft)
+
+                ForEach(day.categories) { category in
+                    MeterRow(
+                        symbol: PulseonTheme.symbol(for: category.category),
+                        tint: PulseonTheme.color(for: category.category, in: palette),
+                        label: category.category.label,
+                        detail: category.entities.prefix(3).map(\.entity).joined(separator: " · "),
+                        total: category.total,
+                        share: sum > 0 ? category.total / sum : 0,
+                        palette: palette
+                    )
                 }
             }
         }
     }
+}
 
-    // MARK: Le détail
+// MARK: - Les appareils
 
-    @ViewBuilder
-    private func breakdown(_ day: DayPresentation) -> some View {
-        let lanes = day.digest.lanes.filter { $0.isConnected && !$0.topEntities.isEmpty }
-        if !lanes.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(lanes, id: \.device) { lane in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Circle()
-                            .fill(PulseonTheme.color(for: lane.device))
-                            .frame(width: 7, height: 7)
-                        Text(lane.device.label)
-                            .font(.system(size: 12, weight: .medium))
-                        Text(DurationFormat.long(lane.total))
-                            .font(.system(size: 12).monospacedDigit())
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text(lane.topEntities.prefix(3).map(\.entity).joined(separator: " · "))
-                            .font(.system(size: 11))
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
+private struct DevicesCard: View {
+    let day: DayPresentation
+    let palette: PulseonPalette
+
+    var body: some View {
+        let sum = day.digest.summedTotal
+
+        Card(palette: palette) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Appareils")
+                    .font(PulseonTheme.sectionTitle)
+                    .foregroundStyle(palette.inkSoft)
+
+                ForEach(day.digest.lanes, id: \.device) { lane in
+                    if lane.isConnected {
+                        MeterRow(
+                            symbol: PulseonTheme.symbol(for: lane.device),
+                            tint: PulseonTheme.color(for: lane.device, in: palette),
+                            label: lane.device.label,
+                            detail: lane.kind == .counter
+                                // Sa part de l'anneau est honnête, sa place dans
+                                // la journée est inconnue — et doit se dire.
+                                ? "horaires inconnus"
+                                : lane.topEntities.prefix(3).map(\.entity).joined(separator: " · "),
+                            total: lane.total,
+                            share: sum > 0 ? lane.total / sum : 0,
+                            palette: palette
+                        )
+                    } else {
+                        // « Pas encore branchée » n'est pas « journée à zéro ».
+                        // Zéro est une affirmation ; ici on n'a rien mesuré.
+                        UnpluggedRow(device: lane.device, palette: palette)
                     }
                 }
             }
@@ -150,26 +264,180 @@ public struct DayDashboard: View {
     }
 }
 
-private struct Failure: View {
-    let reason: String
+// MARK: - Briques
+
+private struct MeterRow: View {
+    let symbol: String
+    let tint: Color
+    let label: String
+    let detail: String
+    let total: TimeInterval
+    let share: Double
+    let palette: PulseonPalette
+
+    /// Trois minutes dans une journée font 0,4 % : tronqué à l'entier, ça
+    /// s'affichait « 0 % » juste à côté d'une durée non nulle. Zéro est une
+    /// affirmation, et celle-ci était fausse.
+    static func percentage(_ share: Double) -> String {
+        let percent = share * 100
+        if percent > 0, percent < 1 { return "< 1 %" }
+        return "\(Int(percent)) %"
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Lecture impossible")
-                .font(.system(size: 15, weight: .semibold))
-            // Dire quoi faire, pas seulement que ça a raté.
-            Text(
-                "Pulseon n'a pas pu lire ses enregistrements. Le collecteur continue de tourner ; rouvrir la fenêtre retentera la lecture."
-            )
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            Text(reason)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.tertiary)
-                .textSelection(.enabled)
+        HStack(spacing: 11) {
+            Chip(symbol: symbol, tint: tint, palette: palette)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(label)
+                        .font(PulseonTheme.row)
+                        .foregroundStyle(palette.ink)
+                    Spacer(minLength: 6)
+                    Text(DurationFormat.compact(total))
+                        .font(PulseonTheme.row.monospacedDigit())
+                        .foregroundStyle(palette.ink)
+                    Text(Self.percentage(share))
+                        .font(PulseonTheme.caption.monospacedDigit())
+                        .foregroundStyle(palette.inkFaint)
+                        .frame(width: 42, alignment: .trailing)
+                }
+
+                Meter(share: share, tint: tint, palette: palette)
+
+                if !detail.isEmpty {
+                    Text(detail)
+                        .font(PulseonTheme.caption)
+                        .foregroundStyle(palette.inkFaint)
+                        .lineLimit(1)
+                }
+            }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+private struct Meter: View {
+    let share: Double
+    let tint: Color
+    let palette: PulseonPalette
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(palette.sunken)
+                Capsule()
+                    .fill(tint)
+                    // Une part minuscule doit rester visible : à 0,5 % la jauge
+                    // ferait 0,3 point de large et se lirait « rien ».
+                    .frame(width: max(3, geometry.size.width * min(1, max(0, share))))
+            }
+        }
+        .frame(height: 5)
+    }
+}
+
+private struct Chip: View {
+    let symbol: String
+    let tint: Color
+    let palette: PulseonPalette
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(tint.opacity(0.16))
+            .frame(width: 30, height: 30)
+            .overlay(
+                Image(systemName: symbol)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(tint)
+            )
+    }
+}
+
+private struct UnpluggedRow: View {
+    let device: Device
+    let palette: PulseonPalette
+
+    var body: some View {
+        HStack(spacing: 11) {
+            Chip(symbol: PulseonTheme.symbol(for: device), tint: palette.inkFaint, palette: palette)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(device.label)
+                    .font(PulseonTheme.row)
+                    .foregroundStyle(palette.inkSoft)
+                Text("pas encore branchée")
+                    .font(PulseonTheme.caption)
+                    .foregroundStyle(palette.inkFaint)
+            }
+            Spacer()
+            // Le pointillé dit l'inconnu, là où le plein dit le mesuré.
+            Capsule()
+                .strokeBorder(
+                    palette.hairline,
+                    style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+                )
+                .frame(width: 54, height: 5)
+        }
+    }
+}
+
+private struct Card<Content: View>: View {
+    let palette: PulseonPalette
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(palette.surface)
+            )
+    }
+}
+
+private struct NavButton: View {
+    let symbol: String
+    let palette: PulseonPalette
+    var isEnabled: Bool = true
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(isEnabled ? palette.inkSoft : palette.inkFaint.opacity(0.4))
+                .frame(width: 26, height: 26)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(palette.sunken)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+    }
+}
+
+private struct FailureCard: View {
+    let reason: String
+    let palette: PulseonPalette
+
+    var body: some View {
+        Card(palette: palette) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Lecture impossible")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(palette.ink)
+                // Dire quoi faire, pas seulement que ça a raté.
+                Text(
+                    "Pulseon n'a pas pu lire ses enregistrements. Le collecteur continue de tourner ; rouvrir la fenêtre retentera la lecture."
+                )
+                .font(PulseonTheme.caption)
+                .foregroundStyle(palette.inkSoft)
+                Text(reason)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(palette.inkFaint)
+                    .textSelection(.enabled)
+            }
+        }
     }
 }
