@@ -9,7 +9,7 @@ App native Apple pour suivre le temps passé sur Mac, PlayStation, TV, et
 |-------------|---------|-------------------------------------------------------------------------|
 | Mac         | À faire | `NSWorkspace` (app active) + `Quartz` (inactivité), depuis l'app macOS  |
 | PlayStation | À faire | API non-officielle PSN — poll de `playDuration` par jeu, temps journalier = delta entre deux relevés |
-| TV          | À faire | Prise connectée avec mesure de conso (type Shelly / TP-Link Kasa) — détecte allumage/extinction |
+| TV          | **Codée** | API HTTP locale de la télé (Samsung Tizen, port 8001) — `PowerState` dit si l'écran est allumé. Source à intervalles, comme le Mac |
 | iPhone      | Différé | Voir contrainte ci-dessous                                              |
 
 ## Décisions et contraintes connues
@@ -398,6 +398,80 @@ gêne pas l'agrégation, qui cherche « le dernier relevé antérieur au jour »
 un relevé plus ancien fait l'affaire tant que le total n'a pas bougé. Un total
 qui *baisse* est écrit tel quel : c'est ce que la source a dit, et c'est à
 l'agrégation de refuser les deltas négatifs, ce qu'elle fait déjà.
+
+### La TV : ce que le réseau dit, et ce qu'il ne dit pas
+
+Le collecteur TV interroge l'API HTTP locale de la télé —
+`GET http://<hôte>:8001/api/v2/` — qui rend un champ `PowerState`. C'est une
+source à **intervalles**, comme le Mac : elle sait dire *quand* l'écran était
+allumé, donc elle ouvre et ferme de vraies sessions et sa place sur la timeline
+n'est pas inventée.
+
+**Tout ce qui suit a été mesuré sur la télé d'Arthur** (Samsung `TQ55S90CATXXC`,
+Tizen), allumée puis éteinte, le 2026-08-16 — pas déduit d'une documentation :
+
+| Signal | Allumée | Éteinte | Verdict |
+|---|---|---|---|
+| Ping ICMP | répond | **répond aussi** | inutilisable |
+| Annonce mDNS `_airplay._tcp` | présente | **présente aussi** | inutilisable |
+| `GET :8001/api/v2/` | `PowerState: on` | connexion refusée, **ou** `standby` | **le bon signal** |
+| Résolution de `Samsung.local` | résout | **résout aussi** | pas besoin d'IP fixe |
+
+Quatre choses à ne pas perdre :
+
+- **L'idée de départ — détecter la télé au ping — était fausse**, et seule la
+  mesure l'a montré. La puce réseau reste vivante en veille : une détection au
+  ping aurait compté une télé éteinte toute la nuit comme du temps d'écran. C'est
+  exactement le risque qui avait été signalé avant de coder, et il s'est réalisé.
+- **La télé éteinte a deux comportements**, tous deux observés à une heure
+  d'intervalle : le port refuse la connexion, ou il répond `standby`. Sans doute
+  selon la profondeur du sommeil. Les deux valent « éteinte » — n'en traiter qu'un
+  laisserait l'autre mentir.
+- **Interroger la télé ne la rallume pas** (vérifié, ç'aurait été rédhibitoire).
+  Et l'API répond **sans authentification** en lecture : rien à déposer dans le
+  Trousseau, contrairement à la PlayStation.
+- **Viser le nom mDNS et non une IP.** `Samsung.local` résout même en veille, et
+  `URLSession` sait le faire (≈ 0,5 s au premier appel). Une IP serait figée
+  jusqu'au prochain bail DHCP.
+
+**Trois états, pas deux.** `TVReading` distingue `on`, `off` et `unknown`, et le
+troisième est celui qui protège le comptage : sans réseau, on ne sait rien de la
+télé. `NetworkWitness` (sur `NWPathMonitor`) sert uniquement à trancher entre
+« la télé refuse le port, donc elle est éteinte » et « le Mac n'a plus de réseau,
+donc on ignore tout ». Il est **optimiste au démarrage** : avant la première mise à
+jour du chemin réseau il répond « il y a du réseau », ce qui fait pencher le doute
+vers le sous-comptage plutôt que vers une session laissée ouverte.
+
+`TVDecision` porte la règle, pure et testée :
+
+- **une extinction ferme la session au dernier instant où l'écran a été *observé*
+  allumé**, jamais à l'heure courante. Entre deux relevés on ignore à quelle
+  seconde l'écran s'est éteint : sous-compter d'un intervalle est permis, inventer
+  ne l'est pas. Même discipline qu'`ActivityMonitor.endOfActivity` ;
+- **ne rien savoir est toléré deux minutes**, puis la session est fermée au dernier
+  instant observé. Sans tolérance, une micro-coupure Wi-Fi découperait une soirée
+  de film en confettis ; sans limite, une panne d'une nuit compterait huit heures
+  de télé qui n'ont pas eu lieu ;
+- une **réponse incompréhensible** vaut `unknown`, jamais `off` : un changement de
+  firmware ne doit pas effacer une soirée.
+
+**Le nom de la télé se dépose dans les réglages, pas dans le Trousseau** — ce
+n'est pas un secret :
+
+```
+defaults write com.arthurlanllier.pulseon TVHost "Samsung.local"
+```
+
+Sans ce réglage, aucun collecteur TV ne démarre : interroger dans le vide
+n'apporterait qu'une erreur toutes les trente secondes.
+
+**Un bug que ce collecteur a révélé dans l'existant** : `closeOpenSession(at:)`
+fermait les sessions de **tous** les appareils. Avec une seule source à
+intervalles ça ne se voyait pas ; avec deux, la mise en veille du Mac aurait clos
+la session d'une télé restée allumée, et rien ne l'aurait signalé — la base se
+serait simplement mise à sous-compter la télé. Chaque collecteur ferme désormais
+la sienne (`closeOpenSession(device:at:)`), et la version « tous » est réservée à
+l'extinction de l'agent.
 
 ### Les secrets vont dans le Trousseau, pas dans un `.env`
 
