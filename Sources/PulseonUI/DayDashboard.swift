@@ -89,7 +89,7 @@ public struct DayDashboardContent: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             switch load {
             case .loaded(let day):
                 header(title: day.title, isLive: day.now != nil)
@@ -111,12 +111,15 @@ public struct DayDashboardContent: View {
     @ViewBuilder
     private func header(title: String, isLive: Bool) -> some View {
         HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(isLive ? "Aujourd'hui" : "Journée")
-                    .font(.system(size: 22, weight: .bold))
+                    // Grand et resserré : la hiérarchie de la maquette est
+                    // franche, sans taille intermédiaire qui aplatirait tout.
+                    .font(.system(size: 27, weight: .bold))
+                    .tracking(-0.5)
                     .foregroundStyle(palette.ink)
                 Text(title)
-                    .font(PulseonTheme.caption)
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(palette.inkSoft)
             }
 
@@ -161,7 +164,7 @@ private struct RingCard: View {
                         .init(
                             id: $0.device.rawValue,
                             value: $0.total,
-                            color: PulseonTheme.color(for: $0.device, in: palette)
+                            fill: PulseonTheme.gradient(for: $0.device, in: palette)
                         )
                     },
                     total: day.isEmpty ? nil : day.digest.coveredTotal,
@@ -202,15 +205,17 @@ private struct BreakdownCard: View {
         let sum = day.categories.reduce(0) { $0 + $1.total }
 
         Card(palette: palette) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 15) {
                 Text("Répartition")
                     .font(PulseonTheme.sectionTitle)
                     .foregroundStyle(palette.inkSoft)
+                    .padding(.bottom, 2)
 
                 ForEach(day.categories) { category in
                     MeterRow(
                         symbol: PulseonTheme.symbol(for: category.category),
                         tint: PulseonTheme.color(for: category.category, in: palette),
+                        fill: PulseonTheme.gradient(for: category.category, in: palette),
                         label: category.category.label,
                         detail: category.entities.prefix(3).map(\.entity).joined(separator: " · "),
                         total: category.total,
@@ -233,16 +238,18 @@ private struct DevicesCard: View {
         let sum = day.digest.summedTotal
 
         Card(palette: palette) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 15) {
                 Text("Appareils")
                     .font(PulseonTheme.sectionTitle)
                     .foregroundStyle(palette.inkSoft)
+                    .padding(.bottom, 2)
 
                 ForEach(day.digest.lanes, id: \.device) { lane in
                     if lane.isConnected {
                         MeterRow(
                             symbol: PulseonTheme.symbol(for: lane.device),
                             tint: PulseonTheme.color(for: lane.device, in: palette),
+                            fill: PulseonTheme.gradient(for: lane.device, in: palette),
                             label: lane.device.label,
                             detail: lane.kind == .counter
                                 // Sa part de l'anneau est honnête, sa place dans
@@ -269,6 +276,7 @@ private struct DevicesCard: View {
 private struct MeterRow: View {
     let symbol: String
     let tint: Color
+    let fill: LinearGradient
     let label: String
     let detail: String
     let total: TimeInterval
@@ -295,7 +303,7 @@ private struct MeterRow: View {
                         .foregroundStyle(palette.ink)
                     Spacer(minLength: 6)
                     Text(DurationFormat.compact(total))
-                        .font(PulseonTheme.row.monospacedDigit())
+                        .font(.system(size: 15, weight: .semibold).monospacedDigit())
                         .foregroundStyle(palette.ink)
                     Text(Self.percentage(share))
                         .font(PulseonTheme.caption.monospacedDigit())
@@ -303,7 +311,7 @@ private struct MeterRow: View {
                         .frame(width: 42, alignment: .trailing)
                 }
 
-                Meter(share: share, tint: tint, palette: palette)
+                Meter(share: share, fill: fill, palette: palette)
 
                 if !detail.isEmpty {
                     Text(detail)
@@ -318,7 +326,7 @@ private struct MeterRow: View {
 
 private struct Meter: View {
     let share: Double
-    let tint: Color
+    let fill: LinearGradient
     let palette: PulseonPalette
 
     var body: some View {
@@ -326,13 +334,13 @@ private struct Meter: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(palette.sunken)
                 Capsule()
-                    .fill(tint)
+                    .fill(fill)
                     // Une part minuscule doit rester visible : à 0,5 % la jauge
                     // ferait 0,3 point de large et se lirait « rien ».
                     .frame(width: max(3, geometry.size.width * min(1, max(0, share))))
             }
         }
-        .frame(height: 5)
+        .frame(height: 6)
     }
 }
 
@@ -342,12 +350,16 @@ private struct Chip: View {
     let palette: PulseonPalette
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(tint.opacity(0.16))
-            .frame(width: 30, height: 30)
+        RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .fill(tint.opacity(0.18))
+            .frame(width: 34, height: 34)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(tint.opacity(0.28), lineWidth: 0.5)
+            )
             .overlay(
                 Image(systemName: symbol)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(tint)
             )
     }
@@ -380,18 +392,30 @@ private struct UnpluggedRow: View {
     }
 }
 
+/// Une carte flottante.
+///
+/// Trois couches, et aucune n'est décorative : un **dégradé** très léger pour
+/// que la surface ne paraisse pas imprimée, un **filet** clair sur le bord haut
+/// pour attraper la lumière, et une **ombre portée** pour la décoller du fond.
+/// Sans elles, la carte et le fond se lisaient comme un seul aplat — c'est ce
+/// qui faisait « bien moins premium » que la maquette.
 private struct Card<Content: View>: View {
     let palette: PulseonPalette
     @ViewBuilder let content: Content
 
     var body: some View {
         content
-            .padding(16)
+            .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(palette.surface)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(palette.surfaceGradient)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5)
+            )
+            .shadow(color: palette.shadow, radius: 16, y: 8)
     }
 }
 
