@@ -718,6 +718,15 @@ cours.
   le code.
 - **Arthur relit et merge lui-même.** Relation tech lead / dev : livrer,
   signaler les choix discutables, ne pas merger à sa place.
+- **Depuis le 2026-08-17 : chaque feature porte son back ET son front,
+  systématiquement.** Le mode « back seul, front en pause » (PR #21, #23, #26)
+  a produit du travail réel mais invisible plusieurs sessions de suite — c'est
+  ce qui a fait perdre à Arthur le fil de l'avancement. **Le front se fait en
+  composants système neutres** (`List`, `Text`, couleurs et polices par
+  défaut) : ce n'est pas une direction visuelle, donc ça n'entre pas en
+  conflit avec la pause déclarée sur `PulseonTheme` — voir la skill
+  `pulseon-design`. Quand sa maquette arrivera, on repeint des écrans qui
+  existent déjà plutôt que d'improviser l'ensemble d'un coup.
 
 ### Lancer les tests
 

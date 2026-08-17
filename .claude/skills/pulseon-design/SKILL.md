@@ -17,10 +17,18 @@ tranché ainsi :
 > Le front-end se bosse aussi, c'est un vrai métier. »
 
 **Donc : ne pas proposer de direction visuelle, ne pas restyler spontanément, ne
-pas « améliorer » une vue au passage.** Le travail utile est la logique —
-collecte, agrégation, fiabilité, nouvelles sources. Quand ses maquettes arrivent,
-les implémenter fidèlement et ne vérifier qu'une chose : qu'elles ne cassent pas
-les règles ci-dessous.
+pas « améliorer » une vue au passage.** Quand ses maquettes arrivent, les
+implémenter fidèlement et ne vérifier qu'une chose : qu'elles ne cassent pas les
+règles ci-dessous.
+
+**Correction du 2026-08-17, à ne pas confondre avec ce qui précède : « pas de
+direction visuelle » ne veut plus dire « pas de front ».** Les PR purement back
+(#21, #23, #26) ont produit du travail réel resté invisible plusieurs sessions —
+Arthur a perdu le fil de l'avancement. Depuis, **chaque feature porte son écran**,
+mais en composants système neutres : `List`, `Text`, couleurs et typographie par
+défaut, aucune trace de `PulseonTheme`. Ce n'est toujours pas « proposer une
+direction » — c'est juste rendre une donnée lisible. Quand la maquette d'Arthur
+arrive, on repeint des écrans qui existent déjà.
 
 ### Ce qui a été essayé et écarté
 
