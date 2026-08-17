@@ -377,6 +377,51 @@ la requête rend une liste vide impossible à distinguer d'une journée sans
 activité. C'est pour ça que `sessions` et `samples` sont désormais `throws` :
 une lecture qui échoue doit se voir, pas se déguiser en zéro.
 
+### Comparer une journée aux précédentes
+
+Un total seul ne veut rien dire, et c'est le manque qu'Arthur a ressenti en
+ouvrant la fenêtre : « 9 h 39 », est-ce beaucoup ou est-ce sa normale ?
+`DayComparison` répond, et `DayBrowser` l'expose à côté de la journée.
+
+**La règle qui justifie tout le mécanisme : on compare à la même heure du
+jour.** Une journée en cours confrontée à des journées entières donnerait
+« toujours en dessous de ta moyenne » à 11 h du matin — un constat mécanique qui
+n'apprend rien. Les journées de référence sont donc arrêtées à l'heure écoulée
+de la journée affichée (`isPartial`), et seulement entières quand on regarde un
+jour passé.
+
+**Une journée sans aucune source mesurée est écartée de la moyenne.** Elle veut
+dire « le collecteur était éteint », pas « zéro minute d'écran » : la compter
+tirerait la moyenne vers le bas pour une raison qui n'a aucun rapport avec
+l'usage. À l'inverse, une journée où une source était branchée et n'a rien
+enregistré est un **vrai zéro**, et elle compte. C'est la même distinction que
+`isConnected` porte partout ailleurs, ici sous le nom
+`DayDigest.hasMeasuredSource`.
+
+**En dessous de trois journées mesurées, on ne dit rien.** Une « moyenne » sur
+une journée est cette journée-là présentée sous un nom trompeur. Se taire est
+plus honnête que d'annoncer une tendance qui n'existe pas — et c'est aussi ce
+qui se passe le premier jour d'utilisation.
+
+**La comparaison ne juge pas.** Pulseon mesure l'usage d'un appareil, il ne
+décide pas si c'est bien. Rien dans le type ne qualifie un écart, et **l'UI ne
+doit pas colorer un dépassement en rouge** : ce serait transformer un miroir en
+juge. Un écart de moins de cinq minutes n'est d'ailleurs pas un écart
+(`isTypical`).
+
+Deux détails d'exécution :
+
+- **La comparaison n'est pas recalculée à chaque relecture.** La journée est
+  relue chaque minute ; refaire quatorze requêtes par minute pour un chiffre qui
+  bouge d'une minute serait absurde. Elle est donc recalculée au changement de
+  journée, et au plus une fois toutes les cinq minutes sur la journée en cours.
+  Une journée passée, elle, ne bougera plus jamais.
+- **Limite assumée sur les sources à compteur** : n'ayant aucun horaire, leur
+  total du jour ne peut pas être coupé à une heure précise. Sur une comparaison
+  partielle elles sont donc comptées en entier des deux côtés — ce qui reste
+  cohérent, le total d'aujourd'hui étant lui aussi « ce qui s'est accumulé
+  jusqu'ici ».
+
 ### Sources à compteur : la plomberie commune
 
 `CounterSource` est le contrat que remplit toute source incapable de dire un
