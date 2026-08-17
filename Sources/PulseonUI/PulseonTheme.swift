@@ -193,6 +193,15 @@ public enum PulseonTheme {
         )
     }
 
+    /// Les teintes d'un appareil pour un dégradé qui suit une courbe.
+    ///
+    /// L'ordre part du sombre pour que le haut de l'anneau — là où commence le
+    /// premier arc — soit la partie claire, comme sur la maquette.
+    public static func ringTones(for device: Device, in palette: PulseonPalette) -> [Color] {
+        let tones = deviceTones(for: device, in: palette)
+        return [tones.base, tones.light, tones.base, tones.deep]
+    }
+
     public static func gradient(
         for category: AppCategory, in palette: PulseonPalette
     ) -> LinearGradient {

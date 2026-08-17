@@ -171,13 +171,13 @@ private struct RingCard: View {
         let lanes = day.digest.lanes.filter { $0.total > 0 }
 
         Card(palette: palette) {
-            VStack(spacing: 14) {
+            VStack(spacing: 12) {
                 ActivityRing(
                     segments: lanes.map {
                         .init(
                             id: $0.device.rawValue,
                             value: $0.total,
-                            fill: PulseonTheme.gradient(for: $0.device, in: palette)
+                            tones: PulseonTheme.ringTones(for: $0.device, in: palette)
                         )
                     },
                     total: day.isEmpty ? nil : day.digest.coveredTotal,
@@ -198,7 +198,6 @@ private struct RingCard: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
         }
     }
 }
