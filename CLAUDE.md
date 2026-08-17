@@ -442,7 +442,7 @@ Un vrai *Widget* macOS (centre de notifications, bureau) est autre chose : une
 extension d'app, qui suppose un projet Xcode et une signature — même mur que
 CloudKit.
 
-### Le dashboard : la journée en multipiste
+### Le dashboard : l'anneau de la journée
 
 Vit dans **`PulseonUI`**, un paquet à part et non dans l'app macOS, parce que
 ce sont *les mêmes vues* qui serviront à l'app iOS : le jour où la cible iOS
@@ -450,55 +450,76 @@ existera, elle consomme ce paquet sans qu'une ligne de dessin soit réécrite.
 D'où l'interdiction d'y toucher à AppKit, qui n'existe pas sur iPhone —
 `.buttonStyle(.link)` s'y est déjà fait refuser.
 
-**Direction visuelle : la station de travail.** Le vocabulaire du projet était
-déjà celui d'un séquenceur (« multipiste », « piste », « signal », « marqueur
-d'heure courante », une icône `waveform`), donc la journée est dessinée comme
-un rack d'appareil de mesure. Le rack **reste sombre même en apparence
-claire** : un instrument ne change pas de couleur avec le papier peint, et les
-blocs d'activité ne se lisent qu'en couleur saturée sur fond sombre. Le reste
-de la fenêtre suit le système, comme n'importe quelle app native.
+**Direction visuelle : la maquette d'Arthur, livrée le 2026-08-17** après trois
+propositions écartées. Fond bleu nuit profond, cartes à grand rayon, deux
+accents (l'or et le bleu nuit de l'icône), l'anneau en tête, puis des lignes
+denses — pastille, libellé, durée, part, jauge. Le détail vit dans la skill
+`pulseon-design` ; ce qui suit est ce qui a demandé une décision technique.
 
-La signature est **la tête de lecture** : une ligne rouge qui traverse les
-pistes à l'heure courante, avec l'heure en cartouche. Rouge parce que c'est la
-couleur de l'enregistrement en cours sur une station audio — ici, la journée
-en train de s'écrire. Elle n'apparaît **que sur aujourd'hui** : une journée
-passée est entièrement jouée, y planter une tête de lecture ne voudrait rien
-dire. Ce rouge ne sert qu'à ça, aucun autre élément ne le porte.
+**L'anneau dit une composition, jamais une progression.** La maquette portait un
+objectif quotidien (« / 5h Daily Goal »), un badge « On Track » et un score
+« objectif tenu 6 jours sur 7 ». Arthur les a retirés en validant le dessin :
+« on reste sur une application sans jugement ». `RingLayout` fait donc **toujours
+le tour complet**, ses arcs étant des parts de la journée. C'est ce qui rend
+l'anneau compatible avec une app qui mesure sans dire si c'est bien.
 
-**Les couleurs portent de l'information** : une par appareil, tenue partout
-(pastille du détail comprise). Elles ne se choisissent pas à l'humeur.
+Il garantit aussi qu'**une part minuscule reste visible** (plancher de 1,2 % de
+tour) : une minute sur huit heures fait 0,2 % de tour, soit un arc invisible, et
+l'afficher à sa taille exacte reviendrait à dire qu'elle n'a pas eu lieu. Même
+raisonnement que le plancher de 2 points de `TimelineGeometry`. Le plancher est
+**pris sur les grandes parts et jamais ajouté au tour**, sinon la somme
+dépasserait 1 et le dernier arc repasserait sur le premier.
 
-**Une source à compteur ne doit occuper aucune position dans la journée.** La
-première version calait le bloc PlayStation à gauche : hachuré, certes, mais il
-se lisait « joué de minuit à 1 h 48 ». Les hachures ne suffisent pas si la
-*position*, elle, ment. Le bloc est donc **centré**, sa piste n'a **pas de
-graduations horaires** — une grille donnerait un sens à une position qui n'en a
-aucun — et le libellé « heure inconnue » est posé à côté, où il reste lisible
-même quand le bloc est court.
+**L'anneau règle aussi le défaut de conception signalé par Arthur** — « à
+plusieurs devices c'est illisible ». Une piste par appareil allonge l'écran et
+transforme les simultanéités en mur dès le troisième ; un appareil de plus n'est
+ici qu'un arc de plus, à hauteur constante.
+
+**La timeline en multipiste a été supprimée**, à sa demande : « j'aime bien le
+rond plutôt que la timeline chrono qu'on a ». `TimelineGeometry` reste, pure et
+testée, pour l'onglet Timeline de la maquette. Attention le jour où il se
+construira : la maquette y place la PlayStation à 12:20, or elle ne connaît pas
+ses horaires.
+
+**Un pourcentage non nul ne s'affiche jamais « 0 % ».** Trois minutes dans une
+journée font 0,4 %, tronqué à zéro juste à côté d'une durée non nulle — trouvé
+en regardant le PNG, pas par un test. En dessous de 1 %, « < 1 % ».
+
+**Les couleurs portent de l'information** : une par appareil et une par
+catégorie, tenues partout. **Aucune n'est rouge** — le rouge dirait « trop ».
+
+**La palette est une valeur, pas des constantes globales.** La maquette existe en
+clair *et* en sombre, or une couleur en `static let` ne peut pas suivre
+l'apparence du système et `PulseonUI` n'a pas le droit d'appeler AppKit pour la
+résoudre. `PulseonTheme.palette(for:)` rend donc un `PulseonPalette` depuis le
+`colorScheme`, que les vues reçoivent en paramètre — ce qui les rend au passage
+rendables hors écran par la preview.
 
 **Voir les vues sans lancer l'app.** `ImageRenderer` rend n'importe quelle vue
 en PNG hors écran, ce qui permet de regarder le résultat sans fenêtre, sans
 simulateur, et sans lancer une seconde instance du collecteur — qui écrirait
-dans la même base. Ça a trouvé deux défauts qu'aucun test ne pouvait voir :
-une étiquette « PLAYSTATIO/N » coupée, et une grille horaire qui partait de
-midi. Ce dernier mérite d'être retenu : **un `ZStack` de rectangles d'un point
-ne mesure qu'un point de large**, donc l'`overlay` le centrait dans la piste et
-toute la matinée n'avait aucune graduation. Rien ne le signale, ni le
-compilateur ni les tests. D'où `.frame(maxWidth: .infinity, alignment:
-.leading)`.
+dans la même base.
 
-`TimelineGeometry` tient tout le calcul de placement, séparé des vues pour être
-testable sans simulateur — même raison que `PulseonCore`. La longueur du jour
-lui est **fournie**, jamais supposée égale à 86 400 : les journées de
-changement d'heure font 23 ou 25 h, et une timeline qui l'ignore décale toute
-la soirée de ces jours-là. Elle garantit aussi qu'une minute d'activité reste
-visible (plancher de 2 points) : 60 s sur 24 h font 0,7 point, et une minute
-invisible reviendrait à dire qu'elle n'a pas eu lieu.
+**`ImageRenderer` ne rend rien de l'intérieur d'un `ScrollView`**, et le piège
+s'est refermé une deuxième fois en construisant cet écran : la sortie est un
+rectangle uni de la couleur du fond, ce qui ressemble à un bug de dessin alors
+que la vue est simplement hors champ. D'où `DayDashboardContent`, séparé du
+conteneur défilant et rendable seul. **Toute vue défilante doit garder son
+contenu extractible**, sinon elle est invisible à la preview.
+
+`TimelineGeometry` tient le calcul de placement horaire, séparé des vues pour
+être testable sans simulateur — même raison que `PulseonCore`. La longueur du
+jour lui est **fournie**, jamais supposée égale à 86 400 : les journées de
+changement d'heure font 23 ou 25 h.
 
 `DayBrowser` (dans `PulseonMacKit`) choisit la journée affichée et va la
 chercher. Il interdit de naviguer dans le futur — aucune donnée ne peut exister
 demain — et relit chaque minute, parce qu'une journée en cours grandit pendant
-qu'on la regarde. C'est lui qu'on remplacera pour iOS, pas le dessin.
+qu'on la regarde. C'est lui qu'on remplacera pour iOS, pas le dessin. C'est
+aussi lui qui **classe la journée par catégorie**, parce que le classement
+demande de savoir lire la catégorie déclarée d'une app — ce que seul le côté
+macOS sait faire. `PulseonCore` reçoit une fonction de classement et ne devine
+rien.
 
 ### Lire l'historique
 
@@ -729,11 +750,14 @@ utile — le processus meurt sur un signal, c'est tout :
 L'app native « Temps d'écran » de macOS dit **combien**. Pulseon montre
 **quand**.
 
-L'élément signature est **la journée en multipiste** : une piste par
-appareil sur 24 h, l'activité tracée en signal, avec un marqueur sur l'heure
-courante. On y voit les chevauchements et les trous — ce qu'un total en
-barres ne dira jamais. La donnée est faite d'intervalles parallèles, le
-multipiste est sa forme naturelle.
+L'élément signature était **la journée en multipiste**. Arthur l'a écartée le
+2026-08-17 en livrant sa maquette : « j'aime bien le rond plutôt que la timeline
+chrono qu'on a ». **L'anneau de composition** prend sa place en tête d'écran, et
+la chronologie deviendra un onglet à part (écran 4 de la maquette).
+
+Le parti pris, lui, ne bouge pas — ce qu'un total en barres ne dira jamais, ce
+sont les chevauchements et les trous, et c'est à la future timeline de les
+montrer.
 
 **Règle à tenir, non négociable : ne jamais inventer de placement horaire.**
 La PlayStation n'expose qu'un total cumulé sans horaires. Sa piste doit

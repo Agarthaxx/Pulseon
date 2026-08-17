@@ -169,7 +169,10 @@ final class CollectionEngine {
         let store = SessionStore(context: container.mainContext)
         self.store = store
         self.monitor = ActivityMonitor(store: store)
-        self.browser = DayBrowser(store: store)
+        self.browser = DayBrowser(
+            store: store,
+            registry: AppRegistry(context: container.mainContext)
+        )
         start()
         startRefreshing()
     }

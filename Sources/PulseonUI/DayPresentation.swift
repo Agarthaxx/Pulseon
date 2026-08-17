@@ -14,12 +14,23 @@ public struct DayPresentation: Sendable {
     /// L'instant courant, ou nil si la journée est passée. C'est ce qui décide
     /// de l'existence de la tête de lecture.
     public let now: Date?
+    /// À quoi la journée a servi. Vide quand rien n'est classable — le
+    /// classement se décide côté macOS, seul endroit qui sache lire la
+    /// catégorie déclarée d'une app.
+    public let categories: [CategoryTotal]
 
-    public init(digest: DayDigest, dayStart: Date, dayLength: TimeInterval, now: Date?) {
+    public init(
+        digest: DayDigest,
+        dayStart: Date,
+        dayLength: TimeInterval,
+        now: Date?,
+        categories: [CategoryTotal] = []
+    ) {
         self.digest = digest
         self.dayStart = dayStart
         self.dayLength = dayLength
         self.now = now
+        self.categories = categories
     }
 
     /// Où planter la tête de lecture, en secondes depuis minuit.
