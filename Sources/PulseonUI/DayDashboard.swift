@@ -58,8 +58,9 @@ public struct DayDashboard: View {
                 onToday: onToday
             )
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(PulseonTheme.palette(for: scheme).ground)
-        .frame(minWidth: 640, minHeight: 560)
+        .frame(minWidth: 560, minHeight: 560)
     }
 }
 
@@ -104,9 +105,21 @@ public struct DayDashboardContent: View {
             }
         }
         .padding(22)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // **La maquette est une colonne, pas une surface à remplir.** Sans
+        // cette borne, une fenêtre large étire les jauges sur 1500 points et
+        // l'anneau se perd au milieu d'une carte vide : à l'écran ça ne
+        // ressemblait plus du tout à la maquette, alors que le rendu à 860
+        // paraissait juste. Le second `frame` centre la colonne dans ce qui
+        // reste.
+        .frame(maxWidth: Self.columnWidth)
+        .frame(maxWidth: .infinity)
         .background(palette.ground)
     }
+
+    /// Assez large pour qu'une ligne porte libellé, durée, part et détail sans
+    /// se serrer ; assez étroite pour qu'une jauge reste lisible d'un coup
+    /// d'œil au lieu de traverser l'écran.
+    static let columnWidth: CGFloat = 720
 
     @ViewBuilder
     private func header(title: String, isLive: Bool) -> some View {

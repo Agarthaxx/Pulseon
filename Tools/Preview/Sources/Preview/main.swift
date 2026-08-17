@@ -176,4 +176,12 @@ MainActor.assumeIsolated {
         dashboard(.loaded(today), canGoForward: false, scheme: .dark),
         size: CGSize(width: 560, height: 900), named: "pulseon-narrow"
     )
+
+    // **La vraie fenêtre d'Arthur fait 1512 points de large.** Ne regarder que
+    // des rendus étroits avait laissé passer une mise en page étirée, où
+    // l'anneau se perd au milieu d'une carte immense.
+    shoot(
+        dashboard(.loaded(today), canGoForward: false, scheme: .dark),
+        size: CGSize(width: 1512, height: 949), named: "pulseon-wide"
+    )
 }
