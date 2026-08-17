@@ -27,6 +27,20 @@ App native Apple pour suivre le temps passé sur Mac, PlayStation, TV, et
   seulement un total cumulé par jeu (`playDuration`), mis à jour avec un
   délai. On reconstitue le temps journalier par différence entre deux
   relevés.
+- **TV : la mesure exige que le Mac collecteur soit sur le même réseau que
+  la télé, au moment où elle est allumée.** `SamsungTVProbe` interroge
+  l'API HTTP locale de la télé (`:8001`) — constaté le 2026-08-17 en
+  cherchant à la joindre depuis le bureau : ni DNS ni mDNS ne résolvent son
+  nom `.local` hors du réseau domestique, et le port ne répond pas. **Ce
+  n'est pas un bug à corriger, c'est une conséquence de l'architecture** :
+  le Mac est le seul collecteur du projet, et Arthur l'emporte avec lui —
+  donc le suivi Mac lui-même s'arrête déjà quand il part. La télé hérite de
+  la même limite plutôt que d'en ajouter une nouvelle.
+  Alternative écartée pour l'instant : l'API cloud SmartThings de Samsung
+  rendrait l'état de la télé lisible depuis n'importe où, au prix d'une
+  dépendance externe de plus (compte Samsung, jeton OAuth) — pour un gain
+  faible, puisque la télé a peu de chances d'être allumée précisément les
+  jours où Arthur est absent.
 
 ## Stack technique
 
@@ -593,6 +607,18 @@ serait simplement mise à sous-compter la télé. Chaque collecteur ferme désor
 la sienne (`closeOpenSession(device:at:)`), et la version « tous » est réservée à
 l'extinction de l'agent.
 
+**La mesure exige que le Mac collecteur soit sur le même réseau que la télé.**
+Constaté le 2026-08-17 en cherchant à joindre `Samsung.local` depuis le bureau :
+ni DNS ni mDNS ne le résolvent hors du réseau domestique, le port ne répond pas.
+Ce n'est pas un bug à corriger, c'est une conséquence de l'architecture : le Mac
+est le seul collecteur du projet et Arthur l'emporte avec lui, donc le suivi Mac
+lui-même s'arrête déjà quand il part — la télé hérite de la même limite plutôt
+que d'en ajouter une nouvelle. Alternative écartée pour l'instant : l'API cloud
+SmartThings de Samsung rendrait l'état de la télé lisible de partout, au prix
+d'une dépendance externe de plus (compte Samsung, jeton OAuth) — pour un gain
+faible, la télé ayant peu de chances d'être allumée précisément les jours où
+Arthur est absent.
+
 ### Les secrets vont dans le Trousseau, pas dans un `.env`
 
 `Secrets` est le seul fichier qui sait où vivent les secrets ; le collecteur
@@ -651,6 +677,35 @@ Corollaire déjà implémenté dans `DayDigest` : **deux totaux**, parce qu'ils
 ne veulent pas dire la même chose. `summedTotal` additionne les appareils et
 double-compte les écrans simultanés ; `coveredTotal` fusionne les
 intervalles qui se chevauchent. À l'UI de choisir lequel elle met en avant.
+
+### Idée captée, non scopée : découverte réseau et partage
+
+Idée d'Arthur, 2026-08-17, née de la contrainte TV ci-dessus (« dommage d'être
+limité », puis « le partage me branche beaucoup ») : au lieu de relier un
+appareil à la main (`defaults write`), scanner le réseau local en Bonjour/mDNS
+à l'ouverture de l'app et proposer une liste — « voici ce qu'on a trouvé, clique
+pour relier ». Techniquement à la portée d'une session : chaque type d'appareil
+s'annonce différemment (`_airplay._tcp`, SSDP, etc.), déjà vérifié à la main
+avec `dns-sd` en cherchant la télé.
+
+**Ce que ça implique si le partage devient réel, à ne pas perdre :**
+
+- **CloudKit donne déjà le multi-utilisateur, sans backend à construire.**
+  Chaque installation a sa propre base privée liée à l'iCloud de la personne —
+  le partage n'est donc pas un problème de serveur à héberger, mais de
+  **distribution** : signature Developer ID + notarisation, même mur que
+  CloudKit (voir [[project-pulseon-blockers]] côté mémoire long-terme).
+- **PlayStation et TV restent le besoin personnel d'Arthur**, pas celui d'un
+  public — voir « Parti pris produit » ci-dessus. Le cœur partageable, c'est le
+  Mac (et l'onboarding réseau lui-même).
+- **La collecte iPhone reste bloquée** (voir contrainte plus haut) — un public
+  qui découvre une app « temps d'écran » attend l'iPhone en premier, donc c'est
+  le principal risque de positionnement si ça se concrétise.
+
+Non scopé à ce jour : pas de ticket, pas de branche. Ni le front (en pause,
+maquette d'Arthur attendue) ni les fronts ouverts (PSN, extraction post-#22) ne
+sont bloqués par ça — c'est une direction à garder en tête, pas une tâche en
+cours.
 
 ## Conventions de développement
 
