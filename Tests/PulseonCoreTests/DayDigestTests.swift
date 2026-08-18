@@ -99,6 +99,31 @@ func coveredTotalMergesOverlap() {
     #expect(digest.coveredTotal == 3 * 3600)
 }
 
+@Test("Un appareil ne peut pas être allumé deux fois en même temps")
+func laneTotalMergesItsOwnOverlaps() throws {
+    // Ce que deux collecteurs sur la même base ont vraiment écrit : la même
+    // heure enregistrée deux fois sur le Mac, plus une session restée ouverte
+    // qui recouvre les autres. Additionner ces blocs donnait « Mac : 51 h » sur
+    // une journée de 2 h. Le chevauchement compte entre appareils, jamais à
+    // l'intérieur d'un seul.
+    let sessions = [
+        ActivitySession(device: .mac, entity: "Excel", start: date(14, 9), end: date(14, 10)),
+        ActivitySession(device: .mac, entity: "Excel", start: date(14, 9), end: date(14, 10)),
+        ActivitySession(device: .mac, entity: "Windows App", start: date(14, 9), end: nil),
+    ]
+    let digest = builder.build(
+        day: date(14, 12), sessions: sessions, samples: [], now: date(14, 10)
+    )
+    let mac = try #require(digest.lanes.first { $0.device == .mac })
+
+    #expect(mac.total == 3600)
+    #expect(digest.summedTotal == 3600)
+    #expect(digest.coveredTotal == 3600)
+    // Les blocs, eux, restent tels quels : c'est la timeline qui les dessine,
+    // et elle doit pouvoir montrer ce qui a été enregistré.
+    #expect(mac.blocks.count == 3)
+}
+
 @Test("Une source sans donnée se distingue d'une journée à zéro")
 func missingCollectorIsNotAQuietDay() {
     let session = ActivitySession(

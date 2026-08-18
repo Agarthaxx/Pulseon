@@ -86,6 +86,13 @@ public enum StoreLocation {
         directory.appendingPathComponent("heartbeat")
     }
 
+    /// Fichier vide dont seul le verrou `flock` compte. Voir `InstanceLock`.
+    /// Il vit à côté de la base parce que c'est **elle** qu'il protège : deux
+    /// bases distinctes pourraient légitimement avoir deux collecteurs.
+    public static var instanceLockURL: URL {
+        directory.appendingPathComponent("collector.lock")
+    }
+
     /// - Returns: le conteneur, et un message d'erreur si la persistance a
     ///   échoué. Dans ce cas le conteneur est en mémoire : l'agent continue de
     ///   tourner et affiche la panne, au lieu de mourir au lancement.
@@ -129,6 +136,15 @@ public final class SessionStore {
     /// et attribuerait à une app tout le temps machine éteinte — une nuit
     /// entière compterait comme du temps d'écran.
     ///
+    /// **Toutes** les sessions ouvertes de chaque appareil, et pas seulement la
+    /// dernière. Un seul collecteur ne peut en laisser qu'une — mais le jour où
+    /// deux instances de Pulseon ont partagé la base (voir `InstanceLock`), il
+    /// en est resté vingt, et n'en réparer qu'une par démarrage aurait demandé
+    /// vingt lancements. Pire : chaque retour d'inactivité tombait sur une de
+    /// ces épaves et la fermait à l'heure courante, transformant une heure de
+    /// machine éteinte en temps d'écran. Réparer toutes celles qu'on trouve ne
+    /// coûte rien quand il n'y en a qu'une, et ferme définitivement ce trou.
+    ///
     /// - Parameter date: dernier signe de vie du collecteur (voir `Heartbeat`).
     ///   Si nil — aucune trace, donc rien d'observé —, la session est fermée
     ///   sur son propre début : durée nulle plutôt qu'une fin inventée.
@@ -137,7 +153,7 @@ public final class SessionStore {
     public func closeDanglingSessions(at date: Date?) -> Int {
         var repaired = 0
         for device in Device.allCases {
-            if let session = openSession(for: device) {
+            for session in openSessions(for: device) {
                 close(session, at: date ?? session.start)
                 repaired += 1
             }
@@ -307,13 +323,25 @@ public final class SessionStore {
         return try context.fetch(descriptor).map(\.asSample)
     }
 
+    /// La session en cours d'un appareil : la plus récemment ouverte.
+    ///
+    /// Il ne devrait jamais y en avoir d'autre — c'est tout l'objet
+    /// d'`openSession(device:entity:at:)`. Prendre la plus récente est le choix
+    /// prudent quand l'invariant a quand même été cassé : une épave datant du
+    /// matin ne doit pas être prise pour la session en cours et fermée à
+    /// l'heure qu'il est.
     private func openSession(for device: Device) -> StoredSession? {
+        openSessions(for: device).first
+    }
+
+    /// Toutes les sessions ouvertes d'un appareil, la plus récente d'abord.
+    private func openSessions(for device: Device) -> [StoredSession] {
         let raw = device.rawValue
         let descriptor = FetchDescriptor<StoredSession>(
             predicate: #Predicate { $0.deviceRaw == raw && $0.end == nil },
             sortBy: [SortDescriptor(\.start, order: .reverse)]
         )
-        return try? context.fetch(descriptor).first
+        return (try? context.fetch(descriptor)) ?? []
     }
 
     /// Une fermeture antérieure au début produirait une durée négative : on

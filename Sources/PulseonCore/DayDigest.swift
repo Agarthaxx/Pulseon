@@ -120,7 +120,16 @@ public struct DayDigestBuilder: Sendable {
                 lanes.append(
                     Lane(
                         device: device,
-                        total: blocks.reduce(0) { $0 + $1.duration },
+                        // Fusionné, jamais additionné : **un appareil ne peut
+                        // pas être allumé deux fois en même temps.** Le
+                        // chevauchement a du sens entre appareils — c'est tout
+                        // l'objet de `summedTotal` — mais à l'intérieur d'un
+                        // seul il ne peut venir que d'un défaut d'écriture, et
+                        // c'est arrivé : deux collecteurs concurrents ont donné
+                        // « Mac : 51 h » sur une journée de 2 h. L'écran
+                        // n'aurait jamais dû pouvoir l'afficher, quelle que
+                        // soit la cause en amont.
+                        total: IntervalMath.mergedDuration(of: blocks),
                         blocks: blocks,
                         topEntities: rank(blocks),
                         isConnected: !deviceSessions.isEmpty
