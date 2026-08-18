@@ -106,6 +106,35 @@ func dashboard(_ load: DayDashboard.Load, canGoForward: Bool, scheme: ColorSchem
         palette: PulseonTheme.palette(for: scheme)
     )
     .environment(\.colorScheme, scheme)
+    .environment(\.appIcons, demoIcons)
+}
+
+/// Les icônes de la journée de démonstration.
+///
+/// L'app, elle, trouve l'identifiant de bundle dans la base (`StoredApp`) ; ici
+/// il n'y a pas de base, donc la correspondance est écrite à la main — c'est de
+/// la donnée de démonstration, au même titre que les blocs de la journée.
+///
+/// **« Elden Ring » n'y figure pas exprès** : un jeu PlayStation n'a jamais eu
+/// d'icône côté Mac, et c'est le cas qu'il faut regarder — la ligne doit rester
+/// droite avec un nom sans image au milieu d'apps qui en ont une.
+let demoBundleIDs = [
+    "Mail": "com.apple.mail",
+    "Xcode": "com.apple.dt.Xcode",
+    "Brave Browser": "com.brave.Browser",
+    "Slack": "com.tinyspeck.slackmacgap",
+    "Ghostty": "com.mitchellh.ghostty",
+    "IINA": "com.colliderli.iina",
+    "Firefox Developer Edition": "org.mozilla.firefoxdeveloperedition",
+    "Safari": "com.apple.Safari",
+]
+
+let demoIcons = AppIconSource { name in
+    guard
+        let bundleID = demoBundleIDs[name],
+        let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+    else { return nil }
+    return Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
 }
 
 /// À quoi la journée a servi. Calculé ici à la main : le classement réel vit

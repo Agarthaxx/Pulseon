@@ -48,6 +48,15 @@ public final class DayBrowser {
     /// tests, qui n'ont pas de registre d'apps.
     private let registry: AppRegistry?
 
+    /// De quoi afficher les icônes des apps de la journée.
+    ///
+    /// Passe par le browser parce que c'est déjà lui que la fenêtre tient, et
+    /// que c'est lui qu'on remplacera pour iOS : le jour venu, l'écran demandera
+    /// ses icônes au même endroit, et c'est la source dessous qui changera.
+    /// Sans registre — le cas des tests — personne n'a d'icône, ce qui reste une
+    /// réponse valable.
+    public var appIcons: AppIconSource { registry?.iconSource ?? .unavailable }
+
     public init(
         store: SessionStore,
         registry: AppRegistry? = nil,

@@ -229,7 +229,7 @@ private struct BreakdownCard: View {
                         tint: PulseonTheme.color(for: category.category, in: palette),
                         fill: PulseonTheme.gradient(for: category.category, in: palette),
                         label: category.category.label,
-                        detail: category.entities.prefix(3).map(\.entity).joined(separator: " · "),
+                        apps: category.entities.prefix(3).map(\.entity),
                         total: category.total,
                         share: sum > 0 ? category.total / sum : 0,
                         palette: palette
@@ -263,11 +263,12 @@ private struct DevicesCard: View {
                             tint: PulseonTheme.color(for: lane.device, in: palette),
                             fill: PulseonTheme.gradient(for: lane.device, in: palette),
                             label: lane.device.label,
-                            detail: lane.kind == .counter
-                                // Sa part de l'anneau est honnête, sa place dans
-                                // la journée est inconnue — et doit se dire.
-                                ? "horaires inconnus"
-                                : lane.topEntities.prefix(3).map(\.entity).joined(separator: " · "),
+                            // Sa part de l'anneau est honnête, sa place dans
+                            // la journée est inconnue — et doit se dire.
+                            detail: lane.kind == .counter ? "horaires inconnus" : "",
+                            apps: lane.kind == .counter
+                                ? []
+                                : lane.topEntities.prefix(3).map(\.entity),
                             total: lane.total,
                             share: sum > 0 ? lane.total / sum : 0,
                             palette: palette
@@ -290,7 +291,11 @@ private struct MeterRow: View {
     let tint: Color
     let fill: LinearGradient
     let label: String
-    let detail: String
+    /// Ce qu'il y a à dire quand il n'y a pas d'apps à montrer — le cas d'une
+    /// source à compteur, qui connaît son total mais aucun horaire.
+    var detail: String = ""
+    /// Les apps de la ligne, affichées derrière leurs icônes.
+    var apps: [String] = []
     let total: TimeInterval
     let share: Double
     let palette: PulseonPalette
@@ -325,7 +330,11 @@ private struct MeterRow: View {
 
                 Meter(share: share, fill: fill, palette: palette)
 
-                if !detail.isEmpty {
+                if !apps.isEmpty {
+                    AppTrail(apps: Array(apps))
+                        .font(PulseonTheme.caption)
+                        .foregroundStyle(palette.inkFaint)
+                } else if !detail.isEmpty {
                     Text(detail)
                         .font(PulseonTheme.caption)
                         .foregroundStyle(palette.inkFaint)
