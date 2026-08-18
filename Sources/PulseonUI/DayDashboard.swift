@@ -185,6 +185,12 @@ private struct RingCard: View {
                     palette: palette
                 )
 
+                // La comparaison se lit juste sous le total, parce que c'est
+                // là que la question se pose : « 9 h 39, c'est beaucoup ? ».
+                if let comparison = day.comparison {
+                    DayComparisonView(comparison: comparison, palette: palette)
+                }
+
                 // Le second total ne s'affiche que s'il dit autre chose : sans
                 // chevauchement, répéter le même chiffre sous un autre nom ne
                 // fait qu'embrouiller.

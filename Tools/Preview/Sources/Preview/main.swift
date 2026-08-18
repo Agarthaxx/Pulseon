@@ -171,7 +171,12 @@ MainActor.assumeIsolated {
     let now = dayStart.addingTimeInterval(19.4 * 3600)
     let today = DayPresentation(
         digest: digest, dayStart: dayStart, dayLength: day, now: now,
-        categories: categories
+        categories: categories,
+        // Une journée en cours : la comparaison s'arrête donc à la même heure
+        // dans les journées de référence, et la phrase doit le dire.
+        comparison: DayComparison(
+            subject: macTotal, average: macTotal - 4_800, referenceDays: 7, isPartial: true
+        )
     )
 
     shoot(
@@ -227,7 +232,14 @@ MainActor.assumeIsolated {
             .loaded(
                 DayPresentation(
                     digest: macOnlyDigest, dayStart: dayStart, dayLength: day, now: now,
-                    categories: Array(categories.prefix(3))
+                    categories: Array(categories.prefix(3)),
+                    // L'autre cas de la comparaison : un écart si faible qu'il
+                    // ne distingue rien, et qui ne doit donc pas s'annoncer
+                    // comme un écart.
+                    comparison: DayComparison(
+                        subject: macTotal, average: macTotal - 120, referenceDays: 5,
+                        isPartial: true
+                    )
                 )
             ),
             canGoForward: false, scheme: .dark

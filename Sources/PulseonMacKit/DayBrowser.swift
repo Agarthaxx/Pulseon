@@ -112,6 +112,11 @@ public final class DayBrowser {
                 now: now
             )
             let isToday = calendar.isDate(dayStart, inSameDayAs: now)
+            // Avant de bâtir la présentation, et non après : c'est elle qui
+            // porte la comparaison jusqu'à l'écran. Le calcul reste rare — la
+            // méthode garde la valeur en cache et ne la refait qu'au changement
+            // de journée, ou toutes les cinq minutes sur la journée en cours.
+            refreshComparison(for: digest, isToday: isToday, now: now)
             load = .loaded(
                 DayPresentation(
                     digest: digest,
@@ -120,10 +125,10 @@ public final class DayBrowser {
                     // La tête de lecture n'a de sens que sur la journée en
                     // cours : une journée passée est entièrement jouée.
                     now: isToday ? now : nil,
-                    categories: categories(of: digest)
+                    categories: categories(of: digest),
+                    comparison: comparison
                 )
             )
-            refreshComparison(for: digest, isToday: isToday, now: now)
         } catch {
             // Une lecture qui échoue se dit. Afficher une journée vide ferait
             // croire à zéro minute d'écran alors qu'on ne sait pas.
