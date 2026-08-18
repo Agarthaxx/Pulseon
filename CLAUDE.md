@@ -850,11 +850,12 @@ tout le parti pris visuel ci-dessus.
    tests.
 3. ~~App macOS~~ — agent barre de menu, collecte vérifiée, empaqueté en
    `.app`, démarrage automatique par `LaunchAgent`.
-4. Dashboard : la journée en multipiste. **Ébauche livrée côté macOS**
-   (`PulseonUI`), volontairement d'abord dans une fenêtre Mac — l'app existe,
-   elle a les vraies données en local, et ça ne demande ni compte payant ni
-   projet Xcode. Reste **en attente de la liste d'Arthur** pour la suite : ne
-   pas la lui inventer.
+4. ~~Dashboard de la journée~~ — la maquette d'Arthur est implémentée
+   (`PulseonUI` : anneau, cartes, catégories, icônes d'apps). **Vit sur la
+   branche locale `feat/app-icons`, jamais poussée** : c'est ce qui tourne sur
+   le Mac d'Arthur.
+   - Restent les autres écrans de la maquette : l'onglet Timeline (écran 4),
+     l'historique sur plusieurs jours.
    - Porter ces vues sur iOS est l'étape B, et c'est un portage, pas une
      construction : il faudra un projet Xcode (SwiftPM seul ne fabrique pas
      d'app iOS) et le compte payant. Stack rediscutée puis reconfirmée le
@@ -862,111 +863,85 @@ tout le parti pris visuel ci-dessus.
      porter les collecteurs natifs, et remplacerait CloudKit par un backend
      à héberger.
 5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
-6. Collecteur PlayStation, puis TV.
+6. ~~Collecteur TV~~ — tourne, par l'API HTTP locale de la télé. Collecteur
+   PlayStation toujours bloqué sur le jeton.
 7. Réévaluer l'intégration iPhone.
 
-### État au 2026-08-16 (fin de deuxième session)
+### État au 2026-08-18 (fin de troisième session)
 
 **Ce qui tourne pour de vrai** : le collecteur Mac est installé dans
 `/Applications`, démarre à l'ouverture de session, affiche le total du jour qui
 défile à la seconde dans la barre de menu, et la fenêtre du dashboard s'ouvre par
-⌘J. **Vérifié à l'œil par Arthur** : l'icône Dock, la barre de menus et ⌘W
-apparaissent bien quand la fenêtre est ouverte, et disparaissent ensuite
-(`DockPresence`). Le doute sur les chevrons ‹ › est levé : ils se rendent, y
-compris en PNG, à condition d'utiliser `.buttonStyle(.plain)`.
+⌘J — avec la maquette d'Arthur, anneau en tête. Le collecteur TV est codé et
+n'attend qu'un `defaults write ... TVHost`.
 
-**Mergé** : PR #17 à #20. La dernière est la bascule de politique d'activation.
+**Toutes les PR en attente de la session précédente ont été mergées** : #21
+(catégories et identité des apps), #23 (comparaison entre journées), #25 et #27
+(doc), #26 (la TV par son API locale), #28 (stratégie back+front).
 
-**PR ouvertes, à relire dans cet ordre de valeur :**
+**Trois PR fermées sans merge, par Arthur, et chacune pour une raison
+différente** — c'est le genre de décision qu'on ne devine pas en relisant le
+code :
 
-| PR | Sujet | Tests |
+| PR | Sujet | Pourquoi elle n'est pas dans `main` |
 |---|---|---|
-| #26 | **La TV par son API locale** — nouvelle source qui tourne | 69 |
-| #25 | Cette section, et la skill `pulseon-design` remise d'aplomb | — |
-| #23 | **La comparaison** entre journées | 68 |
-| #21 | **Catégories et identité des apps** | 83 |
-| #22 | Refonte visuelle — **à ne pas merger telle quelle** | 65 |
+| #22 | Refonte visuelle proposée | direction visuelle non retenue ; Arthur a fourni sa maquette |
+| #24 | Source Steam | jamais demandée — voir la leçon plus bas |
+| #29 | La maquette implémentée | fermée le 2026-08-17, mais **le code vit toujours sur `feat/app-icons`** |
 
-Elles sont toutes indépendantes et partent de `main`. Les compteurs de tests ne
-s'additionnent pas : chaque branche compte les siens plus ceux de `main` (55).
+**Ce qui n'est nulle part sur le serveur** : `feat/app-icons` (5 commits — la
+maquette, les dégradés, la colonne bornée, les icônes d'apps) est **locale et
+non poussée**. C'est pourtant le code qui tourne sur le Mac d'Arthur. À ne pas
+perdre : une réinstallation depuis `main` lui ferait perdre son dashboard.
 
-**Cinq PR en attente commencent à peser.** La #21 en particulier bloque
-l'anatomie de la journée, qui a besoin du `IntervalMath` qu'elle extrait.
-
-**La PR #24 (Steam) a été fermée sans être mergée**, et c'est une leçon à retenir
-plutôt qu'un incident : elle a été écrite sans qu'Arthur l'ait demandée. « On fait
-le cœur du métier » avait été traduit en « une nouvelle source de données », et la
-source choisie était celle qui m'arrangeait techniquement — pas celle dont il a
-besoin. **Les sources du projet sont Mac, PlayStation et TV**, et Steam n'y a
-jamais figuré avant que je l'y ajoute. Le code dort sur la branche
-`feat/steam-source` si le besoin apparaît un jour ; le branchement générique d'un
-`CounterPoller` dans `CollectionEngine` y est réutilisable tel quel pour la
-PlayStation.
-
-**Sur la #22, décision prise avec Arthur** : il ne retient pas la direction
-visuelle proposée et fournira sa propre maquette. La PR mélange donc de
-l'habillage à jeter (`PulseonTheme`, le style du dashboard) et trois corrections
-de **structure** qui survivront à n'importe quelle maquette :
-
-- `RailLayout` — le rail unique découpé par balayage, qui règle le vrai défaut de
-  conception : une piste par appareil s'écroule au troisième écran simultané ;
-- la séparation `DayDashboardContent` / `DayDashboard` — sans elle,
-  `ImageRenderer` ne rend **rien** d'une vue défilante et toute preview est
-  aveugle ;
-- `TimelineGeometry.hourLabels()`.
-
-À extraire proprement quand la maquette arrivera, ou à réécrire par-dessus.
-
-**Le front est en pause, à la demande d'Arthur** : « on fait le cœur du métier, et
-je verrai après pour une maquette magnifique. Le front-end se bosse aussi, c'est
-un vrai métier. » Ne pas proposer de direction visuelle, ne pas restyler
-spontanément. Quand ses maquettes arrivent, les implémenter fidèlement et
-vérifier seulement qu'elles ne cassent pas les règles non négociables.
+**PR ouverte** : #30, le double collecteur (voir « Un seul collecteur, ou la
+journée de 51 heures »). 126 tests.
 
 **Ce qui bloque, et sur quoi :**
 
 - **PlayStation** : jeton `npsso` indisponible, et de toute façon indistribuable
   en l'état — demander à un inconnu de l'extraire à la main d'un navigateur ferait
   perdre tout le monde. Il faudrait un vrai parcours de connexion.
-- **TV** : **plus bloquée, et sans acheter de matériel** (PR #26). La détection
-  réseau a été testée sur la vraie télé, et l'idée du ping s'est révélée fausse :
-  la puce réseau répond même éteinte, donc un ping aurait compté une télé en
-  veille toute la nuit. Le bon signal est l'API HTTP locale de la télé, qui
-  annonce `PowerState`. Voir « La TV : ce que le réseau dit, et ce qu'il ne dit
-  pas ». **Il reste un geste à faire côté Arthur** :
+- **TV** : plus bloquée côté code. Il reste **un geste côté Arthur** :
   `defaults write com.arthurlanllier.pulseon TVHost "Samsung.local"` — sans ce
-  réglage le collecteur ne démarre pas.
+  réglage le collecteur ne démarre pas. Et la mesure exige que le Mac soit sur le
+  réseau de la télé.
 - **Widget macOS, CloudKit, app iOS, distribution** : même mur, le compte Apple
   payant (~99 €/an). Il couvre un nombre illimité d'apps, sans frais par app.
 
-**Un bug trouvé grâce au deuxième collecteur à intervalles** :
-`closeOpenSession(at:)` fermait les sessions de *tous* les appareils. Invisible
-avec le Mac seul ; avec la TV, la mise en veille du Mac aurait clos la session
-d'une télé restée allumée, sans que rien ne le signale. Chaque collecteur ferme
-désormais la sienne. À retenir comme principe : **une API qui agit sur « tous les
-appareils » est un piège dès qu'il y en a deux.**
-
 **Ce que je ferais ensuite, par ordre de rendement :**
 
-1. **L'anatomie de la journée** — premier écran, dernier écran, plus longue
-   traite, coupures. Pur `PulseonCore`, testable sans simulateur, aucun design, et
-   c'est la substance que n'importe quelle maquette affichera. Plus propre après
-   la #21, qui extrait `IntervalMath`.
-2. **L'export CSV/JSON** — du core pur, et l'argument « tes données
+1. **Pousser `feat/app-icons`.** Du travail fini qui n'existe que sur une
+   machine, c'est du travail à un `rm -rf` de disparaître.
+2. **L'anatomie de la journée** — premier écran, dernier écran, plus longue
+   traite, coupures. Pur `PulseonCore`, testable sans simulateur, aucun design,
+   et c'est la substance que n'importe quel écran affichera.
+3. **L'export CSV/JSON** — du core pur, et l'argument « tes données
    t'appartiennent ».
-3. **La TV par détection réseau** — une soirée de test tranche.
+4. **L'onglet Timeline** (écran 4 de la maquette) : `TimelineGeometry` est déjà
+   là, pure et testée. Attention le jour où il se construira — la maquette y
+   place la PlayStation à 12:20, or elle ne connaît pas ses horaires.
 
-**Dette de doc connue** : la visite guidée du code (lien plus haut) décrit
-744 lignes et sept fichiers, alors qu'il y en a une douzaine et plus de
-2 500 lignes. Elle sert à Arthur pour lire son propre Swift, donc c'est la dette
-qui lui coûte le plus.
+**Deux leçons de méthode, payées cash, à ne pas réapprendre :**
+
+- **La PR #24 (Steam) a été écrite sans qu'Arthur l'ait demandée.** « On fait le
+  cœur du métier » avait été traduit en « une nouvelle source de données », et la
+  source choisie était celle qui m'arrangeait techniquement. **Les sources du
+  projet sont Mac, PlayStation et TV.** Le code dort sur `feat/steam-source` ; le
+  branchement générique d'un `CounterPoller` dans `CollectionEngine` y est
+  réutilisable tel quel pour la PlayStation.
+- **Un symptôme spectaculaire cache souvent un dégât plus discret.** Le « 51 h »
+  du 2026-08-18 se voyait ; les heures de machine éteinte écrites en base comme
+  du temps d'écran, non. Chercher la donnée fausse *et fermée*, pas celle qui
+  saute aux yeux.
 
 **Références visuelles données par Arthur le 2026-08-16** : **Flighty** (couleur
 strictement sémantique, hiérarchie typographique sans milieu, forte densité de
 faits utiles par ligne), **Notion Calendar** (même philosophie en neutre), et une
 app de fitness fond noir à accent vert acide qu'il a apportée puis dont il n'a pas
-retenu l'implémentation. La règle commune, elle, tient : *la donnée est le
-design*. Détail dans la skill `pulseon-design`.
+retenu l'implémentation. La règle commune tient : *la donnée est le design*.
+Détail dans la skill `pulseon-design`. **Sa maquette du 2026-08-17 fait
+désormais foi** pour la journée.
 
 ## Continuité entre sessions Claude
 
