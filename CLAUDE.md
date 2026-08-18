@@ -823,12 +823,22 @@ sudo xcode-select -s /Applications/Xcode.app
 
 ## Doc de référence du code
 
-Visite guidée des 744 lignes, écrite pour Arthur qui apprend Swift depuis
+Visite guidée du code, écrite pour Arthur qui apprend Swift depuis
 zéro : https://claude.ai/code/artifact/65616a6f-3229-4a29-bc5f-4b3302b2926a
 
-Elle décrit chaque fichier, le trajet d'une donnée, et les notions Swift
-accrochées à de vraies lignes du projet. **À mettre à jour quand
-l'architecture bouge** — republier le même fichier met à jour la même URL.
+Elle décrit chaque paquet, le trajet d'une donnée, les pièges payés, et les
+notions Swift accrochées à de vraies lignes du projet. **À mettre à jour quand
+l'architecture bouge** — republier en passant la même URL en paramètre `url`
+met à jour la même page, sans créer de doublon.
+
+**Refaite le 2026-08-18** : elle décrivait encore 744 lignes en 6 fichiers, un
+seul paquet côté Mac, et annonçait « l'app ne compile pas encore ». Elle
+couvre maintenant les **4 429 lignes en 4 paquets**, et son plan a changé de
+principe — une liste plate de fichiers ne dit plus rien à cette taille, donc
+elle est organisée par paquet, chacun présenté par **la règle qu'il fait
+respecter**. Elle décrit l'état de `local/build` (soit `main` + la maquette +
+le correctif du double collecteur), c'est-à-dire ce qui tourne réellement sur
+le Mac d'Arthur.
 
 ## Historique : la première version (abandonnée)
 
