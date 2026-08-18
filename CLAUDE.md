@@ -905,7 +905,8 @@ non poussée**. C'est pourtant le code qui tourne sur le Mac d'Arthur. À ne pas
 perdre : une réinstallation depuis `main` lui ferait perdre son dashboard.
 
 **PR ouverte** : #30, le double collecteur (voir « Un seul collecteur, ou la
-journée de 51 heures »). 126 tests.
+journée de 51 heures »). 117 tests sur la branche, 126 une fois combinée à
+`feat/app-icons` qui apporte les siens.
 
 **Ce qui bloque, et sur quoi :**
 
