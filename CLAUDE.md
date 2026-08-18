@@ -954,6 +954,19 @@ la PR #23 et affichée nulle part. **Les deux relevaient du même angle mort : u
 API publique que personne n'appelle ressemble, dans un diff, à une feature
 livrée.** Le réflexe à garder : chercher l'appelant, pas la déclaration.
 
+**Vérifié sur la machine, pas seulement en test** : `Pulseon.app` a été rebâti et
+réinstallé le 2026-08-18 à 17:15, une seule instance tourne, et la base s'est
+remise à écrire aussitôt. Les logos des apps sont à l'écran dans la vraie
+fenêtre.
+
+**Et une leçon de méthode qui n'a rien coûté sauf du temps** : les previews ont
+été rendues en `--quiet` toute la session, donc lues par moi et **jamais ouvertes
+sur l'écran d'Arthur**. Il a dit « je ne vois aucun changement », puis « je ne
+vois pas les logos » — juste les deux fois, pour deux causes distinctes : l'app
+installée datait d'avant la session, et les images n'avaient été montrées à
+personne. Détail dans la skill `pulseon-preview`. **Un résultat visuel qu'on
+annonce sans l'ouvrir demande de croire sur parole ce qu'on a demandé à voir.**
+
 ### État au 2026-08-18 (fin de troisième session)
 
 **Ce qui tourne pour de vrai** : le collecteur Mac est installé dans
