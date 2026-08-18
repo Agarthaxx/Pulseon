@@ -4,19 +4,45 @@ import PulseonUI
 import SwiftData
 import SwiftUI
 
+/// Le verrou de collecte, tenu tant que le processus vit. Global et non local,
+/// pour qu'il ne soit jamais libéré avant la fin — un `flock` relâché rouvrirait
+/// la porte à un second collecteur.
+@MainActor private let collectionLock = InstanceLock()
+
 /// Agent en barre de menu. Il n'a pas de fenêtre principale : la collecte
 /// doit tourner en continu, indépendamment de toute fenêtre ouverte, et
 /// c'est ce qui remplace le trio script + venv + launchd de la v1.
 @main
 struct PulseonApp: App {
-    @State private var engine = CollectionEngine()
+    // Déclaré sans valeur initiale, et c'est volontaire : l'expression par
+    // défaut d'un `@State` est évaluée **avant** le corps d'`init`, donc un
+    // `= CollectionEngine()` ici ouvrirait la base et lancerait la collecte
+    // avant même le contrôle d'instance unique juste en dessous.
+    @State private var engine: CollectionEngine
 
     init() {
+        // Un seul Pulseon écrit dans la base. Deux se sont partagé la même le
+        // 2026-08-18 — le `LaunchAgent` et un élément d'ouverture ajouté à la
+        // main — et la journée affichait 51 h au lieu de 2 h. Voir
+        // `InstanceLock` pour le détail du dégât.
+        //
+        // Le second part sans rien dire : c'est un agent, il n'a pas de fenêtre
+        // où s'expliquer, et celui qui tient déjà le verrou mesure très bien.
+        // `exit` et pas `NSApp.terminate` — AppKit n'a pas fini de démarrer.
+        guard collectionLock.acquire() else {
+            FileHandle.standardError.write(
+                Data("Pulseon tourne déjà : cette instance s'arrête.\n".utf8)
+            )
+            exit(0)
+        }
+
         // L'agent devient une vraie app tant qu'une fenêtre est ouverte : icône
         // Dock, menus, ⌘W, ⌘Tab, plein écran. Puis il redevient invisible, pour
         // que ⌘Q ne soit jamais à portée de main — la collecte ne doit pas
         // pouvoir s'arrêter en fermant une fenêtre.
         DockPresence.shared.start()
+
+        _engine = State(wrappedValue: CollectionEngine())
     }
 
     var body: some Scene {
