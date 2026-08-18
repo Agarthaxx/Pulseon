@@ -242,6 +242,71 @@ Solutions propres : embarquer un jeu de logos, ou piocher dans le cache de
 favicons du navigateur lui-même (gratuit si on lit déjà son historique). Hors
 sujet pour la v1, qui s'en tient aux icônes d'apps.
 
+### Un seul collecteur, ou la journée de 51 heures
+
+Le 2026-08-18, la fenêtre annonçait **51 h de Mac sur une journée de 2 h**. La
+cause n'était pas un calcul : **deux Pulseon tournaient**, lancés à une seconde
+d'intervalle à l'ouverture de session — l'un par le `LaunchAgent`, l'autre par
+un élément d'ouverture ajouté à la main dans Réglages Système. Le journal
+système le dit sans ambiguïté (`log show --predicate 'process == "Pulseon"'`,
+deux PID vivants en parallèle) ; `sfltool dumpbtm` montrait les deux
+inscriptions, `app` et `legacy agent`.
+
+**Le dégât n'est pas le doublement qu'on imagine.** Chaque instance avait son
+propre `ModelContainer` sur le même fichier. À chaque activation d'app, les deux
+insèrent une session ; mais `openSession(for:)` ne rend que la plus récemment
+ouverte, donc l'une des deux est fermée et l'autre reste ouverte **pour
+toujours**. Vingt épaves en une matinée. Et comme une session ouverte est bornée
+à l'horizon d'activité, chacune « courait » encore : vingt sessions parallèles
+depuis 9 h.
+
+Pire, et invisible : au retour d'inactivité, `handleActivation` tombait sur une
+de ces épaves et la fermait à l'heure courante. Des heures de machine éteinte
+sont devenues du temps d'écran **écrit en base**, indiscernable du reste. Une
+session de 213 minutes attribuée à une app qui n'a jamais tourné aussi
+longtemps. C'est ce qui a demandé une réparation de la base, pas seulement un
+correctif de code.
+
+Trois défenses, à des étages différents — aucune ne remplace les autres :
+
+- **`InstanceLock`** ferme la cause. Un `flock` sur `collector.lock`, à côté de
+  la base : le second processus n'obtient pas le verrou et sort. **Pas de
+  comptage via `NSRunningApplication`** — les deux instances ont démarré à
+  300 ms d'écart, avant que LaunchServices ne les connaisse toutes les deux, et
+  l'exécutable SwiftPM n'a pas de bundle identifier hors de son `.app`. Le noyau,
+  lui, ne se trompe pas, et il rend le verrou tout seul à la mort du processus,
+  y compris sur un `kill -9`. Même esprit que `Heartbeat` : c'est le fichier qui
+  porte l'information, pas son contenu.
+- **`closeDanglingSessions` répare *toutes* les sessions ouvertes** de chaque
+  appareil, plus seulement la dernière. Un collecteur seul ne peut en laisser
+  qu'une ; c'est gratuit dans ce cas, et ça ferme le trou dans l'autre.
+- **`Lane.total` fusionne ses propres intervalles** au lieu de les additionner :
+  **un appareil ne peut pas être allumé deux fois en même temps.** Le
+  chevauchement a un sens entre appareils — c'est tout l'objet de `summedTotal` —
+  jamais à l'intérieur d'un seul. L'écran n'aurait jamais dû pouvoir afficher
+  « Mac : 51 h », quelle que soit la cause en amont.
+
+**Un `@State` avec valeur par défaut est évalué avant le corps d'`init`.** Écrire
+`@State private var engine = CollectionEngine()` aurait ouvert la base et lancé
+la collecte *avant* le contrôle d'instance unique. La valeur est donc assignée à
+`_engine` à la fin d'`init`, une fois le verrou obtenu.
+
+**Ce que la réparation de la base a fait, et pourquoi comme ça.** Deux invariants
+suffisent à reconstituer la vérité : un même événement d'activation n'a produit
+qu'une session réelle, et sur un même appareil deux sessions ne se chevauchent
+jamais. Entre deux copies, **la vraie fin est la plus tôt** — l'autre a été
+fermée après coup par un retour d'inactivité. Les copies sont ramenées à une
+**durée nulle** plutôt que supprimées : `clampedBlocks` écarte déjà
+`duration > 0`, donc elles disparaissent de tous les agrégats sans qu'on efface
+une ligne qu'un processus a vraiment écrite. 35 sessions corrigées, 13,5 h de
+durée inventée retirées, la journée retombant à 2 h 08. Signe que le modèle était
+juste : une fois les copies appariées, la règle de non-chevauchement n'a plus
+rien eu à corriger.
+
+**Leçon transposable** : le premier symptôme visible (« 51 h ») était le moins
+grave. Une donnée fausse mais *fermée* ne se distingue plus d'une donnée vraie —
+c'est elle qu'il faut chercher, pas celle qui saute aux yeux.
+
 ### Empaquetage et démarrage automatique
 
 `Scripts/build-app.sh` fabrique `Pulseon.app` à partir de l'exécutable
@@ -255,7 +320,12 @@ cp -R .build/release/Pulseon.app /Applications/
 open /Applications/Pulseon.app
 ```
 
-Le démarrage automatique s'active ensuite depuis le menu de l'app.
+Le démarrage automatique s'active ensuite depuis le menu de l'app. **Et
+seulement depuis là** : l'ajouter *en plus* dans Réglages Système > Général >
+Ouverture lance deux Pulseon, ce qui est arrivé le 2026-08-18 (voir « Un seul
+collecteur »). `InstanceLock` empêche désormais le second de collecter, mais le
+doublon reste à retirer — pour vérifier, `sfltool dumpbtm | grep -A6 Pulseon` ne
+doit montrer qu'une inscription, de type `legacy agent`.
 
 **`SMAppService` est inutilisable ici, et ça a été vérifié à l'exécution.**
 L'API moderne exige une **vraie signature** : une signature ad-hoc n'en est
