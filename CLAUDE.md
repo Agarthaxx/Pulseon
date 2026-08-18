@@ -235,6 +235,29 @@ image d'une liste qui défile). **Rendre `nil` est une vraie réponse** : une ap
 désinstallée n'a plus d'icône, un jeu PlayStation n'en a jamais eu. À l'appelant
 d'afficher un repli, jamais un carré vide.
 
+**Le trajet complet, parce qu'il traverse trois paquets et que c'est voulu :**
+`AppRegistry.iconSource` traduit `NSImage` en `Image` — **c'est là que AppKit
+s'arrête**, ces vues servant telles quelles à l'app iOS — `DayBrowser` l'expose,
+la fenêtre l'injecte dans l'environnement SwiftUI, et `AppTrail` l'y lit. La
+fonction est isolée au fil principal (`NSWorkspace` y vit) et capturée
+faiblement : elle vit aussi longtemps que la fenêtre, et garder le registre fort
+ferait survivre son contexte SwiftData à la fermeture.
+
+**L'icône précède le nom, elle ne le remplace pas.** Une rangée d'icônes seules
+se resserrait en silence sur celles qu'elle savait résoudre : on lisait trois
+noms sous deux icônes sans jamais savoir laquelle manquait. Appariées, les deux
+formes disent toujours la même chose.
+
+**Ce que les icônes ne rattraperont pas, et il vaut mieux le savoir** : les
+identifiants de bundle ne sont en base que depuis que `noteApp` tourne — sur la
+machine d'Arthur, le **2026-08-17 à 13 h 16** (relevé dans `ZSTOREDAPP`). Une app
+utilisée avant et jamais réactivée depuis n'a **aucune identité** : ni icône, ni
+catégorie autre qu'`other`. C'est le cas de « Claude » (82 sessions) et de
+« Plans ». Ça se répare tout seul à la prochaine activation, mais les journées
+passées gardent le trou. **Ne pas le corriger en devinant l'app d'après son nom
+affiché** : c'est la même pente que les catégories déduites d'une ressemblance de
+nom, et un faux rangement est pire qu'un vide honnête.
+
 **Les favicons de sites, en revanche, sont un autre sujet** — et le piège est
 identifié : appeler une API publique de favicons revient à dire à un tiers quels
 sites on visite, ce qui détruit la promesse « rien ne sort de ta machine ».
@@ -561,7 +584,18 @@ une lecture qui échoue doit se voir, pas se déguiser en zéro.
 
 Un total seul ne veut rien dire, et c'est le manque qu'Arthur a ressenti en
 ouvrant la fenêtre : « 9 h 39 », est-ce beaucoup ou est-ce sa normale ?
-`DayComparison` répond, et `DayBrowser` l'expose à côté de la journée.
+`DayComparison` répond, `DayBrowser` la calcule et **elle se lit sous l'anneau**,
+là où la question se pose.
+
+**Elle a passé une session entière calculée et jamais affichée** (PR #23 mergée
+le 2026-08-16, montrée le 2026-08-18) — du back livré, invisible, exactement ce
+que la convention « chaque feature porte son front » existe pour empêcher. Le
+symptôme à reconnaître : une propriété publique qu'aucune vue ne lit.
+
+`DayComparisonPhrase` tient les phrases, pure et testée hors simulateur — parce
+qu'une phrase qui juge se corrige plus facilement quand un test la lit. Le seul
+signe distinctif à l'écran est un chevron gris, **de la même valeur dans les deux
+sens** : ni flèche verte, ni flèche rouge.
 
 **La règle qui justifie tout le mécanisme : on compare à la même heure du
 jour.** Une journée en cours confrontée à des journées entières donnerait
@@ -894,9 +928,9 @@ tout le parti pris visuel ci-dessus.
 3. ~~App macOS~~ — agent barre de menu, collecte vérifiée, empaqueté en
    `.app`, démarrage automatique par `LaunchAgent`.
 4. ~~Dashboard de la journée~~ — la maquette d'Arthur est implémentée
-   (`PulseonUI` : anneau, cartes, catégories, icônes d'apps). **Vit sur la
-   branche locale `feat/app-icons`, jamais poussée** : c'est ce qui tourne sur
-   le Mac d'Arthur.
+   (`PulseonUI` : anneau, cartes, catégories, icônes d'apps réelles,
+   comparaison aux journées précédentes). Poussée sur `feat/app-icons` le
+   2026-08-18, après avoir vécu cinq jours sur la seule machine d'Arthur.
    - Restent les autres écrans de la maquette : l'onglet Timeline (écran 4),
      l'historique sur plusieurs jours.
    - Porter ces vues sur iOS est l'étape B, et c'est un portage, pas une
@@ -909,6 +943,16 @@ tout le parti pris visuel ci-dessus.
 6. ~~Collecteur TV~~ — tourne, par l'API HTTP locale de la télé. Collecteur
    PlayStation toujours bloqué sur le jeton.
 7. Réévaluer l'intégration iPhone.
+
+### État au 2026-08-18 (fin de quatrième session)
+
+**Cette session** : les icônes d'apps ont été **branchées pour de vrai** — la
+session précédente avait posé les deux bouts du tuyau (`AppIconSource` d'un côté,
+`AppRegistry.icon(ofApp:)` de l'autre) sans jamais les relier, et aucune icône
+n'apparaissait à l'écran. Même diagnostic pour `DayComparison`, calculée depuis
+la PR #23 et affichée nulle part. **Les deux relevaient du même angle mort : une
+API publique que personne n'appelle ressemble, dans un diff, à une feature
+livrée.** Le réflexe à garder : chercher l'appelant, pas la déclaration.
 
 ### État au 2026-08-18 (fin de troisième session)
 
@@ -955,8 +999,8 @@ journée de 51 heures »). 117 tests sur la branche, 126 une fois combinée à
 
 **Ce que je ferais ensuite, par ordre de rendement :**
 
-1. **Pousser `feat/app-icons`.** Du travail fini qui n'existe que sur une
-   machine, c'est du travail à un `rm -rf` de disparaître.
+1. ~~**Pousser `feat/app-icons`**~~ — fait en quatrième session, avec les icônes
+   réellement branchées et la comparaison à l'écran.
 2. **L'anatomie de la journée** — premier écran, dernier écran, plus longue
    traite, coupures. Pur `PulseonCore`, testable sans simulateur, aucun design,
    et c'est la substance que n'importe quel écran affichera.
