@@ -63,27 +63,31 @@ MainActor.assumeIsolated {
     // les petites tailles, parce que c'est là qu'un dessin s'effondre — le 16
     // est la taille du Finder en liste.
 
-    let sheet = VStack(spacing: 44) {
-        PulseonAppIcon().frame(width: 320, height: 320)
-        ForEach([Color(white: 0.10), Color(white: 0.92)], id: \.description) { background in
-            HStack(alignment: .bottom, spacing: 28) {
-                ForEach([128.0, 64.0, 32.0, 16.0], id: \.self) { side in
-                    VStack(spacing: 8) {
-                        PulseonAppIcon().frame(width: side, height: side)
-                        Text("\(Int(side))")
-                            .font(.system(size: 10))
-                            .foregroundStyle(background == Color(white: 0.10) ? .white : .black)
-                    }
+    let labels: [(PulseonMark.Variant, String)] = [
+        (.dial, "cadran"),
+        (.pure, "épuré"),
+        (.contained, "contenu"),
+        (.composition, "parts"),
+    ]
+
+    let sheet = VStack(spacing: 26) {
+        ForEach(labels, id: \.0) { variant, label in
+            HStack(alignment: .center, spacing: 24) {
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: 74, alignment: .trailing)
+                ForEach([180.0, 96.0, 48.0, 32.0, 16.0], id: \.self) { side in
+                    PulseonAppIcon(variant, weight: 0.048)
+                        .frame(width: side, height: side)
                 }
+                Spacer(minLength: 0)
             }
-            .padding(20)
-            .background(background)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
-    .padding(40)
-    .background(Color(white: 0.55))
+    .padding(30)
+    .background(Color(white: 0.16))
 
-    png(sheet, width: 560, height: 720, scale: 2, to: "\(outputDirectory)/icon-sheet.png")
+    png(sheet, width: 600, height: 940, scale: 2, to: "\(outputDirectory)/icon-sheet.png")
     print("\(outputDirectory)/icon-sheet.png")
 }
