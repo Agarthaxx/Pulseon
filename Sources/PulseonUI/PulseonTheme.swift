@@ -202,6 +202,20 @@ public enum PulseonTheme {
         return [tones.base, tones.light, tones.base, tones.deep]
     }
 
+    /// Les teintes d'une catégorie pour un dégradé qui suit une courbe.
+    ///
+    /// Une catégorie n'a que deux tons écrits (clair et base), là où un appareil
+    /// en a trois : le balayage part donc de la base, passe par le clair et y
+    /// revient. Assez pour que l'arc ne paraisse pas imprimé, sans inventer une
+    /// teinte sombre qui salirait la couleur — c'est déjà la raison pour
+    /// laquelle les tons sont écrits en clair et non dérivés par opacité.
+    public static func ringTones(
+        for category: AppCategory, in palette: PulseonPalette
+    ) -> [Color] {
+        let tones = tones(for: category, in: palette)
+        return [tones.base, tones.light, tones.base, tones.base]
+    }
+
     public static func gradient(
         for category: AppCategory, in palette: PulseonPalette
     ) -> LinearGradient {
