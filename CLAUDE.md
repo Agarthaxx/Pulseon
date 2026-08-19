@@ -580,6 +580,62 @@ la requête rend une liste vide impossible à distinguer d'une journée sans
 activité. C'est pour ça que `sessions` et `samples` sont désormais `throws` :
 une lecture qui échoue doit se voir, pas se déguiser en zéro.
 
+### L'écran de la semaine
+
+`buildPeriod` existait depuis la PR #21, couvert par neuf tests, et **appelé par
+personne hors de ses tests**. Même angle mort que les icônes d'apps et
+`DayComparison` : il ne lui manquait qu'un écran. `PeriodBrowser` le lit,
+`WeekDashboard` le dessine.
+
+**La semaine est celle du calendrier, pas « les sept derniers jours ».** Naviguer
+suppose des bornes stables : sur une fenêtre glissante, reculer d'un cran
+redécoupe chaque fois des journées différentes, et deux visites du même écran ne
+montrent pas la même chose. C'est aussi le calendrier qui décide du premier jour
+de la semaine — le supposer lundi casserait l'écran hors d'Europe.
+
+**Trois états de colonne, jamais deux.** C'est la règle « pas encore branchée ≠
+journée à zéro » portée à la semaine, avec un troisième cas que la journée seule
+ne rencontrait pas :
+
+| État | Ce que ça veut dire | Comment ça se dessine |
+|---|---|---|
+| Journée non mesurée | le collecteur était éteint | contour **pointillé**, valeur « — » |
+| Vrai zéro mesuré | une source était branchée, rien n'a tourné | trait **plein** gris, valeur « 0 min » |
+| Journée à venir | elle n'a pas eu lieu | **rien du tout**, creux estompé, aucune valeur |
+
+Le troisième est celui qu'on oublie : une semaine en cours contient toujours des
+jours futurs, et les dessiner à zéro affirmerait qu'on n'a rien fait un jeudi qui
+n'est pas arrivé. **Le pointillé du jour non mesuré a dû être renforcé** — tracé
+en `hairline`, il disparaissait en apparence claire, et l'état « on ne sait pas »
+redevenait indiscernable d'un zéro. Trouvé en PNG, pas par un test.
+
+**La moyenne exclut la journée en cours**, et c'est la même règle que
+`DayComparison` : mêler une matinée à des journées entières tire la moyenne vers
+le bas pour une raison qui n'a rien à voir avec l'usage. Elle exclut aussi les
+journées non mesurées. Sans aucune journée mesurée *et terminée*, `dailyAverage`
+rend **nil** et l'écran se tait — zéro serait une affirmation fausse.
+
+**Aucune ligne de moyenne en travers des colonnes.** À l'horizontale, elle se lit
+comme une barre à battre, et c'est la règle 7 : Pulseon ne juge pas. La moyenne
+est écrite en toutes lettres.
+
+**Les colonnes portent le `coveredTotal`, pas la somme des appareils.** Empiler
+les appareils dans la barre aurait donné une hauteur en `summedTotal`, donc une
+journée à fort chevauchement paraîtrait plus longue qu'une autre à temps d'écran
+égal — or des colonnes existent précisément pour se comparer entre elles. Les
+appareils gardent leurs vraies valeurs dans la carte du dessous.
+
+**L'échelle est la journée la plus longue de la période**, pas 24 h : une semaine
+à trois heures par jour donnerait sept traits collés au sol. Chaque colonne porte
+sa durée écrite, donc l'échelle reste explicite.
+
+**Ce que la semaine partage avec le jour :** `Card`, `MeterRow`, `Chip`,
+`NavButton`, `UnpluggedRow`, `BreakdownCard` et `DevicesCard` sont sortis de
+`DayDashboard` vers `Bricks.swift`. Les recopier aurait fait diverger deux
+dessins censés être le même. `CategoryTotal.merged` cumule les catégories des
+journées — licite parce que **deux journées ne se chevauchent jamais**, le même
+argument qui autorise le `coveredTotal` d'une période.
+
 ### Comparer une journée aux précédentes
 
 Un total seul ne veut rien dire, et c'est le manque qu'Arthur a ressenti en
@@ -929,10 +985,11 @@ tout le parti pris visuel ci-dessus.
    `.app`, démarrage automatique par `LaunchAgent`.
 4. ~~Dashboard de la journée~~ — la maquette d'Arthur est implémentée
    (`PulseonUI` : anneau, cartes, catégories, icônes d'apps réelles,
-   comparaison aux journées précédentes). Poussée sur `feat/app-icons` le
-   2026-08-18, après avoir vécu cinq jours sur la seule machine d'Arthur.
-   - Restent les autres écrans de la maquette : l'onglet Timeline (écran 4),
-     l'historique sur plusieurs jours.
+   comparaison aux journées précédentes). Mergée par la PR #31 le 2026-08-18,
+   après avoir vécu cinq jours sur la seule machine d'Arthur.
+   - ~~L'historique sur plusieurs jours~~ — l'écran de la semaine est livré
+     (voir « L'écran de la semaine »), avec la bascule Jour / Semaine.
+   - Reste l'onglet Timeline (écran 4 de la maquette).
    - Porter ces vues sur iOS est l'étape B, et c'est un portage, pas une
      construction : il faudra un projet Xcode (SwiftPM seul ne fabrique pas
      d'app iOS) et le compte payant. Stack rediscutée puis reconfirmée le

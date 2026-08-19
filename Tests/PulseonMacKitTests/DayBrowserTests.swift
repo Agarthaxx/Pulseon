@@ -29,7 +29,7 @@ private final class BrowserBase {
     }
 }
 
-/// Un mardi à 14 h, en heure fixe : aucun test ne doit dépendre de l'heure
+/// Un mercredi à 15 h (heure de Paris), en heure fixe : aucun test ne doit dépendre de l'heure
 /// qu'il est réellement.
 private let now = Date(timeIntervalSince1970: 1_770_213_600)
 

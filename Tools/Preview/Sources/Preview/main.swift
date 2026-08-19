@@ -255,3 +255,151 @@ MainActor.assumeIsolated {
         size: CGSize(width: 1512, height: 949), named: "pulseon-wide"
     )
 }
+
+// MARK: - La semaine
+
+/// Une journée de démonstration réduite à son total.
+///
+/// Les trois états d'une colonne y sont représentés, parce que ce sont eux qui
+/// se confondent si on les dessine mal : une journée **non mesurée** (le
+/// collecteur était éteint), un **vrai zéro** mesuré, et une journée **qui n'a
+/// pas encore eu lieu**.
+private func weekDay(_ hours: Double, measured: Bool = true) -> DayDigest {
+    let total = hours * 3600
+    return DayDigest(
+        date: DateComponents(),
+        lanes: [
+            Lane(
+                device: .mac, total: total, blocks: [], topEntities: [],
+                isConnected: measured
+            ),
+            Lane(device: .playstation, total: 0, blocks: [], topEntities: [], isConnected: false),
+            Lane(device: .tv, total: 0, blocks: [], topEntities: [], isConnected: false),
+        ],
+        summedTotal: total,
+        coveredTotal: total
+    )
+}
+
+MainActor.assumeIsolated {
+    let calendar = Calendar.current
+    let weekStart = calendar.dateInterval(of: .weekOfYear, for: dayStart)?.start ?? dayStart
+
+    /// Volontairement contrastée : une grosse journée, une journée non mesurée,
+    /// un vrai zéro, une journée en cours, et le week-end qui n'a pas eu lieu.
+    let totals: [(hours: Double, measured: Bool)] = [
+        (6.2, true), (0, false), (8.6, true), (0, true), (3.1, true), (0, true), (0, true),
+    ]
+    let todayIndex = 4
+
+    let days = totals.enumerated().map { index, day in
+        PeriodPresentation.Day(
+            start: calendar.date(byAdding: .day, value: index, to: weekStart) ?? weekStart,
+            digest: weekDay(day.hours, measured: day.measured),
+            isToday: index == todayIndex,
+            isFuture: index > todayIndex
+        )
+    }
+
+    let weekTotal = totals.reduce(0) { $0 + $1.hours * 3600 }
+    let tvTotal: TimeInterval = 2.4 * 3600
+
+    let weekDigest = PeriodDigest(
+        days: days.map(\.digest),
+        lanes: [
+            Lane(
+                device: .mac, total: weekTotal, blocks: [],
+                topEntities: [
+                    EntityTotal(entity: "Xcode", total: 9 * 3600),
+                    EntityTotal(entity: "Ghostty", total: 4.2 * 3600),
+                    EntityTotal(entity: "Brave Browser", total: 2.4 * 3600),
+                ],
+                isConnected: true
+            ),
+            Lane(device: .playstation, total: 0, blocks: [], topEntities: [], isConnected: false),
+            Lane(
+                device: .tv, total: tvTotal, blocks: [], topEntities: [],
+                isConnected: true
+            ),
+        ],
+        summedTotal: weekTotal + tvTotal,
+        coveredTotal: weekTotal,
+        daysWithActivity: totals.count { $0.hours > 0 }
+    )
+
+    let weekCategories: [CategoryTotal] = [
+        CategoryTotal(
+            category: .development, total: 13.2 * 3600,
+            entities: [
+                EntityTotal(entity: "Xcode", total: 9 * 3600),
+                EntityTotal(entity: "Ghostty", total: 4.2 * 3600),
+            ]
+        ),
+        CategoryTotal(
+            category: .media, total: 3.4 * 3600,
+            entities: [EntityTotal(entity: "IINA", total: 3.4 * 3600)]
+        ),
+        CategoryTotal(
+            category: .web, total: 2.4 * 3600,
+            entities: [EntityTotal(entity: "Brave Browser", total: 2.4 * 3600)]
+        ),
+        // Minuscule exprès : le cas qui teste le « < 1 % » et le plancher de la
+        // jauge.
+        CategoryTotal(
+            category: .communication, total: 4 * 60,
+            entities: [EntityTotal(entity: "Slack", total: 4 * 60)]
+        ),
+    ]
+
+    let week = PeriodPresentation(
+        digest: weekDigest, days: days, categories: weekCategories)
+
+    @MainActor
+    func weekView(_ load: WeekDashboard.Load, canGoForward: Bool, scheme: ColorScheme)
+        -> some View
+    {
+        WeekDashboardContent(
+            load: load,
+            canGoForward: canGoForward,
+            palette: PulseonTheme.palette(for: scheme)
+        )
+        .environment(\.colorScheme, scheme)
+        .environment(\.appIcons, demoIcons)
+    }
+
+    shoot(
+        weekView(.loaded(week), canGoForward: false, scheme: .dark),
+        size: CGSize(width: 860, height: 1180), named: "pulseon-week-dark"
+    )
+    shoot(
+        weekView(.loaded(week), canGoForward: true, scheme: .light),
+        size: CGSize(width: 860, height: 1180), named: "pulseon-week-light"
+    )
+
+    // Une semaine dont rien n'a été mesuré : elle ne doit pas se lire « zéro ».
+    let emptyWeek = PeriodPresentation(
+        digest: PeriodDigest(
+            days: [],
+            lanes: Device.allCases.map {
+                Lane(device: $0, total: 0, blocks: [], topEntities: [], isConnected: false)
+            },
+            summedTotal: 0, coveredTotal: 0, daysWithActivity: 0
+        ),
+        days: days.map {
+            PeriodPresentation.Day(
+                start: $0.start, digest: weekDay(0, measured: false),
+                isToday: $0.isToday, isFuture: $0.isFuture
+            )
+        }
+    )
+    shoot(
+        weekView(.loaded(emptyWeek), canGoForward: true, scheme: .dark),
+        size: CGSize(width: 860, height: 620), named: "pulseon-week-empty"
+    )
+
+    // La vraie fenêtre d'Arthur : 1512 points de large.
+    shoot(
+        weekView(.loaded(week), canGoForward: false, scheme: .dark),
+        size: CGSize(width: 1512, height: 949), named: "pulseon-week-wide"
+    )
+}

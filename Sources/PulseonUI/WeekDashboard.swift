@@ -300,9 +300,13 @@ private struct DayColumn: View {
         } else if !day.isMeasured {
             // Le pointillé dit l'inconnu, là où le plein dit le mesuré. Même
             // convention que la ligne d'un appareil non branché.
+            // Tracé en `inkFaint` et non en `hairline` : le filet, posé sur le
+            // creux de la colonne, disparaissait en apparence claire — l'état
+            // « on ne sait pas » devenait indiscernable d'une journée à zéro,
+            // ce qui est exactement la confusion à empêcher. Vu en PNG.
             RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .strokeBorder(
-                    palette.hairline,
+                    palette.inkFaint.opacity(0.55),
                     style: StrokeStyle(lineWidth: 1, dash: [3, 3])
                 )
                 .frame(height: 14)
@@ -310,7 +314,7 @@ private struct DayColumn: View {
             // Un vrai zéro, mesuré : un trait plein et gris. Plein parce qu'on
             // sait, gris parce qu'il n'y a pas de temps à montrer.
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(palette.inkFaint.opacity(0.5))
+                .fill(palette.inkFaint)
                 .frame(height: 3)
         } else {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
