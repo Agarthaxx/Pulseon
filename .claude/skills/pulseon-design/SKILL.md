@@ -28,6 +28,12 @@ d'abord, iPhone ensuite. Ce qu'elle porte, dans l'ordre d'importance :
    deux anneaux pleins côte à côte (« je ne suis pas trop fan » — et il fallait
    écrire au centre du second une somme de catégories qui n'est pas comparable au
    total de la journée).
+   **La télé et la PlayStation ont chacune leur rond** (2026-08-19), et il
+   n'apparaît que les jours où l'appareil a servi. Chacun porte **la couleur de
+   son arc** dans l'anneau du haut. Voir la règle 9 ci-dessous.
+   **Une seule rangée, toujours** — « je préfère la photo avec une seule
+   rangée ». Quand la fenêtre se resserre, les ronds rétrécissent
+   (`ViewThatFits`, 48 → 40 → 32 points) au lieu de passer à la ligne.
 4. **Des lignes denses** : pastille colorée à glyphe, libellé, durée, part,
    jauge fine, et le détail (les apps) en dessous.
 5. **Le clair *et* le sombre**, tous deux dessinés (écran 5 de la maquette).
@@ -153,6 +159,15 @@ montre *quand*.**
    quelles — `.buttonStyle(.link)` s'y est déjà fait refuser. Corollaire pour les
    icônes d'apps : elles n'entrent pas ici en `NSImage`, mais par une fonction
    injectée que chaque plateforme fournit.
+9. **Un écran n'est pas un contenu.** Un appareil qui ne dit pas ce qu'il affiche
+   ne se range jamais dans une catégorie de contenu. `Device.tv` valait `.media`
+   jusqu'au 2026-08-19 : une soirée de télé s'affichait « Vidéo et musique »
+   alors que l'app Musique avait tourné 6 secondes, et une soirée de PS5 branchée
+   sur cette télé s'y serait rangée en musique. La télé et la PlayStation ont
+   donc **chacune leur catégorie**. Corollaire : « Jeu » reste le classement d'un
+   jeu *sur le Mac*, lu dans son `Info.plist`. C'est la règle 1 appliquée au
+   classement plutôt qu'à l'horaire — **ne pas affirmer ce qu'on n'a pas
+   mesuré**, ici un genre de contenu plutôt qu'une heure.
 
 ### Couleurs et typographie
 

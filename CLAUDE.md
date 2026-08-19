@@ -1266,6 +1266,44 @@ tout le parti pris visuel ci-dessus.
    PlayStation toujours bloqué sur le jeton.
 7. Réévaluer l'intégration iPhone.
 
+### État au 2026-08-19 (fin de sixième session)
+
+**Une seule PR, née d'une question d'Arthur devant l'app** : « pourquoi ma
+musique a autant grimpé ? j'étais à peine à 1 h en partant du boulot ». C'était la
+télé — 2 h 52 rangées en « Vidéo et musique » un soir où l'app Musique avait
+tourné 6 secondes. **PR #42 mergée, 157 → 158 tests**, app rebâtie et réinstallée
+à 23:46, une seule instance.
+
+**Le fond du sujet n'était ni un bug ni une donnée fausse, mais une affirmation
+non mesurée.** `Device.tv` valait `.media` par raccourci assumé (« une télé sert
+à regarder »), défendu par un commentaire dans le code. Le raccourci tient tant
+qu'on parle de l'appareil, et casse quand le total atterrit dans une catégorie de
+contenu à côté d'IINA. Détail dans « Un écran n'est pas un contenu ».
+
+**La séance a aussi vérifié l'état de la collecte**, ce qui était la question de
+départ : une seule instance, une seule inscription BTM, aucun chevauchement
+au-delà de 0 s, aucune session traînante, aucun crash depuis le 15/08. Le
+redémarrage de 23:25 était un reboot de la machine, pas un plantage. **Le
+correctif d'`InstanceLock` tient** : plus rien de comparable au 51 h du 18/08.
+
+**Deux leçons de méthode :**
+
+- **Une preview qui ne traverse pas le code testé ne vérifie rien.** Celle-ci
+  écrivait ses catégories à la main, donc le premier rendu du correctif affichait
+  encore l'ancien classement — la vue était juste, l'image mentait. C'est la
+  même famille d'angle mort que « chercher l'appelant, pas la déclaration ».
+- **Un `#expect` qui compare une valeur à elle-même et échoue est un build
+  périmé, pas un bug.** Insérer deux cas au milieu d'un `enum` décale les indices,
+  et un module compilé de façon incrémentale comparait les anciens aux nouveaux :
+  `.other` sortait « égal » à `.tv`, à deux cas d'écart exactement.
+  `swift package clean` suffit.
+
+**Ce qui attend Arthur** : inchangé — `Scripts/probe-tv-apps.sh` à lancer chez
+lui, télé allumée avec une app ouverte. Et une conséquence nouvelle à connaître :
+**la PS5 étant branchée sur la télé et le collecteur PSN toujours bloqué, une
+soirée de jeu s'affiche en « Télé », pas en « PlayStation »** — honnête, mais
+incomplet.
+
 ### État au 2026-08-19 (fin de cinquième session)
 
 **L'app est passée d'un écran à trois** : Jour, Semaine, Chronologie. Huit PR
@@ -1314,12 +1352,14 @@ déclaration** — dans les deux sens.
    t'appartiennent ».
 3. **Les apps de la télé**, si la sonde répond.
 
-**Un décalage connu, qui ne se verra qu'une fois la télé branchée pour de bon** :
-le cœur d'un rond de catégorie porte le logo de l'app dominante, or une télé n'a
-pas d'entité — ses blocs alimentent le total de « Vidéo et musique » sans jamais
-apparaître dans la liste des apps. Une soirée de 3 h de télé et 20 min d'IINA
-afficherait donc l'icône d'IINA. Correction proposée et non faite : afficher le
-glyphe de l'appareil quand une source sans entité domine.
+~~**Un décalage connu, qui ne se verra qu'une fois la télé branchée pour de
+bon**~~ — **réglé en sixième session, et il s'est réalisé exactement comme
+annoncé, le soir même.** Le cœur d'un rond portait le logo de l'app dominante, or
+une télé n'a pas d'entité : ses blocs alimentaient « Vidéo et musique » sans
+jamais apparaître dans la liste des apps. La correction retenue n'est pas celle
+qui était proposée ici (afficher le glyphe de l'appareil) — **la télé et la
+PlayStation ont chacune leur catégorie**, donc le problème disparaît à la racine
+plutôt que d'être rattrapé au dessin. Voir « Un écran n'est pas un contenu ».
 
 ### État au 2026-08-18 (fin de quatrième session)
 
