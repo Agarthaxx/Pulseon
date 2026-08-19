@@ -275,3 +275,68 @@ public enum PulseonTheme {
     public static let row = Font.system(size: 13, weight: .medium)
     public static let caption = Font.system(size: 11)
 }
+
+// MARK: - La marque
+
+extension PulseonTheme {
+    /// Les couleurs de l'icône, d'après la référence d'Arthur du 2026-08-19.
+    ///
+    /// **Elles ne dépendent pas de l'apparence système**, contrairement à tout
+    /// le reste du thème : une icône d'app est la même en clair et en sombre,
+    /// puisqu'elle vit dans le Dock et le Finder, pas dans nos fenêtres. D'où
+    /// des `static let` ici — la seule exception assumée à la règle « une
+    /// palette est une valeur résolue depuis `colorScheme` ».
+    ///
+    /// **Le bleu et le violet ne sont pas l'or du dashboard**, et c'est
+    /// délibéré : l'or *désigne du temps mesuré* à l'intérieur de l'app, où il
+    /// s'oppose au fond. Une icône n'a rien à désigner, elle doit se
+    /// reconnaître dans une rangée d'autres icônes.
+
+    /// Le fond de l'icône : le bleu nuit de la maquette, pas un gris neutre.
+    public static let markGround = LinearGradient(
+        colors: [
+            Color(red: 0.086, green: 0.106, blue: 0.169),
+            Color(red: 0.043, green: 0.055, blue: 0.098),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    /// Le liseré du carré, qui décolle l'icône d'un fond sombre. Sans lui, sur
+    /// un Dock sombre, le carré n'a plus de bord.
+    public static let markEdge = Color.white.opacity(0.07)
+
+    /// L'anneau. Un dégradé **angulaire** : la teinte tourne avec l'arc, donc
+    /// le bleu occupe la droite et le violet la gauche. Un dégradé linéaire
+    /// donnerait deux moitiés franches coupées à la diagonale.
+    public static let markRing = AngularGradient(
+        stops: [
+            .init(color: Color(red: 0.322, green: 0.663, blue: 1.000), location: 0.00),
+            .init(color: Color(red: 0.325, green: 0.596, blue: 0.996), location: 0.16),
+            .init(color: Color(red: 0.435, green: 0.451, blue: 0.965), location: 0.34),
+            .init(color: Color(red: 0.529, green: 0.373, blue: 0.945), location: 0.47),
+            .init(color: Color(red: 0.541, green: 0.408, blue: 0.949), location: 0.58),
+            .init(color: Color(red: 0.427, green: 0.549, blue: 0.988), location: 0.76),
+            .init(color: Color(red: 0.373, green: 0.678, blue: 1.000), location: 0.90),
+            .init(color: Color(red: 0.322, green: 0.663, blue: 1.000), location: 1.00),
+        ],
+        center: .center
+    )
+
+    /// Le battement, du violet à gauche vers le bleu à droite — il reprend la
+    /// route de l'anneau qu'il traverse, au lieu de lui répondre par une
+    /// troisième teinte.
+    public static let markPulse = LinearGradient(
+        colors: [
+            Color(red: 0.529, green: 0.396, blue: 0.945),
+            Color(red: 0.400, green: 0.545, blue: 0.988),
+            Color(red: 0.361, green: 0.686, blue: 1.000),
+        ],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+
+    /// Les repères du cadran, plus clairs que l'anneau : ils sont petits, et
+    /// une teinte identique les ferait disparaître.
+    public static let markTick = Color(red: 0.514, green: 0.702, blue: 1.000)
+}
