@@ -21,15 +21,15 @@ struct DayCategoryRings: View {
 
     /// **Tous les ronds font la même taille**, décision d'Arthur le
     /// 2026-08-19 : « je me fiche de la logique le rond grossit plus le temps
-    /// est grand, laisse-les de la même taille ».
+    /// est grand, laisse-les de la même taille ». Étendue le même jour à la
+    /// rangée de la semaine, qui suit désormais la même règle.
     ///
-    /// Ce n'est pas une entorse à la règle de `RingScale`, qui reste en vigueur
-    /// sur la rangée de la semaine : là-bas les ronds servent à **comparer** des
-    /// journées entre elles, et la taille est le seul canal disponible puisqu'un
-    /// anneau fait toujours le tour. Ici la quantité est déjà écrite en toutes
-    /// lettres au-dessus de chaque rond, donc la faire porter *aussi* par le
-    /// diamètre ne disait rien de plus — et déformait la rangée pour rien, une
-    /// catégorie dominante écrasant toutes les autres au plancher.
+    /// Le diamètre a d'abord encodé la durée, et c'était défendable — un anneau
+    /// fait toujours le tour, donc la taille était le seul canal restant. Mais
+    /// **la durée est déjà écrite au-dessus de chaque rond**, et une rangée de
+    /// ronds inégaux se lit moins bien qu'une rangée régulière. Ce qui reste
+    /// vrai pour toute quantité future : **jamais par le remplissage**, qui se
+    /// lirait comme un objectif atteint.
     ///
     /// Nettement sous le diamètre de l'anneau principal : ces ronds détaillent
     /// la journée, ils ne la résument pas, et leur taille doit le dire avant

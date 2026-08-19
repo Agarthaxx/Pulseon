@@ -105,21 +105,6 @@ public struct PeriodPresentation: Sendable {
         return counted.reduce(0) { $0 + $1.total } / Double(counted.count)
     }
 
-    /// La journée la plus chargée de la période, parmi celles qui ont eu lieu.
-    public var busiestDay: Day? {
-        days.filter { !$0.isFuture && $0.total > 0 }.max { $0.total < $1.total }
-    }
-
-    /// La journée de référence : celle qui occupe le plus grand rond.
-    ///
-    /// Rapportée à la journée la plus longue de la période, et non à 24 h : une
-    /// semaine à trois heures par jour donnerait sept poussières. Chaque rond
-    /// porte sa durée écrite au-dessus, donc l'échelle reste explicite malgré
-    /// le repère relatif.
-    public var scale: TimeInterval {
-        max(days.map(\.total).max() ?? 0, 1)
-    }
-
     /// Vrai quand aucune source n'a rien enregistré de toute la période.
     public var isEmpty: Bool {
         days.allSatisfy { !$0.isMeasured }

@@ -20,9 +20,8 @@ d'abord, iPhone ensuite. Ce qu'elle porte, dans l'ordre d'importance :
    gris, légende de couleurs dessous. **Les catégories sont une rangée de petits
    ronds sous l'anneau** (2026-08-19), un par catégorie, **tous de la même
    taille**, portant le logo de l'app dominante (glyphe de la catégorie à
-   défaut). La taille n'y encode rien, exprès : la durée est écrite au-dessus de
-   chaque rond. Sur la rangée de la *semaine*, en revanche, la taille encode la
-   durée — c'est là que les ronds se comparent entre eux.
+   défaut). **La taille n'encode rien, ni ici ni sur la rangée de la semaine** :
+   la durée est écrite au-dessus de chaque rond.
    **Deux formes écartées le même jour, à ne pas reproposer :** une couronne
    intérieure concentrique (« à quoi correspond le deuxième anneau ? » — une
    forme qui demande une légende n'est pas plus dense, elle est plus opaque), et
@@ -153,11 +152,17 @@ que la maquette.
 mesuré, pointillé pour de l'inconnu, gris neutre pour un appareil non branché.
 Une différence de forme survit au daltonisme, une différence de teinte non.
 
-**La quantité d'un anneau passe par sa taille, jamais par son remplissage.** Un
-anneau qui ne fait pas le tour se lit « objectif atteint à 66 % », ce qui est
-exactement ce qu'Arthur a retiré de sa maquette. Pour comparer des journées entre
-elles, faire varier le diamètre — et le calculer sur la **racine carrée** du
-temps, l'œil comparant des surfaces.
+**Une quantité ne passe jamais par le remplissage d'un anneau.** Un anneau qui
+ne fait pas le tour se lit « objectif atteint à 66 % », ce qu'Arthur a
+explicitement retiré de sa maquette. Les arcs font toujours le tour, à toutes les
+échelles.
+
+**Et les petits ronds font tous la même taille** (2026-08-19, sur l'écran du jour
+comme sur celui de la semaine) : « je me fiche de la logique le rond grossit plus
+le temps est grand ». La durée est écrite au-dessus de chaque rond, donc le
+diamètre ne disait rien de plus. Si une quantité devait un jour passer par la
+forme, ce serait par la taille — calculée sur la **racine carrée** du temps,
+l'œil comparant des surfaces — mais ne pas la réintroduire sans qu'il le demande.
 
 **Un pourcentage non nul ne s'affiche jamais « 0 % ».** Trois minutes dans une
 journée font 0,4 %, tronqué à zéro juste à côté d'une durée non nulle — zéro est

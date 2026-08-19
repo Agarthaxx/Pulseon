@@ -8,31 +8,30 @@ import SwiftUI
 /// L'argument est produit autant qu'esthétique — le rond est ce qui distingue
 /// Pulseon, et une rangée de camemberts se lit sans légende.
 ///
-/// **La quantité passe par la taille, jamais par le remplissage.** Un anneau
-/// rempli aux deux tiers se lirait « objectif atteint à 66 % », or l'objectif
-/// quotidien a été retiré de la maquette et la règle « aucune comparaison ne
-/// juge » l'interdit. Les arcs font donc toujours le tour, comme sur l'écran du
-/// jour, et c'est le **diamètre** qui dit la longueur de la journée.
+/// **Tous les ronds font la même taille**, comme ceux des catégories sur l'écran
+/// du jour — décision d'Arthur le 2026-08-19, étendue ici à sa demande.
 ///
-/// **Le diamètre suit la racine carrée du temps** — voir `RingScale`, qui porte
-/// la règle et son pourquoi, et qui sert aussi aux ronds de catégories de
-/// l'écran du jour.
+/// Le diamètre a d'abord encodé la durée (surface ∝ temps, donc diamètre en
+/// racine carrée). C'était défendable — un anneau fait toujours le tour, donc la
+/// taille était le seul canal restant — mais **la durée est déjà écrite au-dessus
+/// de chaque rond**, et une rangée de ronds inégaux se lit moins bien qu'une
+/// rangée régulière. Ce qui reste vrai, et qui vaut pour toute quantité future :
+/// **jamais par le remplissage.** Un anneau rempli aux deux tiers se lirait
+/// « objectif atteint à 66 % », or l'objectif quotidien a été retiré de la
+/// maquette et la règle « aucune comparaison ne juge » l'interdit.
 struct WeekRingRow: View {
     let period: PeriodPresentation
     let palette: PulseonPalette
 
-    /// La journée la plus longue de la période occupe ce diamètre.
-    private let maximumDiameter: CGFloat = 62
+    /// Le même pour toutes les journées, et le même que les ronds de catégories
+    /// de l'écran du jour : deux rangées de petits ronds dans la même app n'ont
+    /// aucune raison de ne pas se ressembler.
+    private let diameter: CGFloat = 48
 
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
             ForEach(period.days) { day in
-                DayRing(
-                    day: day,
-                    scale: period.scale,
-                    maximumDiameter: maximumDiameter,
-                    palette: palette
-                )
+                DayRing(day: day, diameter: diameter, palette: palette)
             }
         }
     }
@@ -51,16 +50,14 @@ struct WeekRingRow: View {
 ///   pas eu lieu, et il n'y a rien à en dire.
 private struct DayRing: View {
     let day: PeriodPresentation.Day
-    let scale: TimeInterval
-    let maximumDiameter: CGFloat
+    let diameter: CGFloat
     let palette: PulseonPalette
 
-    /// En dessous, un anneau n'a plus d'épaisseur lisible. Une journée de dix
-    /// minutes doit rester un anneau, pas devenir une poussière : on
-    /// sous-représente sa durée plutôt que de nier qu'elle a eu lieu — même
-    /// arbitrage que le plancher d'arc de `RingLayout`.
-    private static let minimumRingDiameter: CGFloat = 18
-    private static let markDiameter: CGFloat = 9
+    /// Le repère d'une journée non mesurée et celui d'un vrai zéro restent
+    /// petits : ils ne portent pas de temps, donc ils ne doivent pas peser
+    /// autant qu'un rond qui en porte.
+    private static let emptyMarkDiameter: CGFloat = 18
+    private static let zeroMarkDiameter: CGFloat = 9
 
     var body: some View {
         VStack(spacing: 7) {
@@ -76,7 +73,7 @@ private struct DayRing: View {
             ZStack {
                 mark
             }
-            .frame(height: maximumDiameter)
+            .frame(height: diameter)
 
             VStack(spacing: 1) {
                 Text(day.initial)
@@ -101,13 +98,13 @@ private struct DayRing: View {
                     palette.inkFaint.opacity(0.55),
                     style: StrokeStyle(lineWidth: 1, dash: [3, 3])
                 )
-                .frame(width: Self.minimumRingDiameter, height: Self.minimumRingDiameter)
+                .frame(width: Self.emptyMarkDiameter, height: Self.emptyMarkDiameter)
         } else if day.total <= 0 {
             // Plein parce qu'on sait, gris parce qu'il n'y a pas de temps à
             // montrer.
             Circle()
                 .fill(palette.inkFaint)
-                .frame(width: Self.markDiameter, height: Self.markDiameter)
+                .frame(width: Self.zeroMarkDiameter, height: Self.zeroMarkDiameter)
         } else {
             CompositionRing(
                 lanes: day.digest.lanes,
@@ -115,17 +112,6 @@ private struct DayRing: View {
                 palette: palette
             )
         }
-    }
-
-    /// Voir `RingScale` : la surface est proportionnelle au temps, donc le
-    /// diamètre suit sa racine carrée.
-    private var diameter: CGFloat {
-        RingScale.diameter(
-            for: day.total,
-            reference: scale,
-            maximum: maximumDiameter,
-            minimum: Self.minimumRingDiameter
-        )
     }
 
     private var valueLabel: String {
