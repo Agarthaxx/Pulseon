@@ -85,9 +85,11 @@ signature — est donc supprimée, et l'anneau prend sa place en tête d'écran.
 `TimelineGeometry` est conservée : elle est pure, testée, et servira à l'onglet
 Timeline de la maquette (écran 4).
 
-**Attention en construisant cet onglet** : la maquette y place la PlayStation à
-12:20. Elle ne connaît pas ses horaires — c'est la règle 1, et cet écran-là ne
-peut pas la lister comme les autres.
+**L'onglet Chronologie existe depuis le 2026-08-19** (`DayTimeline`), bâti sur
+`TimelineGeometry` et sur le `RailLayout` repris de la PR #22. La maquette y
+plaçait la PlayStation à 12:20 : elle n'y est pas, elle vit sous un filet dans
+une section « Sans horaire connu ». C'est la règle 1, et cet écran-là ne peut pas
+la lister comme les autres.
 
 ## Ce qui survit à n'importe quelle maquette
 
@@ -110,7 +112,8 @@ montre *quand*.**
 4. **Une lecture qui échoue se dit.** Un tiret ou un message, jamais un zéro.
 5. **Le marqueur d'instant courant n'existe que sur aujourd'hui.** Une journée
    passée est entièrement jouée.
-6. **Jamais une piste par appareil.** Critique d'Arthur — « à plusieurs devices
+6. **Jamais une piste par appareil.** *(Tenu par `RailLayout` depuis le
+   2026-08-19.)* Critique d'Arthur — « à plusieurs devices
    c'est illisible » — et elle est structurelle, pas esthétique : ça allonge
    l'écran et transforme les simultanéités en mur dès le troisième appareil. Sur
    l'écran du jour, l'anneau règle la question : un appareil de plus est un arc
