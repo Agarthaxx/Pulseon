@@ -32,6 +32,25 @@ public struct PeriodDigest: Sendable {
     /// nombre de journées de la période : une moyenne n'a pas le même sens
     /// selon qu'on divise par l'un ou par l'autre, et ce choix revient à l'UI.
     public let daysWithActivity: Int
+
+    /// Construit une période de toutes pièces.
+    ///
+    /// `buildPeriod` reste le chemin normal ; cet initialiseur existe pour
+    /// fabriquer une période de démonstration sans base de données — c'est ce
+    /// dont la preview a besoin pour regarder l'écran de la semaine hors ligne.
+    public init(
+        days: [DayDigest],
+        lanes: [Lane],
+        summedTotal: TimeInterval,
+        coveredTotal: TimeInterval,
+        daysWithActivity: Int
+    ) {
+        self.days = days
+        self.lanes = lanes
+        self.summedTotal = summedTotal
+        self.coveredTotal = coveredTotal
+        self.daysWithActivity = daysWithActivity
+    }
 }
 
 extension DayDigestBuilder {
