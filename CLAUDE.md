@@ -486,6 +486,22 @@ objectif quotidien (« / 5h Daily Goal »), un badge « On Track » et un score
 le tour complet**, ses arcs étant des parts de la journée. C'est ce qui rend
 l'anneau compatible avec une app qui mesure sans dire si c'est bien.
 
+**Le double anneau, depuis le 2026-08-19.** La couronne extérieure dit *sur quel
+écran*, l'intérieure dit *à quoi*. Deux lectures du même temps dans une seule
+forme, à la demande d'Arthur — « embellis plutôt le rond » — plutôt qu'un
+graphique de plus. **C'est chez lui que ça rapporte le plus** : sa journée
+normale n'a qu'un appareil branché, donc l'anneau extérieur était un cercle bleu
+uni qui ne disait rien ; l'intérieur porte l'histoire de la journée.
+
+**Les deux couronnes ne se rapportent pas au même total, et c'est assumé** : deux
+catégories simultanées comptent chacune leur temps, donc leur somme peut dépasser
+le `coveredTotal` écrit au centre. Chaque couronne est une composition
+d'elle-même, et rien à l'écran n'invite à comparer un arc extérieur à un arc
+intérieur. L'anneau intérieur est plus **fin** que l'extérieur : deux couronnes
+de même épaisseur se concurrenceraient, et l'écart d'épaisseur dit lequel est le
+premier niveau de lecture. L'écart entre les deux n'est pas décoratif non plus —
+collées, elles se lisent comme un seul anneau épais à deux tons.
+
 Il garantit aussi qu'**une part minuscule reste visible** (plancher de 1,2 % de
 tour) : une minute sur huit heures fait 0,2 % de tour, soit un arc invisible, et
 l'afficher à sa taille exacte reviendrait à dire qu'elle n'a pas eu lieu. Même

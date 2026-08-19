@@ -30,6 +30,12 @@ public struct ActivityRing: View {
     }
 
     private let segments: [Segment]
+    /// Un second anneau, à l'intérieur du premier. Vide par défaut.
+    ///
+    /// **Deux lectures du même temps dans une seule forme** : l'extérieur dit
+    /// *sur quel écran*, l'intérieur dit *à quoi*. Le même instant se lit « sur
+    /// le Mac » et « à coder » sans changer d'objet à l'écran.
+    private let innerSegments: [Segment]
     private let total: TimeInterval?
     private let caption: String
     private let palette: PulseonPalette
@@ -42,9 +48,11 @@ public struct ActivityRing: View {
         total: TimeInterval?,
         caption: String,
         palette: PulseonPalette,
-        diameter: CGFloat = 208
+        diameter: CGFloat = 208,
+        innerSegments: [Segment] = []
     ) {
         self.segments = segments
+        self.innerSegments = innerSegments
         self.total = total
         self.caption = caption
         self.palette = palette
@@ -53,43 +61,46 @@ public struct ActivityRing: View {
 
     private var thickness: CGFloat { diameter * 0.125 }
 
+    /// L'écart entre les deux anneaux. Il ne décore pas : collés, les deux se
+    /// lisent comme un seul anneau épais à deux tons, et la double lecture
+    /// disparaît.
+    private var gap: CGFloat { thickness * 0.34 }
+
+    private var innerDiameter: CGFloat { diameter - 2 * thickness - 2 * gap }
+
+    /// Plus fin que l'extérieur : c'est ce qui dit lequel des deux est le
+    /// premier niveau de lecture. Deux anneaux de même épaisseur se
+    /// concurrenceraient.
+    private var innerThickness: CGFloat { innerDiameter * 0.105 }
+
+    /// Ce qu'il reste au centre pour écrire, une fois les deux anneaux posés.
+    private var coreDiameter: CGFloat {
+        innerSegments.isEmpty ? diameter - 2 * thickness : innerDiameter - 2 * innerThickness
+    }
+
     public var body: some View {
         ZStack {
             // La piste : la journée reste lisible même quand rien n'a été
-            // mesuré, au lieu d'un vide qu'on prendrait pour un bug d'affichage.
-            Circle()
-                .stroke(palette.sunken, lineWidth: thickness)
+            // mesuré, au lieu d'un vide qu'on prendrait pour un bug
+            // d'affichage.
+            Ring(
+                segments: segments,
+                thickness: thickness,
+                track: palette.sunken,
+                palette: palette
+            )
 
-            let arcs = RingLayout.arcs(for: segments.map(\.value))
-            let drawn = Array(zip(segments, arcs))
-
-            // Les arcs sont posés du dernier au premier pour que l'extrémité
-            // arrondie de chacun passe **sous** son voisin de gauche : dessinés
-            // dans l'ordre, les capuchons se chevaucheraient à l'endroit et
-            // chaque jointure porterait une bosse.
-            ForEach(drawn.reversed(), id: \.0.id) { segment, arc in
-                if let arc {
-                    Circle()
-                        .trim(from: arc.start, to: arc.end)
-                        .stroke(
-                            // Le dégradé est calé sur le tour entier, pas sur
-                            // l'arc : deux arcs voisins de la même couleur se
-                            // raccordent ainsi sans marche, et le balayage reste
-                            // continu quel que soit le découpage.
-                            AngularGradient(
-                                gradient: Gradient(colors: segment.tones + [segment.tones[0]]),
-                                center: .center
-                            ),
-                            style: StrokeStyle(
-                                lineWidth: thickness,
-                                // Arrondi, comme la maquette. Sur un arc unique
-                                // qui fait tout le tour, `.round` n'a aucun
-                                // effet visible — donc rien à traiter à part.
-                                lineCap: .round
-                            )
-                        )
-                        .rotationEffect(.degrees(-90))
-                }
+            if !innerSegments.isEmpty {
+                Ring(
+                    segments: innerSegments,
+                    thickness: innerThickness,
+                    // Pas de piste creuse pour l'anneau intérieur : deux
+                    // creux concentriques feraient une cible, et le fond
+                    // suffit à le poser.
+                    track: nil,
+                    palette: palette
+                )
+                .frame(width: innerDiameter, height: innerDiameter)
             }
 
             center
@@ -100,14 +111,19 @@ public struct ActivityRing: View {
         .shadow(color: palette.shadow.opacity(0.5), radius: 18, y: 6)
     }
 
+    /// Assez grand pour rester le premier élément lu, assez petit pour ne pas
+    /// toucher l'anneau qui l'entoure — d'où un calcul sur la place libre et
+    /// non sur le diamètre total.
+    private var readoutSize: CGFloat { coreDiameter * 0.30 }
+
     @ViewBuilder
     private var center: some View {
         VStack(spacing: 3) {
             if let total {
-                DurationReadout(total: total, size: diameter * 0.185, palette: palette)
+                DurationReadout(total: total, size: readoutSize, palette: palette)
             } else {
                 Text("—")
-                    .font(PulseonTheme.readout(diameter * 0.185))
+                    .font(PulseonTheme.readout(readoutSize))
                     .foregroundStyle(palette.inkFaint)
             }
             Text(caption)
@@ -115,7 +131,7 @@ public struct ActivityRing: View {
                 .foregroundStyle(palette.inkSoft)
                 .multilineTextAlignment(.center)
         }
-        .padding(.horizontal, thickness * 1.4)
+        .frame(maxWidth: coreDiameter * 0.92)
     }
 }
 
@@ -167,5 +183,59 @@ public struct DurationReadout: View {
             .baselineOffset(size * 0.06)
             .foregroundStyle(palette.inkSoft)
             .padding(.trailing, 2)
+    }
+}
+
+/// Un anneau d'arcs, sans centre écrit.
+///
+/// Extrait pour servir les deux couronnes du double anneau : le même découpage
+/// (`RingLayout`), les mêmes précautions de dessin, à deux diamètres. Les
+/// recopier aurait fait diverger deux dessins censés être le même.
+private struct Ring: View {
+    let segments: [ActivityRing.Segment]
+    let thickness: CGFloat
+    /// La piste creuse derrière les arcs, ou nil pour ne pas en poser. La
+    /// journée reste ainsi lisible même quand rien n'a été mesuré, au lieu d'un
+    /// vide qu'on prendrait pour un bug d'affichage.
+    let track: Color?
+    let palette: PulseonPalette
+
+    var body: some View {
+        ZStack {
+            if let track {
+                Circle().stroke(track, lineWidth: thickness)
+            }
+
+            let arcs = RingLayout.arcs(for: segments.map(\.value))
+
+            // Les arcs sont posés du dernier au premier pour que l'extrémité
+            // arrondie de chacun passe **sous** son voisin de gauche : dessinés
+            // dans l'ordre, les capuchons se chevaucheraient à l'endroit et
+            // chaque jointure porterait une bosse.
+            ForEach(Array(zip(segments, arcs)).reversed(), id: \.0.id) { segment, arc in
+                if let arc {
+                    Circle()
+                        .trim(from: arc.start, to: arc.end)
+                        .stroke(
+                            // Le dégradé est calé sur le tour entier, pas sur
+                            // l'arc : deux arcs voisins de la même couleur se
+                            // raccordent sans marche, et le balayage reste
+                            // continu quel que soit le découpage.
+                            AngularGradient(
+                                gradient: Gradient(colors: segment.tones + [segment.tones[0]]),
+                                center: .center
+                            ),
+                            style: StrokeStyle(
+                                lineWidth: thickness,
+                                // Arrondi, comme la maquette. Sur un arc unique
+                                // qui fait tout le tour, `.round` n'a aucun
+                                // effet visible.
+                                lineCap: .round
+                            )
+                        )
+                        .rotationEffect(.degrees(-90))
+                }
+            }
+        }
     }
 }

@@ -186,7 +186,23 @@ private struct RingCard: View {
                     },
                     total: day.isEmpty ? nil : day.digest.coveredTotal,
                     caption: day.isEmpty ? "rien de branché" : "devant un écran",
-                    palette: palette
+                    palette: palette,
+                    // La couronne intérieure : à quoi la journée a servi.
+                    //
+                    // **Les deux anneaux ne se rapportent pas au même total**,
+                    // et c'est assumé : deux catégories simultanées comptent
+                    // chacune leur temps, donc leur somme peut dépasser le
+                    // `coveredTotal` du centre. Chaque couronne est une
+                    // composition d'elle-même — la comparer arc à arc entre les
+                    // deux niveaux n'aurait pas de sens, et rien à l'écran n'y
+                    // invite.
+                    innerSegments: day.categories.map {
+                        .init(
+                            id: $0.category.rawValue,
+                            value: $0.total,
+                            tones: PulseonTheme.ringTones(for: $0.category, in: palette)
+                        )
+                    }
                 )
 
                 // La comparaison se lit juste sous le total, parce que c'est
