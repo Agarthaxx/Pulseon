@@ -511,6 +511,19 @@ pourquoi :**
 La rangée de ronds ne pose ni l'un ni l'autre problème : **chacun porte sa propre
 durée écrite au-dessus, et aucun ne prétend résumer les autres.**
 
+**Le cœur de chaque rond porte le logo de l'app qui a dominé la catégorie**, et
+le glyphe de la catégorie à défaut. `CategoryTotal.entities` étant déjà classé
+par durée, la dominante est la première — rien à recalculer.
+
+**Le repli n'est pas un cas rare traité par acquit de conscience, c'est le cas
+normal d'au moins une catégorie.** « Jeu » sur PlayStation n'aura jamais d'icône
+côté Mac ; une app désinstallée n'en a plus ; et surtout, une app utilisée avant
+que `noteApp` ne tourne (le 2026-08-17 à 13 h 16 sur la machine d'Arthur) n'a
+aucun identifiant de bundle en base, donc aucune icône — voir « Ce que les icônes
+ne rattraperont pas ». Le rendu de démonstration le montre d'ailleurs sans le
+chercher : Xcode et Brave sortent en vrai, IINA, Slack et Elden Ring retombent
+sur leur glyphe. **Jamais de carré vide.**
+
 **`RingScale` porte la règle de taille**, partagée par les ronds de la semaine et
 ceux des catégories : la surface est proportionnelle à la durée, donc le diamètre
 suit sa **racine carrée**. Écrite une fois, testée, plutôt que recopiée à deux

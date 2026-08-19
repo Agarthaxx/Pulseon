@@ -77,7 +77,16 @@ private struct CategoryRing: View {
     let width: CGFloat
     let palette: PulseonPalette
 
+    @Environment(\.appIcons) private var icons
+
     private var tint: Color { PulseonTheme.color(for: category.category, in: palette) }
+
+    /// L'app qui a occupé le plus de temps dans cette catégorie.
+    ///
+    /// `entities` est déjà classé du plus long au plus court par
+    /// `CategoryDigestBuilder` : la première est la dominante, sans rien à
+    /// recalculer ici.
+    private var dominantApp: String? { category.entities.first?.entity }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -104,12 +113,7 @@ private struct CategoryRing: View {
                 )
                 .frame(width: diameter, height: diameter)
 
-                // Le glyphe au centre, le même que la pastille de la carte
-                // « Répartition » : c'est lui qui nomme la catégorie quand le
-                // libellé dessous est réduit.
-                Image(systemName: PulseonTheme.symbol(for: category.category))
-                    .font(.system(size: diameter * 0.3, weight: .semibold))
-                    .foregroundStyle(tint)
+                center
             }
             .frame(height: band)
 
@@ -120,5 +124,33 @@ private struct CategoryRing: View {
                 .minimumScaleFactor(0.6)
         }
         .frame(width: width)
+    }
+
+    /// Ce qui occupe le cœur du rond : le logo de l'app dominante, ou le glyphe
+    /// de la catégorie à défaut.
+    ///
+    /// **Rendre nil est une vraie réponse**, pas un échec à cacher : un jeu
+    /// PlayStation n'a jamais eu d'icône côté Mac, une app désinstallée n'en a
+    /// plus, et une app utilisée avant que `noteApp` ne tourne n'a aucun
+    /// identifiant de bundle en base. Le repli n'est donc pas un cas rare à
+    /// traiter par acquit de conscience — c'est le cas normal d'une catégorie
+    /// entière, « Jeu » en tête. **Jamais de carré vide.**
+    ///
+    /// Le glyphe de repli reste celui de la pastille de la carte
+    /// « Répartition », donc les deux formes disent la même chose.
+    @ViewBuilder
+    private var center: some View {
+        if let dominantApp, let icon = icons.icon(for: dominantApp) {
+            icon
+                .resizable()
+                .interpolation(.high)
+                // Une icône d'app porte déjà sa propre marge interne : la
+                // pousser jusqu'au bord du trou la ferait toucher l'anneau.
+                .frame(width: diameter * 0.46, height: diameter * 0.46)
+        } else {
+            Image(systemName: PulseonTheme.symbol(for: category.category))
+                .font(.system(size: diameter * 0.3, weight: .semibold))
+                .foregroundStyle(tint)
+        }
     }
 }
