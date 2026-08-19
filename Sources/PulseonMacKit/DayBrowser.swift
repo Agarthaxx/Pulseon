@@ -43,12 +43,28 @@ public final class DayBrowser {
     private var comparedAt: Date?
     private let comparisonStaleness: TimeInterval = 5 * 60
 
+    /// Sait classer une app par catégorie. Optionnel : sans lui, la journée
+    /// s'affiche quand même, simplement sans sa répartition — c'est le cas des
+    /// tests, qui n'ont pas de registre d'apps.
+    private let registry: AppRegistry?
+
+    /// De quoi afficher les icônes des apps de la journée.
+    ///
+    /// Passe par le browser parce que c'est déjà lui que la fenêtre tient, et
+    /// que c'est lui qu'on remplacera pour iOS : le jour venu, l'écran demandera
+    /// ses icônes au même endroit, et c'est la source dessous qui changera.
+    /// Sans registre — le cas des tests — personne n'a d'icône, ce qui reste une
+    /// réponse valable.
+    public var appIcons: AppIconSource { registry?.iconSource ?? .unavailable }
+
     public init(
         store: SessionStore,
+        registry: AppRegistry? = nil,
         calendar: Calendar = .current,
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = store
+        self.registry = registry
         self.calendar = calendar
         self.clock = clock
         self.dayStart = calendar.startOfDay(for: clock())
@@ -96,6 +112,11 @@ public final class DayBrowser {
                 now: now
             )
             let isToday = calendar.isDate(dayStart, inSameDayAs: now)
+            // Avant de bâtir la présentation, et non après : c'est elle qui
+            // porte la comparaison jusqu'à l'écran. Le calcul reste rare — la
+            // méthode garde la valeur en cache et ne la refait qu'au changement
+            // de journée, ou toutes les cinq minutes sur la journée en cours.
+            refreshComparison(for: digest, isToday: isToday, now: now)
             load = .loaded(
                 DayPresentation(
                     digest: digest,
@@ -103,16 +124,29 @@ public final class DayBrowser {
                     dayLength: nextDay.timeIntervalSince(dayStart),
                     // La tête de lecture n'a de sens que sur la journée en
                     // cours : une journée passée est entièrement jouée.
-                    now: isToday ? now : nil
+                    now: isToday ? now : nil,
+                    categories: categories(of: digest),
+                    comparison: comparison
                 )
             )
-            refreshComparison(for: digest, isToday: isToday, now: now)
         } catch {
             // Une lecture qui échoue se dit. Afficher une journée vide ferait
             // croire à zéro minute d'écran alors qu'on ne sait pas.
             load = .failed(error.localizedDescription)
             comparison = nil
         }
+    }
+
+    /// À quoi la journée a servi.
+    ///
+    /// Le classement se décide ici et non dans le cœur : `PulseonCore` ne sait
+    /// pas ce qu'est un navigateur et n'a pas à le savoir. Il reçoit une
+    /// fonction de classement, que seul le côté macOS peut fournir.
+    private func categories(of digest: DayDigest) -> [CategoryTotal] {
+        guard let registry else { return [] }
+        let assignment = registry.assignment(for: digest)
+        return CategoryDigestBuilder(classify: assignment.category(for:entity:))
+            .build(from: digest)
     }
 
     // MARK: La comparaison

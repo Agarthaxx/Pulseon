@@ -97,6 +97,11 @@ private struct DashboardWindow: View {
             onNext: browser.goToNextDay,
             onToday: browser.goToToday
         )
+        // Les icônes descendent par l'environnement : les lignes qui les
+        // affichent sont imbriquées loin sous le dashboard, et les traverser
+        // toutes avec un argument de plus rendrait chaque vue intermédiaire
+        // dépendante d'une chose qu'elle n'utilise pas.
+        .environment(\.appIcons, browser.appIcons)
         .onAppear { browser.reload() }
         .onReceive(refresh) { _ in browser.reload() }
     }
@@ -169,7 +174,10 @@ final class CollectionEngine {
         let store = SessionStore(context: container.mainContext)
         self.store = store
         self.monitor = ActivityMonitor(store: store)
-        self.browser = DayBrowser(store: store)
+        self.browser = DayBrowser(
+            store: store,
+            registry: AppRegistry(context: container.mainContext)
+        )
         start()
         startRefreshing()
     }

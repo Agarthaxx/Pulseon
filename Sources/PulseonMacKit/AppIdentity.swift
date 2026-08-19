@@ -1,6 +1,8 @@
 import AppKit
 import PulseonCore
+import PulseonUI
 import SwiftData
+import SwiftUI
 
 /// Ce qu'on sait d'une app au-delà de son nom : son identifiant de bundle, la
 /// catégorie qu'elle déclare à macOS, et donc son icône.
@@ -115,6 +117,23 @@ public final class AppRegistry {
         let icon = NSWorkspace.shared.icon(forFile: url.path)
         icons[name] = icon
         return icon
+    }
+
+    /// L'accès des vues aux icônes, sous la seule forme que `PulseonUI` sait
+    /// recevoir.
+    ///
+    /// **C'est ici que `NSImage` s'arrête.** Les vues serviront telles quelles à
+    /// l'app iOS, où `NSImage` n'existe pas ; la traduction se fait donc du côté
+    /// qui connaît la plateforme, et le paquet de dessin ne voit passer qu'une
+    /// `Image` de SwiftUI.
+    ///
+    /// Capture faible : la fonction vit dans l'environnement SwiftUI, donc aussi
+    /// longtemps que la fenêtre — la garder forte ferait vivre le registre, et
+    /// son contexte SwiftData, après la fermeture de celle-ci.
+    public var iconSource: AppIconSource {
+        AppIconSource { [weak self] name in
+            self?.icon(ofApp: name).map(Image.init(nsImage:))
+        }
     }
 
     private func identity(ofApp name: String) -> StoredApp? {

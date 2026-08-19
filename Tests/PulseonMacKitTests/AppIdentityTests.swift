@@ -34,6 +34,26 @@ import Testing
         }
     }
 
+    /// Les icônes traversent la frontière du paquet de dessin, et cette
+    /// frontière n'est pas décorative : `PulseonUI` servira tel quel à l'app
+    /// iOS, où `NSImage` n'existe pas. Ce qu'on vérifie ici est donc que la
+    /// source rend une réponse, y compris quand cette réponse est « rien ».
+    @Test("Une app inconnue de la base n'a pas d'icône, et le dit")
+    func unknownAppHasNoIcon() {
+        let base = TestBase()
+        #expect(base.registry.iconSource.icon(for: "Elden Ring") == nil)
+    }
+
+    /// Sans registre — le cas des tests, et celui d'une future app iOS qui lira
+    /// les données sans jamais voir les apps du Mac — la ligne s'affiche avec
+    /// ses noms seuls. Elle ne doit pas exiger d'icônes pour être lisible.
+    @Test("Sans registre, personne n'a d'icône et rien ne casse")
+    func browserWithoutRegistryHasNoIcons() {
+        let base = TestBase()
+        let browser = DayBrowser(store: base.store)
+        #expect(browser.appIcons.icon(for: "Xcode") == nil)
+    }
+
     @Test("Une app vue pour la première fois est retenue")
     func firstSightIsRecorded() {
         let base = TestBase()
