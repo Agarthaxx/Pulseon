@@ -111,22 +111,56 @@ import Testing
 
         #expect(totals.count == 1)
         let game = try #require(totals.first)
-        #expect(game.category == .game)
+        // La console est sa propre catégorie, et non « Jeu » : « Jeu » reste le
+        // classement d'un jeu *sur le Mac*, lu dans son `Info.plist`. Confondre
+        // les deux mélangerait un écran et un contenu dans le même rond.
+        #expect(game.category == .playstation)
         #expect(game.total == 1800)
     }
 
-    /// Un appareil sans entité ne laisse que sa nature pour le classer. Ce n'est
-    /// pas deviner un contenu : une télé allumée regarde quelque chose.
-    @Test("Un appareil muet est classé par sa nature")
-    func silentDeviceUsesItsNature() throws {
+    /// Un appareil sans entité **ne se range pas dans un contenu**.
+    ///
+    /// Il valait `media` avant le 2026-08-19, et le raccourci a été payé à
+    /// l'usage : 2 h 52 de télé s'affichaient « Vidéo et musique » un soir où
+    /// l'app Musique avait tourné 6 secondes. Pulseon ne sait qu'une chose de
+    /// la télé — l'écran était allumé — donc c'est la seule chose que la
+    /// catégorie a le droit de dire.
+    @Test("Un appareil muet est sa propre catégorie, pas un contenu supposé")
+    func silentDeviceIsItsOwnCategory() throws {
         let digest = digest(sessions: [
             ActivitySession(device: .tv, entity: nil, start: day(21), end: day(23))
         ])
         let totals = build(digest, classify: fixed([:]))
 
-        let media = try #require(totals.first)
-        #expect(media.category == .media)
+        let tv = try #require(totals.first)
+        #expect(tv.category == .tv)
+        #expect(tv.total == 2 * 3600)
+    }
+
+    /// **Le cas qui a fait poser la question, le 2026-08-19.** Une soirée de
+    /// télé et un film sur le Mac tombaient dans le même rond : « Vidéo et
+    /// musique, 2 h 52 » un soir où l'app Musique avait tourné 6 secondes.
+    ///
+    /// Ce que le test verrouille, ce n'est pas le libellé mais la frontière :
+    /// un contenu lu sur le Mac et un écran allumé ailleurs ne se cumulent
+    /// jamais, même quand l'un des deux *pourrait* être du même genre.
+    @Test("La télé ne se cumule pas avec les apps vidéo du Mac")
+    func tvNeverMergesIntoMacMedia() throws {
+        let digest = digest(sessions: [
+            ActivitySession(device: .tv, entity: nil, start: day(19), end: day(22)),
+            ActivitySession(device: .mac, entity: "IINA", start: day(21), end: day(23)),
+        ])
+        let totals = build(digest, classify: fixed(["IINA": .media]))
+
+        #expect(totals.count == 2)
+        let tv = try #require(totals.first { $0.category == .tv })
+        let media = try #require(totals.first { $0.category == .media })
+        #expect(tv.total == 3 * 3600)
         #expect(media.total == 2 * 3600)
+        // La télé n'a pas d'entité : son rond ne peut donc pas emprunter le
+        // logo d'une app, et c'est précisément ce qu'on veut.
+        #expect(tv.entities.isEmpty)
+        #expect(media.entities.map(\.entity) == ["IINA"])
     }
 
     @Test("Les catégories sortent de la plus longue à la plus courte")
@@ -163,8 +197,9 @@ import Testing
         #expect(assignment.category(for: .mac, entity: "Xcode") == .development)
         // Inconnue sur le Mac : aucune supposition, `other`.
         #expect(assignment.category(for: .mac, entity: "Inconnue") == .other)
-        // Inconnue sur une console : la nature de l'appareil suffit.
-        #expect(assignment.category(for: .playstation, entity: "Inconnu") == .game)
-        #expect(assignment.category(for: .tv, entity: nil) == .media)
+        // Inconnue sur une console ou une télé : l'appareil lui-même est la
+        // réponse, et il ne prétend pas connaître le contenu.
+        #expect(assignment.category(for: .playstation, entity: "Inconnu") == .playstation)
+        #expect(assignment.category(for: .tv, entity: nil) == .tv)
     }
 }
