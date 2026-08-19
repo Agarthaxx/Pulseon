@@ -301,3 +301,33 @@ struct DevicesCard: View {
         }
     }
 }
+
+/// La correspondance entre une couleur et un appareil.
+///
+/// Les cartes du dessous portent déjà les mêmes pastilles, mais un anneau sans
+/// légende à portée de regard oblige à descendre pour savoir ce que dit sa
+/// couleur — et c'est précisément la couleur qu'on est censé lire d'un coup
+/// d'œil. Ne montre que les appareils qui ont du temps : légender une source
+/// absente ajouterait du bruit sans rien dire.
+struct DeviceLegend: View {
+    let lanes: [Lane]
+    let palette: PulseonPalette
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ForEach(lanes, id: \.device) { lane in
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(PulseonTheme.gradient(for: lane.device, in: palette))
+                        .frame(width: 9, height: 9)
+                    Text(lane.device.label)
+                        .font(PulseonTheme.caption)
+                        .foregroundStyle(palette.inkSoft)
+                    Text(DurationFormat.compact(lane.total))
+                        .font(PulseonTheme.caption.monospacedDigit())
+                        .foregroundStyle(palette.inkFaint)
+                }
+            }
+        }
+    }
+}

@@ -42,7 +42,7 @@ public struct PeriodPresentation: Sendable {
             self.isFuture = isFuture
         }
 
-        /// L'initiale du jour de la semaine, sous la colonne.
+        /// L'initiale du jour de la semaine, sous le rond.
         public var initial: String {
             let name = Self.weekday.string(from: start)
             return name.prefix(1).uppercased()
@@ -110,12 +110,12 @@ public struct PeriodPresentation: Sendable {
         days.filter { !$0.isFuture && $0.total > 0 }.max { $0.total < $1.total }
     }
 
-    /// La hauteur de référence des colonnes.
+    /// La journée de référence : celle qui occupe le plus grand rond.
     ///
     /// Rapportée à la journée la plus longue de la période, et non à 24 h : une
-    /// semaine à trois heures par jour donnerait sept traits collés au sol,
-    /// illisibles. La graduation affichée à côté dit à quoi le haut correspond,
-    /// donc l'échelle reste explicite.
+    /// semaine à trois heures par jour donnerait sept poussières. Chaque rond
+    /// porte sa durée écrite au-dessus, donc l'échelle reste explicite malgré
+    /// le repère relatif.
     public var scale: TimeInterval {
         max(days.map(\.total).max() ?? 0, 1)
     }

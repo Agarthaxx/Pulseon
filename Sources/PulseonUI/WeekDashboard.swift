@@ -9,10 +9,15 @@ import SwiftUI
 /// plus : la maquette d'Arthur fait foi, et cet écran en applique le
 /// vocabulaire à un pas de temps différent.
 ///
-/// **Ce qu'il n'y a délibérément pas :** aucune ligne d'objectif en travers des
-/// colonnes. Une moyenne tracée à l'horizontale se lit comme une barre à
-/// battre, et Pulseon ne dit pas si c'est bien. La moyenne est donc écrite en
-/// toutes lettres, jamais dessinée en travers du graphique.
+/// **Pas de graphique en colonnes**, écarté par Arthur le 2026-08-19 : « si
+/// c'est en colonne, autant garder l'ancienne app temps d'écran macOS ». Le rond
+/// est ce qui distingue Pulseon, et il tient les deux échelles — un grand pour
+/// la semaine, sept petits pour les journées (voir `WeekRingRow`).
+///
+/// **Ce qu'il n'y a délibérément pas non plus :** aucune ligne d'objectif, ni
+/// moyenne tracée en travers. Une moyenne à l'horizontale se lit comme une barre
+/// à battre, et Pulseon ne dit pas si c'est bien. Elle est écrite en toutes
+/// lettres.
 public struct WeekDashboard: View {
     public enum Load: Sendable {
         case loaded(PeriodPresentation)
@@ -156,25 +161,35 @@ private struct WeekChartCard: View {
     let palette: PulseonPalette
 
     var body: some View {
+        let lanes = period.digest.lanes.filter { $0.total > 0 }
+
         Card(palette: palette) {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 3) {
-                    if period.isEmpty {
-                        // Rien de mesuré n'est pas zéro : un tiret, jamais un
-                        // chiffre qu'on ne sait pas.
-                        Text("—")
-                            .font(PulseonTheme.readout(34))
-                            .foregroundStyle(palette.inkFaint)
-                    } else {
-                        DurationReadout(
-                            total: period.digest.coveredTotal, size: 34, palette: palette)
-                    }
-                    Text(period.isEmpty ? "rien de mesuré cette semaine" : "devant un écran")
-                        .font(PulseonTheme.caption)
-                        .foregroundStyle(palette.inkSoft)
+            VStack(spacing: 16) {
+                // Le même anneau que l'écran du jour, à l'échelle de la
+                // semaine : ses arcs sont des parts d'appareils, et il fait
+                // toujours le tour — ce n'est pas une progression.
+                ActivityRing(
+                    segments: lanes.map {
+                        .init(
+                            id: $0.device.rawValue,
+                            value: $0.total,
+                            tones: PulseonTheme.ringTones(for: $0.device, in: palette)
+                        )
+                    },
+                    total: period.isEmpty ? nil : period.digest.coveredTotal,
+                    caption: period.isEmpty ? "rien de mesuré" : "devant un écran",
+                    palette: palette,
+                    diameter: 178
+                )
+
+                if !lanes.isEmpty {
+                    DeviceLegend(lanes: lanes, palette: palette)
                 }
 
-                WeekChart(period: period, palette: palette)
+                // La semaine jour par jour, en petit. C'est là que se lit
+                // l'évolution : la taille du rond suit la longueur de la
+                // journée, sa couleur dit par quel écran elle est passée.
+                WeekRingRow(period: period, palette: palette)
 
                 VStack(alignment: .leading, spacing: 4) {
                     averageLine
@@ -196,7 +211,9 @@ private struct WeekChartCard: View {
                         .foregroundStyle(palette.inkFaint)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -218,127 +235,5 @@ private struct WeekChartCard: View {
                 .font(PulseonTheme.caption)
                 .foregroundStyle(palette.inkFaint)
         }
-    }
-}
-
-/// Les colonnes de la semaine.
-///
-/// **Trois états, jamais deux.** Une colonne vide ne veut pas dire la même chose
-/// selon qu'on n'a rien mesuré (le collecteur était éteint), qu'on a mesuré zéro
-/// (vrai zéro), ou que la journée n'a pas encore eu lieu. Les confondre ferait
-/// dire à l'écran une chose qu'on ne sait pas.
-private struct WeekChart: View {
-    let period: PeriodPresentation
-    let palette: PulseonPalette
-
-    /// Assez haut pour qu'un écart d'une heure se voie, assez bas pour que le
-    /// graphique ne prenne pas tout l'écran devant les cartes qui le suivent.
-    private let height: CGFloat = 132
-
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 6) {
-            ForEach(period.days) { day in
-                DayColumn(
-                    day: day,
-                    scale: period.scale,
-                    height: height,
-                    palette: palette
-                )
-            }
-        }
-    }
-}
-
-private struct DayColumn: View {
-    let day: PeriodPresentation.Day
-    let scale: TimeInterval
-    let height: CGFloat
-    let palette: PulseonPalette
-
-    /// Une journée d'une minute sur une semaine à huit heures ferait 0,3 point
-    /// de haut : invisible reviendrait à dire qu'elle n'a pas eu lieu. Même
-    /// plancher que la jauge des lignes et que l'arc de l'anneau.
-    private static let minimumBarHeight: CGFloat = 4
-
-    var body: some View {
-        VStack(spacing: 6) {
-            Text(valueLabel)
-                .font(.system(size: 10).monospacedDigit())
-                .foregroundStyle(day.isToday ? palette.gold : palette.inkFaint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            ZStack(alignment: .bottom) {
-                // Le creux de la colonne : il donne la hauteur de référence,
-                // sans quoi les jours courts flotteraient sans repère.
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(palette.sunken.opacity(day.isFuture ? 0.35 : 1))
-                    .frame(height: height)
-
-                bar
-            }
-            .frame(height: height)
-
-            VStack(spacing: 1) {
-                Text(day.initial)
-                    .font(.system(size: 11, weight: day.isToday ? .bold : .medium))
-                    .foregroundStyle(labelColor)
-                Text(day.dayNumber)
-                    .font(.system(size: 9).monospacedDigit())
-                    .foregroundStyle(palette.inkFaint.opacity(day.isFuture ? 0.5 : 1))
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    @ViewBuilder
-    private var bar: some View {
-        if day.isFuture {
-            // Rien du tout : cette journée n'a pas eu lieu. Ni un zéro, ni un
-            // trou de mesure — il n'y a simplement rien à dire.
-            EmptyView()
-        } else if !day.isMeasured {
-            // Le pointillé dit l'inconnu, là où le plein dit le mesuré. Même
-            // convention que la ligne d'un appareil non branché.
-            // Tracé en `inkFaint` et non en `hairline` : le filet, posé sur le
-            // creux de la colonne, disparaissait en apparence claire — l'état
-            // « on ne sait pas » devenait indiscernable d'une journée à zéro,
-            // ce qui est exactement la confusion à empêcher. Vu en PNG.
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .strokeBorder(
-                    palette.inkFaint.opacity(0.55),
-                    style: StrokeStyle(lineWidth: 1, dash: [3, 3])
-                )
-                .frame(height: 14)
-        } else if day.total <= 0 {
-            // Un vrai zéro, mesuré : un trait plein et gris. Plein parce qu'on
-            // sait, gris parce qu'il n'y a pas de temps à montrer.
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(palette.inkFaint)
-                .frame(height: 3)
-        } else {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(palette.goldGradient)
-                .frame(height: barHeight)
-        }
-    }
-
-    private var barHeight: CGFloat {
-        let ratio = min(1, max(0, day.total / scale))
-        return max(Self.minimumBarHeight, height * ratio)
-    }
-
-    /// Ce qui s'écrit au-dessus de la colonne. Le tiret d'une journée non
-    /// mesurée n'est pas décoratif : c'est la différence entre « on ne sait
-    /// pas » et « zéro ».
-    private var valueLabel: String {
-        if day.isFuture { return " " }
-        if !day.isMeasured { return "—" }
-        return DurationFormat.compact(day.total)
-    }
-
-    private var labelColor: Color {
-        if day.isFuture { return palette.inkFaint.opacity(0.5) }
-        return day.isToday ? palette.gold : palette.inkSoft
     }
 }
