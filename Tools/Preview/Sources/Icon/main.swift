@@ -63,31 +63,36 @@ MainActor.assumeIsolated {
     // les petites tailles, parce que c'est là qu'un dessin s'effondre — le 16
     // est la taille du Finder en liste.
 
-    let labels: [(PulseonMark.Variant, String)] = [
-        (.dial, "cadran"),
-        (.pure, "épuré"),
-        (.contained, "contenu"),
-        (.composition, "parts"),
+    // Deux fonds, parce qu'une icône se voit sur un Finder clair *et* sombre,
+    // et toutes les tailles, parce que c'est en petit qu'un dessin s'effondre
+    // — le 16 est la taille d'une liste du Finder.
+    let backgrounds: [(Color, Color)] = [
+        (Color(white: 0.13), .white),
+        (Color(white: 0.93), .black),
     ]
 
-    let sheet = VStack(spacing: 26) {
-        ForEach(labels, id: \.0) { variant, label in
-            HStack(alignment: .center, spacing: 24) {
-                Text(label)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white)
-                    .frame(width: 74, alignment: .trailing)
-                ForEach([180.0, 96.0, 48.0, 32.0, 16.0], id: \.self) { side in
-                    PulseonAppIcon(variant, weight: 0.048)
-                        .frame(width: side, height: side)
+    let sheet = VStack(spacing: 30) {
+        PulseonAppIcon().frame(width: 240, height: 240)
+        ForEach(backgrounds, id: \.0) { background, foreground in
+            HStack(alignment: .bottom, spacing: 26) {
+                ForEach([128.0, 64.0, 32.0, 16.0], id: \.self) { side in
+                    VStack(spacing: 8) {
+                        PulseonAppIcon().frame(width: side, height: side)
+                        Text("\(Int(side))")
+                            .font(.system(size: 10))
+                            .foregroundStyle(foreground)
+                    }
                 }
-                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity)
+            .padding(22)
+            .background(background)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
         }
     }
-    .padding(30)
-    .background(Color(white: 0.16))
+    .padding(32)
+    .background(Color(white: 0.55))
 
-    png(sheet, width: 600, height: 940, scale: 2, to: "\(outputDirectory)/icon-sheet.png")
+    png(sheet, width: 520, height: 700, scale: 2, to: "\(outputDirectory)/icon-sheet.png")
     print("\(outputDirectory)/icon-sheet.png")
 }

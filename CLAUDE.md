@@ -359,6 +359,28 @@ pouls. L'amplitude est bornée à un quart de tour de part et d'autre de l'axe :
 le battement reste contenu *dans* le cadran. Encore un défaut qu'aucun test ne
 pouvait voir.
 
+**L'épaisseur du trait est choisie sur planche, pas à l'estime.** Le premier jet
+tenait 6,2 % du côté — « c'est peut-être un peu trop épais ?  », et c'était
+juste. Quatre valeurs rendues côte à côte à cinq tailles : en dessous de 4 %,
+l'anneau devient fragile dès 32 points et le pic se casse. **Retenu : 4,8 %.**
+La même planche sert à toute retouche future — `Scripts/make-icon.sh` l'ouvre.
+
+**Trois autres formes ont été dessinées puis écartées le même jour**, Arthur
+ayant choisi le cadran (« j'aime beaucoup la version Cadran ! »). À ne pas
+reproposer :
+
+| Forme | Ce qu'elle donnait | Pourquoi elle n'est pas retenue |
+|---|---|---|
+| **épuré** | le cadran sans ses repères, battement traversant symétrique | plus net en petit, mais Arthur veut sa référence |
+| **contenu** | anneau fermé, battement entièrement à l'intérieur | l'anneau redevient un cercle ordinaire |
+| **parts** | l'anneau *du dashboard*, découpé en parts inégales | demande de connaître l'app pour être lu, or une icône se lit avant d'ouvrir |
+
+**Les repères disparaissent en dessous de 48 points, et c'est assumé** : à cette
+taille ils ne pèsent plus qu'un pixel, quand le cercle et le pic tiennent
+encore. Une marque doit se dégrader en perdant son détail, pas sa silhouette.
+Et ils **ne doivent jamais devenir une graduation** : Pulseon n'affiche pas un
+horaire qu'il n'a pas mesuré, jusque dans son icône.
+
 **Les couleurs de l'icône sont les seules `static let` du thème**, et c'est
 assumé : une icône vit dans le Dock et le Finder, pas dans nos fenêtres — elle
 est la même en clair et en sombre, donc elle n'a rien à résoudre depuis un

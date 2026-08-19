@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// La marque de Pulseon : un anneau et un battement.
+/// La marque de Pulseon : un cadran percé par un battement.
 ///
 /// **Dessinée, pas importée.** Un PNG embarqué serait flou au premier écran
 /// Retina venu et ne saurait pas se redessiner en 16 points pour une liste du
@@ -13,44 +13,14 @@ import SwiftUI
 /// Toutes les mesures sont des **fractions du côté**, jamais des points : la
 /// même vue sert au 1024 de l'icône et au 24 d'un en-tête.
 public struct PulseonMark: View {
-    /// Les formes en concurrence, le temps qu'Arthur tranche.
-    ///
-    /// **À réduire à une seule une fois le choix fait** : une variante que
-    /// personne ne demande est exactement le genre d'API qui ressemble à une
-    /// feature livrée.
-    public enum Variant: String, CaseIterable, Sendable {
-        /// Le cadran de la référence : anneau coupé, battement traversant,
-        /// repères à 12 h, 3 h et 6 h.
-        case dial
-        /// Le même sans les repères. Le battement traverse alors de part en
-        /// part, symétrique.
-        case pure
-        /// Anneau fermé, battement **contenu** à l'intérieur. Rien ne dépasse.
-        case contained
-        /// L'anneau du dashboard : découpé en parts, comme une journée l'est
-        /// entre ses appareils. Battement contenu.
-        case composition
-    }
-
-    public let variant: Variant
-
-    /// L'épaisseur du trait, en fraction du côté.
-    public let weight: CGFloat
-
-    public init(
-        _ variant: Variant = .dial,
-        weight: CGFloat = PulseonMark.defaultWeight
-    ) {
-        self.variant = variant
-        self.weight = weight
-    }
+    public init() {}
 
     public var body: some View {
         GeometryReader { geometry in
             let side = min(geometry.size.width, geometry.size.height)
             ZStack {
                 ring(side)
-                if variant == .dial { ticks(side) }
+                ticks(side)
                 pulse(side)
             }
             .frame(width: side, height: side)
@@ -61,39 +31,26 @@ public struct PulseonMark: View {
 
     // MARK: L'anneau
 
-    /// Les arcs qui composent l'anneau, en tours. Deux arcs pour le cadran :
-    /// les coupures tombent sur l'axe du battement, sans quoi la ligne
-    /// semblerait posée *par-dessus* le cercle au lieu de le percer.
-    private var arcs: [ClosedRange<Double>] {
-        switch variant {
-        case .dial, .pure:
-            let gap = 0.021
-            return [gap...(0.5 - gap), (0.5 + gap)...(1 - gap)]
-        case .contained:
-            return [0...1]
-        case .composition:
-            // Trois parts inégales : une journée ne se partage pas en tiers.
-            let gap = 0.011
-            return [
-                (0.0 + gap)...(0.54 - gap),
-                (0.54 + gap)...(0.82 - gap),
-                (0.82 + gap)...(1.0 - gap),
-            ]
-        }
-    }
-
+    /// Deux arcs et non un cercle : la moitié basse part du 3 h vers le 9 h,
+    /// la moitié haute revient, et les deux coupures tombent exactement sur
+    /// l'axe du battement. Sans ces trous, la ligne semblerait posée
+    /// *par-dessus* le cercle au lieu de le percer.
     private func ring(_ side: CGFloat) -> some View {
-        let width = side * weight
+        let width = side * PulseonMark.weight
+        let gap = 0.021
         return ZStack {
-            ForEach(Array(arcs.enumerated()), id: \.offset) { _, arc in
-                Circle()
-                    .inset(by: width / 2)
-                    .trim(from: arc.lowerBound, to: arc.upperBound)
-                    .stroke(style: StrokeStyle(lineWidth: width, lineCap: .round))
-            }
+            arc(from: gap, to: 0.5 - gap, width: width)
+            arc(from: 0.5 + gap, to: 1 - gap, width: width)
         }
         .frame(width: side * PulseonMark.ringDiameter, height: side * PulseonMark.ringDiameter)
         .foregroundStyle(PulseonTheme.markRing)
+    }
+
+    private func arc(from: Double, to: Double, width: CGFloat) -> some View {
+        Circle()
+            .inset(by: width / 2)
+            .trim(from: from, to: to)
+            .stroke(style: StrokeStyle(lineWidth: width, lineCap: .round))
     }
 
     // MARK: Les repères
@@ -102,14 +59,20 @@ public struct PulseonMark: View {
     /// c'est par là qu'entre le battement, et l'y dessiner ferait deux traits
     /// qui se chevauchent.
     ///
-    /// Ils ne mesurent rien — ni heure, ni quantité. Ils disent « ceci est un
-    /// cadran », ce qui est exactement ce que l'app mesure : du temps.
+    /// **Ils disparaissent en dessous de 48 points**, et c'est assumé : à
+    /// cette taille ils ne pèsent plus qu'un pixel, alors que le cercle et le
+    /// pic, eux, tiennent. Une marque doit se dégrader en perdant son détail,
+    /// pas sa silhouette.
+    ///
+    /// Ils ne mesurent rien — ni heure, ni quantité — et **ne doivent jamais
+    /// devenir une graduation** : Pulseon n'affiche pas un horaire qu'il n'a
+    /// pas mesuré, jusque dans son icône.
     ///
     /// Leur taille suit l'épaisseur du trait : fixes, ils passeraient de
     /// discrets à envahissants dès que l'anneau maigrit.
     private func ticks(_ side: CGFloat) -> some View {
-        let thickness = side * weight * 0.48
-        let length = side * weight
+        let thickness = side * PulseonMark.weight * 0.48
+        let length = side * PulseonMark.weight
         let radius = side * 0.334
         return ZStack {
             tick(width: thickness, height: length).offset(y: -radius)
@@ -126,60 +89,49 @@ public struct PulseonMark: View {
 
     // MARK: Le battement
 
-    /// Le tracé, en coordonnées propres : `x` de 0 à 1 sur sa propre longueur,
-    /// `y` en fraction du côté.
+    /// Le tracé **dépasse à gauche** : une ligne qui s'arrêterait pile aux
+    /// bords se lirait comme un diamètre, pas comme un signal qui passe. Il
+    /// s'arrête en revanche avant le repère de 3 h, sinon les deux se touchent
+    /// et forment un trait unique.
     ///
     /// **L'amplitude du pic est bornée à un quart de tour de part et d'autre
     /// de l'axe.** Un premier jet le faisait monter jusqu'à l'anneau : croisé
     /// avec la ligne horizontale, le dessin devenait un **réticule de visée**.
     /// Un battement doit rester contenu *dans* le cadran, pas le traverser.
     private static let trace: [CGPoint] = [
-        CGPoint(x: 0.000, y: 0.500),
+        CGPoint(x: 0.010, y: 0.500),
+        CGPoint(x: 0.272, y: 0.500),
+        CGPoint(x: 0.308, y: 0.452),
         CGPoint(x: 0.344, y: 0.500),
-        CGPoint(x: 0.391, y: 0.452),
-        CGPoint(x: 0.438, y: 0.500),
-        CGPoint(x: 0.533, y: 0.252),
-        CGPoint(x: 0.614, y: 0.766),
-        CGPoint(x: 0.678, y: 0.428),
-        CGPoint(x: 0.735, y: 0.528),
-        CGPoint(x: 0.783, y: 0.500),
-        CGPoint(x: 1.000, y: 0.500),
+        CGPoint(x: 0.416, y: 0.252),
+        CGPoint(x: 0.478, y: 0.766),
+        CGPoint(x: 0.527, y: 0.428),
+        CGPoint(x: 0.570, y: 0.528),
+        CGPoint(x: 0.607, y: 0.500),
+        CGPoint(x: 0.772, y: 0.500),
     ]
 
-    /// De où à où le battement s'étend, et de combien son amplitude est
-    /// réduite.
-    ///
-    /// Sur le cadran il **dépasse à gauche** : une ligne qui s'arrêterait pile
-    /// aux bords se lirait comme un diamètre, pas comme un signal qui passe.
-    /// Et il s'arrête avant le repère de 3 h, sinon les deux se touchent et
-    /// forment un trait unique.
-    private var span: (start: CGFloat, end: CGFloat, amplitude: CGFloat) {
-        switch variant {
-        case .dial: (0.010, 0.772, 1.0)
-        case .pure: (0.010, 0.990, 1.0)
-        case .contained, .composition: (0.175, 0.825, 0.82)
-        }
-    }
-
     private func pulse(_ side: CGFloat) -> some View {
-        let span = span
-        return Path { path in
-            let points = PulseonMark.trace.map { point in
-                CGPoint(
-                    x: (span.start + point.x * (span.end - span.start)) * side,
-                    y: (0.5 + (point.y - 0.5) * span.amplitude) * side
-                )
-            }
-            path.addLines(points)
+        Path { path in
+            path.addLines(PulseonMark.trace.map { CGPoint(x: $0.x * side, y: $0.y * side) })
         }
         .stroke(
             PulseonTheme.markPulse,
-            style: StrokeStyle(lineWidth: side * weight, lineCap: .round, lineJoin: .round)
+            style: StrokeStyle(
+                lineWidth: side * PulseonMark.weight,
+                lineCap: .round,
+                lineJoin: .round
+            )
         )
         .frame(width: side, height: side)
     }
 
-    public static let defaultWeight: CGFloat = 0.048
+    /// L'épaisseur du trait, en fraction du côté.
+    ///
+    /// **Choisie sur planche, pas à l'estime** : à 0,062 (le premier jet) le
+    /// trait est lourd en grand ; en dessous de 0,040 l'anneau devient fragile
+    /// dès 32 points et le pic se casse.
+    private static let weight: CGFloat = 0.048
     private static let ringDiameter: CGFloat = 0.885
 }
 
@@ -193,16 +145,7 @@ public struct PulseonMark: View {
 /// Elle ne suit **pas** l'apparence système : une icône d'app est la même en
 /// clair et en sombre, et c'est le bleu nuit de la maquette qui fait foi.
 public struct PulseonAppIcon: View {
-    public let variant: PulseonMark.Variant
-    public let weight: CGFloat
-
-    public init(
-        _ variant: PulseonMark.Variant = .dial,
-        weight: CGFloat = PulseonMark.defaultWeight
-    ) {
-        self.variant = variant
-        self.weight = weight
-    }
+    public init() {}
 
     public var body: some View {
         GeometryReader { geometry in
@@ -218,8 +161,7 @@ public struct PulseonAppIcon: View {
                         .strokeBorder(PulseonTheme.markEdge, lineWidth: max(1, tile * 0.004))
                 }
                 .overlay {
-                    PulseonMark(variant, weight: weight)
-                        .frame(width: tile * 0.66, height: tile * 0.66)
+                    PulseonMark().frame(width: tile * 0.66, height: tile * 0.66)
                 }
                 .frame(width: tile, height: tile)
                 .frame(width: canvas, height: canvas)
