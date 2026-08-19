@@ -524,26 +524,29 @@ ne rattraperont pas ». Le rendu de démonstration le montre d'ailleurs sans le
 chercher : Xcode et Brave sortent en vrai, IINA, Slack et Elden Ring retombent
 sur leur glyphe. **Jamais de carré vide.**
 
-**Les ronds de catégories font tous la même taille**, décision d'Arthur le
-2026-08-19 : « je me fiche de la logique le rond grossit plus le temps est grand,
-laisse-les de la même taille ». **Ce n'est pas une entorse à la règle, c'est sa
-bonne portée** : sur la rangée de la *semaine*, les ronds servent à comparer des
-journées entre elles et la taille est le seul canal disponible, puisqu'un anneau
-fait toujours le tour. Ici la durée est déjà écrite au-dessus de chaque rond, donc
-la faire porter *aussi* par le diamètre ne disait rien de plus — et déformait la
-rangée pour rien, une catégorie dominante écrasant toutes les autres sur le
-plancher. À ne pas « restaurer ».
+**Tous les petits ronds de l'app font la même taille** — ceux des catégories
+comme ceux des journées de la semaine. Décision d'Arthur le 2026-08-19 : « je me
+fiche de la logique le rond grossit plus le temps est grand, laisse-les de la
+même taille », étendue le même jour à la rangée de la semaine.
 
-**`RingScale` porte la règle de taille** pour la semaine, qui en a besoin : la
-surface est proportionnelle à la durée, donc le diamètre suit sa **racine
-carrée** — l'œil compare des surfaces, et un diamètre proportionnel ferait
-paraître une journée deux fois plus longue quatre fois plus grosse. Écrite une
-fois et testée, plutôt qu'enfouie dans une vue.
+**Le diamètre a d'abord encodé la durée** (surface ∝ temps, donc diamètre en
+racine carrée, parce que l'œil compare des surfaces). C'était défendable — un
+anneau fait toujours le tour, donc la taille était le seul canal restant — mais
+**la durée est déjà écrite au-dessus de chaque rond**, et une rangée de ronds
+inégaux se lit moins bien qu'une rangée régulière. `RingScale`, le type pur qui
+portait la règle, a donc été **supprimé** : plus aucun appelant, et une API que
+personne n'appelle ressemble à une feature livrée. Ses cinq tests sont partis
+avec.
 
-**Son plancher n'est pas un réglage d'humeur** : tout ce qui vaut moins de
-`(minimum / maximum)²` de la référence y tombe et devient indiscernable. Constaté
-en PNG à l'époque où les catégories l'utilisaient — à 24 sur 54, le seuil était à
-**un cinquième** de la journée, et « 48 min » et « 3 min » faisaient le même rond.
+**Ce qui reste vrai, et qui vaudra pour toute quantité future : jamais par le
+remplissage.** Un anneau rempli aux deux tiers se lirait « objectif atteint à
+66 % », or l'objectif quotidien a été retiré de la maquette et la règle « aucune
+comparaison ne juge » l'interdit. Si une quantité devait un jour passer par la
+forme, ce serait par la taille, jamais par un tour incomplet.
+
+**`PeriodPresentation.busiestDay` a été supprimée au passage** : écrite dans la
+PR #32, jamais lue par une vue. Exactement le symptôme que ce projet traque —
+chercher l'appelant, pas la déclaration.
 
 **Une légende de couleurs sous l'anneau principal** (`DeviceLegend`), la même que
 sur l'écran de la semaine : sans elle, il faut descendre à la carte « Appareils »
@@ -663,10 +666,9 @@ anneau rempli aux deux tiers se lirait « objectif atteint à 66 % » — c'est 
 « / 5h Daily Goal » retiré de la maquette, et la règle « aucune comparaison ne
 juge » l'interdit. Les arcs font donc toujours le tour, à toutes les échelles.
 
-**Le diamètre suit la racine carrée du temps**, pas le temps lui-même : l'œil
-compare des *surfaces*, donc un diamètre proportionnel ferait paraître une
-journée deux fois plus longue **quatre fois** plus grosse. C'est le défaut
-classique des graphiques à bulles, et il exagère toujours dans le même sens.
+**Tous les ronds de journées font la même taille**, comme ceux des catégories —
+voir « le dashboard » plus haut pour l'historique de cette décision et ce qui
+reste interdit (encoder une quantité par un anneau incomplet).
 
 **Quatre états de rond, jamais deux.** C'est la règle « pas encore branchée ≠
 journée à zéro » poussée jusqu'au bout, avec un cas que la journée seule ne
