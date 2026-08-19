@@ -14,10 +14,9 @@ import SwiftUI
 /// juge » l'interdit. Les arcs font donc toujours le tour, comme sur l'écran du
 /// jour, et c'est le **diamètre** qui dit la longueur de la journée.
 ///
-/// **Le diamètre suit la racine carrée du temps**, et non le temps lui-même :
-/// l'œil compare des *surfaces*, donc un diamètre proportionnel ferait paraître
-/// une journée deux fois plus longue quatre fois plus grosse. C'est le défaut
-/// classique des graphiques à bulles, et il exagère toujours dans le même sens.
+/// **Le diamètre suit la racine carrée du temps** — voir `RingScale`, qui porte
+/// la règle et son pourquoi, et qui sert aussi aux ronds de catégories de
+/// l'écran du jour.
 struct WeekRingRow: View {
     let period: PeriodPresentation
     let palette: PulseonPalette
@@ -118,11 +117,15 @@ private struct DayRing: View {
         }
     }
 
-    /// La surface du rond est proportionnelle au temps, donc son diamètre suit
-    /// la racine carrée de la part.
+    /// Voir `RingScale` : la surface est proportionnelle au temps, donc le
+    /// diamètre suit sa racine carrée.
     private var diameter: CGFloat {
-        let share = min(1, max(0, day.total / scale))
-        return max(Self.minimumRingDiameter, maximumDiameter * sqrt(share))
+        RingScale.diameter(
+            for: day.total,
+            reference: scale,
+            maximum: maximumDiameter,
+            minimum: Self.minimumRingDiameter
+        )
     }
 
     private var valueLabel: String {

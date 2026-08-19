@@ -171,38 +171,50 @@ private struct RingCard: View {
     let day: DayPresentation
     let palette: PulseonPalette
 
-    /// Deux anneaux côte à côte, et non deux couronnes concentriques.
-    ///
-    /// Le double anneau — appareils dehors, catégories dedans — a vécu une
-    /// session : Arthur, devant l'app installée, a demandé « à quoi correspond
-    /// le deuxième anneau ? ». **C'est la question qui est le résultat.** Sur sa
-    /// machine un seul appareil est branché, donc la couronne extérieure est un
-    /// cercle uni pendant que l'intérieure est bariolée : au premier regard,
-    /// c'est la petite qui a l'air d'être le graphique. Séparés, chacun porte
-    /// son titre et il n'y a plus rien à deviner — « c'est plus lisible et tu as
-    /// la place ».
-    private var diameter: CGFloat { 168 }
-
     var body: some View {
+        let lanes = day.digest.lanes.filter { $0.total > 0 }
+
         Card(palette: palette) {
-            VStack(spacing: 12) {
-                // Côte à côte quand la fenêtre le permet, l'un sous l'autre
-                // sinon : à 560 points de large, deux anneaux de 168 se
-                // chevaucheraient. `ViewThatFits` choisit sans qu'aucune vue
-                // ait à mesurer quoi que ce soit.
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: 28) {
-                        rings
-                    }
-                    VStack(spacing: 22) {
-                        rings
-                    }
+            VStack(spacing: 14) {
+                // L'anneau principal : les appareils, et le total de la journée
+                // en son centre.
+                //
+                // **Il est seul en tête**, après deux tentatives écartées le
+                // 2026-08-19 : une couronne intérieure concentrique, qui
+                // demandait une légende pour qu'on sache laquelle disait quoi ;
+                // puis un second anneau plein à côté, qui obligeait à écrire un
+                // chiffre en son centre alors que la somme des catégories n'est
+                // pas comparable au total de la journée. Les catégories sont
+                // désormais une rangée de petits ronds, en dessous.
+                ActivityRing(
+                    segments: lanes.map {
+                        .init(
+                            id: $0.device.rawValue,
+                            value: $0.total,
+                            tones: PulseonTheme.ringTones(for: $0.device, in: palette)
+                        )
+                    },
+                    total: day.isEmpty ? nil : day.digest.coveredTotal,
+                    caption: day.isEmpty ? "rien de branché" : "devant un écran",
+                    palette: palette
+                )
+
+                if !lanes.isEmpty {
+                    DeviceLegend(lanes: lanes, palette: palette)
                 }
 
-                // La comparaison se lit juste sous les anneaux, parce que c'est
+                // La comparaison se lit juste sous le total, parce que c'est
                 // là que la question se pose : « 9 h 39, c'est beaucoup ? ».
                 if let comparison = day.comparison {
                     DayComparisonView(comparison: comparison, palette: palette)
+                }
+
+                if !day.categories.isEmpty {
+                    Divider()
+                        .overlay(palette.hairline)
+                        .padding(.horizontal, 8)
+
+                    DayCategoryRings(categories: day.categories, palette: palette)
                 }
 
                 // Le second total ne s'affiche que s'il dit autre chose : sans
@@ -218,81 +230,6 @@ private struct RingCard: View {
                 }
             }
             .frame(maxWidth: .infinity)
-        }
-    }
-
-    @ViewBuilder
-    private var rings: some View {
-        let lanes = day.digest.lanes.filter { $0.total > 0 }
-
-        // Sur quel écran. Porte le total de la journée, qui reste le premier
-        // chiffre de l'app.
-        TitledRing(
-            title: "Appareils",
-            segments: lanes.map {
-                .init(
-                    id: $0.device.rawValue,
-                    value: $0.total,
-                    tones: PulseonTheme.ringTones(for: $0.device, in: palette)
-                )
-            },
-            total: day.isEmpty ? nil : day.digest.coveredTotal,
-            caption: day.isEmpty ? "rien de branché" : "devant un écran",
-            diameter: diameter,
-            palette: palette
-        )
-
-        // À quoi. **Son centre ne porte pas de total**, et c'est délibéré :
-        // deux catégories simultanées comptent chacune leur temps, donc leur
-        // somme peut dépasser le temps passé devant un écran. Deux grands
-        // nombres côte à côte inviteraient à les comparer, et l'un des deux
-        // paraîtrait faux. Le centre nomme donc la catégorie dominante, qui est
-        // un fait et non une somme.
-        if let first = day.categories.first {
-            TitledRing(
-                title: "Répartition",
-                segments: day.categories.map {
-                    .init(
-                        id: $0.category.rawValue,
-                        value: $0.total,
-                        tones: PulseonTheme.ringTones(for: $0.category, in: palette)
-                    )
-                },
-                total: first.total,
-                caption: first.category.label,
-                diameter: diameter,
-                palette: palette
-            )
-        }
-    }
-}
-
-/// Un anneau surmonté de son titre.
-///
-/// Le titre reprend **mot pour mot** celui de la carte correspondante plus bas —
-/// « Appareils », « Répartition ». C'est ce qui relie une couleur d'arc à une
-/// ligne chiffrée sans avoir à poser une légende de plus sur l'écran.
-private struct TitledRing: View {
-    let title: String
-    let segments: [ActivityRing.Segment]
-    let total: TimeInterval?
-    let caption: String
-    let diameter: CGFloat
-    let palette: PulseonPalette
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Text(title)
-                .font(PulseonTheme.sectionTitle)
-                .foregroundStyle(palette.inkSoft)
-
-            ActivityRing(
-                segments: segments,
-                total: total,
-                caption: caption,
-                palette: palette,
-                diameter: diameter
-            )
         }
     }
 }

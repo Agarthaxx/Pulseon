@@ -486,29 +486,45 @@ objectif quotidien (« / 5h Daily Goal »), un badge « On Track » et un score
 le tour complet**, ses arcs étant des parts de la journée. C'est ce qui rend
 l'anneau compatible avec une app qui mesure sans dire si c'est bien.
 
-**Deux anneaux côte à côte, depuis le 2026-08-19** : « Appareils » à gauche,
-« Répartition » à droite. Chacun porte le titre **mot pour mot** de la carte
-chiffrée correspondante plus bas, ce qui relie une couleur d'arc à une ligne sans
-poser de légende supplémentaire.
+**L'anneau principal reste seul en tête, et les catégories sont une rangée de
+petits ronds en dessous** (`DayCategoryRings`) — un rond par catégorie, taille
+proportionnelle à la durée, glyphe au centre. **Même concept que la rangée de la
+semaine**, à un cran plus fin : là-bas un rond par journée, ici un rond par
+catégorie.
 
-**Ils ont d'abord été concentriques — un double anneau — et ça n'a pas tenu une
-journée.** Arthur, devant l'app installée : « à quoi correspond le deuxième
-anneau ? ». **C'est la question qui est le résultat, pas la réponse.** Sur sa
-machine un seul appareil est branché : la couronne extérieure était donc un
-cercle uni pendant que l'intérieure était bariolée, et au premier regard c'est la
-petite qui avait l'air d'être le graphique. Séparés, il n'y a plus rien à
-deviner. Leçon transposable : **une forme qui demande une légende pour être
-comprise n'est pas plus dense, elle est plus opaque** — et il y avait la place.
+**Deux formes ont été essayées et écartées le même jour, et il vaut mieux savoir
+pourquoi :**
 
-**Le centre de l'anneau des catégories ne porte pas la somme des catégories**, et
-c'est délibéré : deux catégories simultanées comptent chacune leur temps, donc
-cette somme peut dépasser le temps passé devant un écran. Deux grands nombres
-côte à côte inviteraient à les comparer, et l'un des deux paraîtrait faux. Le
-centre nomme donc la **catégorie dominante** et sa durée, qui sont des faits et
-non un cumul.
+- **Une couronne intérieure concentrique.** Première question d'Arthur devant
+  l'app installée : « à quoi correspond le deuxième anneau ? ». **C'est la
+  question qui est le résultat, pas la réponse.** Sur sa machine un seul appareil
+  est branché, donc la couronne extérieure était un cercle uni pendant que
+  l'intérieure était bariolée : au premier regard, c'est la petite qui avait
+  l'air d'être le graphique. Leçon transposable : **une forme qui demande une
+  légende pour être comprise n'est pas plus dense, elle est plus opaque.**
+- **Deux anneaux pleins côte à côte**, chacun titré. Lisible, mais il fallait
+  écrire un chiffre au centre du second, or la somme des catégories n'est pas
+  comparable au total de la journée — deux grands nombres côte à côte invitent à
+  les comparer, et l'un des deux paraît faux. Écarté par Arthur : « je ne suis
+  pas trop fan ».
 
-**`ViewThatFits` les met l'un sous l'autre** quand la fenêtre est trop étroite,
-sans qu'aucune vue ait à mesurer quoi que ce soit.
+La rangée de ronds ne pose ni l'un ni l'autre problème : **chacun porte sa propre
+durée écrite au-dessus, et aucun ne prétend résumer les autres.**
+
+**`RingScale` porte la règle de taille**, partagée par les ronds de la semaine et
+ceux des catégories : la surface est proportionnelle à la durée, donc le diamètre
+suit sa **racine carrée**. Écrite une fois, testée, plutôt que recopiée à deux
+endroits.
+
+**Le plancher de diamètre n'est pas un réglage d'humeur** : tout ce qui vaut
+moins de `(minimum / maximum)²` de la référence y tombe et devient indiscernable.
+À 24 sur 54, c'était un **cinquième** de la journée — « 48 min » et « 3 min »
+faisaient le même rond. À 20 sur 58, le plancher ne prend que sous 12 %.
+
+**Une légende de couleurs sous l'anneau principal** (`DeviceLegend`), la même que
+sur l'écran de la semaine : sans elle, il faut descendre à la carte « Appareils »
+pour savoir ce que dit une couleur, alors que la couleur est justement ce qu'on
+lit d'un coup d'œil.
 
 Il garantit aussi qu'**une part minuscule reste visible** (plancher de 1,2 % de
 tour) : une minute sur huit heures fait 0,2 % de tour, soit un arc invisible, et
