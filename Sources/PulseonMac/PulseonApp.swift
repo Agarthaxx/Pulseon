@@ -121,6 +121,18 @@ private struct DashboardWindow: View {
                     onNext: periods.goToNextWeek,
                     onCurrent: periods.goToCurrentWeek
                 )
+            case .timeline:
+                // La chronologie regarde **la même journée** que l'écran du
+                // jour, et partage donc son `DayBrowser` : deux navigations
+                // séparées feraient dériver les deux écrans l'un de l'autre,
+                // et basculer d'onglet changerait la date sans le dire.
+                DayTimeline(
+                    load: browser.load,
+                    canGoForward: browser.canGoForward,
+                    onPrevious: browser.goToPreviousDay,
+                    onNext: browser.goToNextDay,
+                    onToday: browser.goToToday
+                )
             }
         }
         .background(palette.ground)
@@ -139,7 +151,7 @@ private struct DashboardWindow: View {
 
     private func reloadVisible() {
         switch screen {
-        case .day: browser.reload()
+        case .day, .timeline: browser.reload()
         case .week: periods.reload()
         }
     }

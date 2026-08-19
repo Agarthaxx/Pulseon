@@ -403,3 +403,88 @@ MainActor.assumeIsolated {
         size: CGSize(width: 1512, height: 949), named: "pulseon-week-wide"
     )
 }
+
+// MARK: - La chronologie
+
+MainActor.assumeIsolated {
+    @MainActor
+    func timeline(_ load: DayDashboard.Load, canGoForward: Bool, scheme: ColorScheme)
+        -> some View
+    {
+        DayTimelineContent(
+            load: load,
+            canGoForward: canGoForward,
+            palette: PulseonTheme.palette(for: scheme)
+        )
+        .environment(\.colorScheme, scheme)
+    }
+
+    let now = dayStart.addingTimeInterval(19.4 * 3600)
+
+    // **Le cas qui teste le rail : deux écrans en même temps.** Le film du soir
+    // recouvre une session Mac, donc le rail doit se diviser en hauteur — c'est
+    // là que se voit ce qu'un total ne dira jamais.
+    // Sans entité : une télé allumée ne dit pas ce qu'elle diffuse.
+    let tvBlocks: [TraceBlock] = [
+        TraceBlock(entity: nil, startOffset: 21.4 * 3600, duration: 1.4 * 3600),
+        TraceBlock(entity: nil, startOffset: 13.0 * 3600, duration: 0.6 * 3600),
+    ]
+    let tvTotal = tvBlocks.reduce(0) { $0 + $1.duration }
+
+    let mixed = DayDigest(
+        date: digest.date,
+        lanes: [
+            Lane(
+                device: .mac, total: macTotal, blocks: macBlocks,
+                topEntities: [EntityTotal(entity: "Xcode", total: 4.8 * 3600)],
+                isConnected: true
+            ),
+            Lane(
+                device: .playstation, total: psTotal, blocks: [],
+                topEntities: [EntityTotal(entity: "Elden Ring", total: psTotal)],
+                isConnected: true
+            ),
+            Lane(device: .tv, total: tvTotal, blocks: tvBlocks, topEntities: [], isConnected: true),
+        ],
+        summedTotal: macTotal + psTotal + tvTotal,
+        coveredTotal: macTotal + tvTotal
+    )
+
+    let mixedDay = DayPresentation(
+        digest: mixed, dayStart: dayStart, dayLength: day, now: now)
+
+    shoot(
+        timeline(.loaded(mixedDay), canGoForward: false, scheme: .dark),
+        size: CGSize(width: 860, height: 340), named: "pulseon-timeline-dark"
+    )
+    shoot(
+        timeline(.loaded(mixedDay), canGoForward: true, scheme: .light),
+        size: CGSize(width: 860, height: 340), named: "pulseon-timeline-light"
+    )
+
+    // Une journée passée : aucune tête de lecture, elle est entièrement jouée.
+    let pastDay = DayPresentation(
+        digest: digest, dayStart: dayStart.addingTimeInterval(-2 * day),
+        dayLength: day, now: nil
+    )
+    shoot(
+        timeline(.loaded(pastDay), canGoForward: true, scheme: .dark),
+        size: CGSize(width: 860, height: 340), named: "pulseon-timeline-past"
+    )
+
+    // Rien de mesuré : ça ne doit pas se lire « journée à zéro ».
+    let emptyDay = DayPresentation(
+        digest: emptyDigest, dayStart: dayStart.addingTimeInterval(-3 * day),
+        dayLength: day, now: nil
+    )
+    shoot(
+        timeline(.loaded(emptyDay), canGoForward: true, scheme: .dark),
+        size: CGSize(width: 860, height: 260), named: "pulseon-timeline-empty"
+    )
+
+    // Étroite : la règle horaire doit s'alléger au lieu de s'empiler.
+    shoot(
+        timeline(.loaded(mixedDay), canGoForward: false, scheme: .dark),
+        size: CGSize(width: 560, height: 340), named: "pulseon-timeline-narrow"
+    )
+}
