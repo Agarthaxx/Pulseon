@@ -18,6 +18,21 @@ public enum AppCategory: String, CaseIterable, Sendable, Codable {
     case creation
     case productivity
     case game
+    /// La télé, et la console : **deux écrans, pas deux contenus.**
+    ///
+    /// Elles n'ont pas leur place parmi les catégories de contenu, et c'est
+    /// exactement ce que le raccourci précédent faisait — tout le temps de télé
+    /// tombait en `media`, donc « Vidéo et musique », **avant même de savoir ce
+    /// qui passait à l'écran**. Une soirée de PS5 branchée sur cette télé s'y
+    /// serait rangée en musique. Pulseon ne sait qu'une chose de la télé
+    /// (`PowerState: on`) : le rond doit dire ça, et rien de plus.
+    ///
+    /// Le jour où la télé nommera son app (`Scripts/probe-tv-apps.sh`), son
+    /// temps repartira vers une vraie catégorie de contenu et ces cas
+    /// redeviendront le seul repli — sans rien perdre de l'historique, la
+    /// catégorie brute étant stockée telle quelle.
+    case tv
+    case playstation
     /// Ni devinée, ni devinable. Assumée comme telle : mieux vaut une ligne
     /// « Autre » honnête qu'un rangement inventé.
     case other
@@ -31,6 +46,8 @@ public enum AppCategory: String, CaseIterable, Sendable, Codable {
         case .creation: "Création"
         case .productivity: "Productivité"
         case .game: "Jeu"
+        case .tv: "Télé"
+        case .playstation: "PlayStation"
         case .other: "Autre"
         }
     }
@@ -40,16 +57,25 @@ extension Device {
     /// La catégorie d'un appareil qui ne dit pas ce qu'il fait.
     ///
     /// Une TV allumée ne déclare pas ce qu'elle diffuse, et la PlayStation ne
-    /// donne qu'un nom de jeu sans rien d'autre. Ce n'est **pas** une invention
-    /// de contenu — c'est la nature de l'appareil : une console sert à jouer, une
-    /// télé à regarder. Le Mac, lui, ne se laisse pas résumer : c'est le seul
-    /// appareil polyvalent, donc son défaut est `other` et tout passe par
-    /// l'identité de l'app.
+    /// donne qu'un nom de jeu sans horaire. **Chacune est donc sa propre
+    /// catégorie**, parce que ce sont deux écrans distincts et non deux
+    /// contenus.
+    ///
+    /// C'est une correction, et elle a été payée à l'usage le 2026-08-19 :
+    /// `tv` valait `media`, donc 2 h 52 de télé s'affichaient « Vidéo et
+    /// musique » alors que l'app Musique avait tourné 6 secondes. Le raccourci
+    /// (« une télé sert à regarder ») tient tant qu'on parle de l'appareil, et
+    /// casse à l'instant où le total atterrit dans une catégorie de contenu, à
+    /// côté d'IINA — l'app affirme alors ce qu'elle n'a pas mesuré.
+    ///
+    /// Le Mac, lui, ne se laisse pas résumer : c'est le seul appareil
+    /// polyvalent, donc son défaut est `other` et tout passe par l'identité de
+    /// l'app.
     public var defaultCategory: AppCategory {
         switch self {
         case .mac: .other
-        case .playstation: .game
-        case .tv: .media
+        case .playstation: .playstation
+        case .tv: .tv
         }
     }
 }

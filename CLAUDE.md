@@ -210,6 +210,53 @@ prétend rien de plus**. On ne classe jamais d'après la ressemblance du nom :
 « Mail Designer » n'est pas un client mail, et un faux rangement est pire qu'un
 `other` honnête.
 
+**Un écran n'est pas un contenu.** La télé et la PlayStation ont **chacune leur
+propre catégorie** (`Télé`, `PlayStation`), et ce n'est pas un détail de
+libellé — c'est une correction payée à l'usage le 2026-08-19. `Device.tv`
+valait `.media` : tout le temps de télé tombait donc dans « Vidéo et musique »,
+**avant même de savoir ce qui passait à l'écran**. Le soir où la télé a
+réellement été mesurée pour la première fois, la catégorie affichait 2 h 52
+alors que l'app Musique avait tourné **6 secondes** — et c'est Arthur qui l'a vu :
+« pourquoi ma musique a autant grimpé ? ».
+
+Le raccourci qui la défendait (« une console sert à jouer, une télé à regarder »)
+tient tant qu'on parle de l'appareil, et casse à l'instant où le total atterrit
+dans une catégorie de contenu, à côté d'IINA : l'app affirme alors ce qu'elle n'a
+pas mesuré. Pulseon ne sait qu'une chose de la télé — `PowerState: on`. **Le cas
+qui rend la faute indéfendable est déjà réel** : la PS5 d'Arthur est branchée sur
+cette télé et le collecteur PSN est bloqué, donc une soirée de jeu n'existe que
+sous forme de « télé allumée » — elle aurait été rangée en musique.
+
+Trois conséquences à ne pas défaire :
+
+- **« Jeu » reste le classement d'un jeu *sur le Mac***, lu dans son `Info.plist`.
+  La console est un écran, pas un contenu. Les deux portent l'or, celui de
+  l'appareil PlayStation — elles ne se distingueraient que par leur libellé le
+  jour où un jeu Mac et la console tournent la même journée.
+- **La couleur d'un rond d'appareil est celle de son arc** dans l'anneau du haut
+  et de sa pastille dans la légende. Un rond qui parle d'un écran doit se
+  rattacher à cet écran sans qu'on redescende lire un libellé.
+- **Le rond n'existe que si l'appareil a servi** : une catégorie à zéro n'est pas
+  dessinée. On ne peut pas afficher « Télé — 0 min » les jours d'extinction,
+  parce que la base ne distingue pas « éteinte toute la journée » de « le Mac
+  n'était pas sur son réseau » — ce serait affirmer un zéro non mesuré (règle 2).
+  La carte « Appareils », elle, garde la distinction.
+
+Le jour où la télé nommera son app (`Scripts/probe-tv-apps.sh`), son temps
+repartira vers une vraie catégorie de contenu et ces deux cas redeviendront le
+seul repli — **sans rien perdre de l'historique**, la catégorie brute étant
+stockée telle quelle. Ce changement règle aussi le décalage signalé la veille :
+le cœur d'un rond ne peut plus emprunter le logo d'une app Mac pour du temps de
+télé, la télé n'ayant aucune entité.
+
+**Une seule rangée de ronds, toujours** (choix d'Arthur le 2026-08-19 :
+« je préfère la photo avec une seule rangée »). Passer de cinq catégories à sept
+a fait déborder la rangée en fenêtre étroite — 612 points réclamés dans 560 — et
+le débordement **entraînait toute la colonne** : les cartes du dessous se
+retrouvaient rognées des deux côtés. `ViewThatFits` prend la première des trois
+tailles de rond qui tient (48, 40, 32 points) au lieu de replier la rangée.
+Invisible à la compilation, invisible en fenêtre large, **trouvé en PNG**.
+
 **Ce que les totaux par catégorie veulent dire, exactement.** Chaque catégorie
 est fusionnée sur elle-même : deux apps de dev en parallèle ne comptent qu'une
 fois. Mais deux catégories simultanées comptent chacune leur temps — coder en
@@ -664,6 +711,13 @@ rectangle uni de la couleur du fond, ce qui ressemble à un bug de dessin alors
 que la vue est simplement hors champ. D'où `DayDashboardContent`, séparé du
 conteneur défilant et rendable seul. **Toute vue défilante doit garder son
 contenu extractible**, sinon elle est invisible à la preview.
+
+**La preview écrivait ses catégories à la main**, et ne pouvait donc pas voir un
+bug de classement : elle décrivait le résultat attendu au lieu de le calculer.
+Au premier rendu du changement ci-dessus, elle affichait encore l'ancien
+classement — la vue était juste, l'image mentait. Elle passe désormais par le
+vrai `CategoryDigestBuilder`, et seul le dictionnaire d'apps y est écrit à la
+main. **Une preview qui ne traverse pas le code testé ne vérifie rien.**
 
 `TimelineGeometry` tient le calcul de placement horaire, séparé des vues pour
 être testable sans simulateur — même raison que `PulseonCore`. La longueur du

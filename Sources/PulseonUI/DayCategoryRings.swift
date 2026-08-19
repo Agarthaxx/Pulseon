@@ -41,6 +41,32 @@ struct DayCategoryRings: View {
         // qui se partagent toute la largeur : à trois catégories — le cas
         // courant — elles s'étalaient sur 700 points et la rangée ne se lisait
         // plus comme un groupe.
+        //
+        // **Une seule rangée, toujours** (choix d'Arthur, 2026-08-19) : c'est
+        // elle qui se lit d'un coup d'œil, et une deuxième ligne casse le
+        // groupe. Quand la fenêtre se resserre, les ronds rétrécissent au lieu
+        // de passer à la ligne.
+        //
+        // Il fallait quand même traiter le cas, et le PNG l'a montré le même
+        // jour : en donnant leur propre rond à la télé et à la PlayStation, on
+        // passe de cinq catégories à sept. Dans une fenêtre de 560 points, la
+        // rangée réclamait 612 points, débordait, et **entraînait toute la
+        // colonne avec elle** — les cartes du dessous se retrouvaient rognées à
+        // gauche et à droite. Invisible à la compilation, invisible en fenêtre
+        // large.
+        //
+        // `ViewThatFits` prend la première taille qui tient. Le dernier palier
+        // est un plancher, pas un idéal : en dessous, un rond ne se lit plus, et
+        // mieux vaut rogner que rendre la rangée illisible.
+        ViewThatFits(in: .horizontal) {
+            row(columnWidth: 84, diameter: diameter)
+            row(columnWidth: 68, diameter: 40)
+            row(columnWidth: 54, diameter: 32)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func row(columnWidth: CGFloat, diameter: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 4) {
             ForEach(categories) { category in
                 CategoryRing(
@@ -51,12 +77,7 @@ struct DayCategoryRings: View {
                 )
             }
         }
-        .frame(maxWidth: .infinity)
     }
-
-    /// Assez large pour « Communication » réduit d'un cran, assez étroit pour
-    /// que huit catégories tiennent encore dans la colonne de l'écran.
-    private let columnWidth: CGFloat = 84
 }
 
 private struct CategoryRing: View {
