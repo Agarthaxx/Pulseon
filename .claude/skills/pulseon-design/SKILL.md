@@ -18,8 +18,11 @@ d'abord, iPhone ensuite. Ce qu'elle porte, dans l'ordre d'importance :
 2. **Deux accents, l'or et le bleu nuit**, ceux de l'icône de l'app.
 3. **L'anneau en tête d'écran**, grand nombre au centre, unité en petit et en
    gris, légende de couleurs dessous. **Les catégories sont une rangée de petits
-   ronds sous l'anneau** (2026-08-19), un par catégorie, taille ∝ durée, glyphe
-   au centre — même concept que la rangée de la semaine.
+   ronds sous l'anneau** (2026-08-19), un par catégorie, **tous de la même
+   taille**, portant le logo de l'app dominante (glyphe de la catégorie à
+   défaut). La taille n'y encode rien, exprès : la durée est écrite au-dessus de
+   chaque rond. Sur la rangée de la *semaine*, en revanche, la taille encode la
+   durée — c'est là que les ronds se comparent entre eux.
    **Deux formes écartées le même jour, à ne pas reproposer :** une couronne
    intérieure concentrique (« à quoi correspond le deuxième anneau ? » — une
    forme qui demande une légende n'est pas plus dense, elle est plus opaque), et

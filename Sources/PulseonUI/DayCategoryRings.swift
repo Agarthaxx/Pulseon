@@ -4,9 +4,10 @@ import SwiftUI
 /// À quoi la journée a servi, en un rond par catégorie.
 ///
 /// **Même concept que la rangée de la semaine**, à un cran plus fin : là-bas un
-/// rond par journée, ici un rond par catégorie. La taille dit la durée, la
-/// couleur et le glyphe disent laquelle — les mêmes que la carte « Répartition »
-/// juste en dessous, qui garde les chiffres exacts.
+/// rond par journée, ici un rond par catégorie. La différence tient à ce que la
+/// taille encode : **rien, ici.** Tous les ronds sont identiques, et la durée
+/// est écrite au-dessus de chacun. Le cœur porte le logo de l'app dominante, et
+/// la carte « Répartition » juste en dessous garde les chiffres exacts.
 ///
 /// **Ils ont remplacé un anneau intérieur concentrique, puis un second anneau
 /// posé à côté.** Le concentrique demandait une légende pour être compris ; le
@@ -18,27 +19,24 @@ struct DayCategoryRings: View {
     let categories: [CategoryTotal]
     let palette: PulseonPalette
 
-    /// La catégorie la plus longue occupe ce diamètre. Nettement sous celui de
-    /// l'anneau principal : ces ronds détaillent la journée, ils ne la résument
-    /// pas, et leur taille doit le dire avant qu'on ait lu quoi que ce soit.
-    private let maximumDiameter: CGFloat = 58
-
-    /// En dessous, le glyphe au centre ne tient plus.
+    /// **Tous les ronds font la même taille**, décision d'Arthur le
+    /// 2026-08-19 : « je me fiche de la logique le rond grossit plus le temps
+    /// est grand, laisse-les de la même taille ».
     ///
-    /// L'écart entre les deux bornes n'est pas un réglage d'humeur : tout ce qui
-    /// vaut moins de `(minimum / maximum)²` de la référence tombe sur le
-    /// plancher et devient indiscernable. À 24 sur 54, c'était **un cinquième**
-    /// de la journée — deux catégories très différentes faisaient le même rond.
-    /// À 20 sur 58, le plancher ne prend que sous 12 %, et les durées écrites
-    /// au-dessus tranchent le reste.
-    private let minimumDiameter: CGFloat = 20
+    /// Ce n'est pas une entorse à la règle de `RingScale`, qui reste en vigueur
+    /// sur la rangée de la semaine : là-bas les ronds servent à **comparer** des
+    /// journées entre elles, et la taille est le seul canal disponible puisqu'un
+    /// anneau fait toujours le tour. Ici la quantité est déjà écrite en toutes
+    /// lettres au-dessus de chaque rond, donc la faire porter *aussi* par le
+    /// diamètre ne disait rien de plus — et déformait la rangée pour rien, une
+    /// catégorie dominante écrasant toutes les autres au plancher.
+    ///
+    /// Nettement sous le diamètre de l'anneau principal : ces ronds détaillent
+    /// la journée, ils ne la résument pas, et leur taille doit le dire avant
+    /// qu'on ait lu quoi que ce soit.
+    private let diameter: CGFloat = 48
 
     var body: some View {
-        // La plus longue sert de référence à toutes les autres. Rapporter au
-        // total de la journée écraserait la rangée entière dès qu'une catégorie
-        // domine, ce qui est le cas normal.
-        let reference = categories.map(\.total).max() ?? 0
-
         // Colonnes de largeur fixe et rangée centrée, plutôt que des colonnes
         // qui se partagent toute la largeur : à trois catégories — le cas
         // courant — elles s'étalaient sur 700 points et la rangée ne se lisait
@@ -47,13 +45,7 @@ struct DayCategoryRings: View {
             ForEach(categories) { category in
                 CategoryRing(
                     category: category,
-                    diameter: RingScale.diameter(
-                        for: category.total,
-                        reference: reference,
-                        maximum: maximumDiameter,
-                        minimum: minimumDiameter
-                    ),
-                    band: maximumDiameter,
+                    diameter: diameter,
                     width: columnWidth,
                     palette: palette
                 )
@@ -70,10 +62,6 @@ struct DayCategoryRings: View {
 private struct CategoryRing: View {
     let category: CategoryTotal
     let diameter: CGFloat
-    /// La hauteur réservée aux ronds, la même pour tous : c'est ce qui fait lire
-    /// l'écart de taille comme un écart de durée. Alignés par le bas, ils
-    /// paraîtraient posés sur une ligne et non comparés entre eux.
-    let band: CGFloat
     let width: CGFloat
     let palette: PulseonPalette
 
@@ -115,7 +103,6 @@ private struct CategoryRing: View {
 
                 center
             }
-            .frame(height: band)
 
             Text(category.category.label)
                 .font(.system(size: 10, weight: .medium))
