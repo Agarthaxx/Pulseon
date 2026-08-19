@@ -17,10 +17,13 @@ d'abord, iPhone ensuite. Ce qu'elle porte, dans l'ordre d'importance :
    de gris qui crée le relief.
 2. **Deux accents, l'or et le bleu nuit**, ceux de l'icône de l'app.
 3. **L'anneau en tête d'écran**, grand nombre au centre, unité en petit et en
-   gris. **Double depuis le 2026-08-19** : couronne extérieure = les appareils,
-   couronne intérieure = les catégories. Demandé par Arthur (« embellis plutôt le
-   rond ») en écartant un graphique de plus. L'intérieure est plus fine, et un
-   écart les sépare — collées, elles se lisent comme un seul anneau à deux tons.
+   gris. **Deux anneaux côte à côte depuis le 2026-08-19** : « Appareils » à
+   gauche, « Répartition » à droite, chacun titré du nom de sa carte chiffrée.
+   Demandés par Arthur (« embellis plutôt le rond ») en écartant un graphique de
+   plus. **Ne pas les remettre en couronnes concentriques** : essayé le même
+   jour, et sa première question devant l'app a été « à quoi correspond le
+   deuxième anneau ? ». Une forme qui demande une légende n'est pas plus dense,
+   elle est plus opaque.
 4. **Des lignes denses** : pastille colorée à glyphe, libellé, durée, part,
    jauge fine, et le détail (les apps) en dessous.
 5. **Le clair *et* le sombre**, tous deux dessinés (écran 5 de la maquette).

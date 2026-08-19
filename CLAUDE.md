@@ -486,21 +486,29 @@ objectif quotidien (« / 5h Daily Goal »), un badge « On Track » et un score
 le tour complet**, ses arcs étant des parts de la journée. C'est ce qui rend
 l'anneau compatible avec une app qui mesure sans dire si c'est bien.
 
-**Le double anneau, depuis le 2026-08-19.** La couronne extérieure dit *sur quel
-écran*, l'intérieure dit *à quoi*. Deux lectures du même temps dans une seule
-forme, à la demande d'Arthur — « embellis plutôt le rond » — plutôt qu'un
-graphique de plus. **C'est chez lui que ça rapporte le plus** : sa journée
-normale n'a qu'un appareil branché, donc l'anneau extérieur était un cercle bleu
-uni qui ne disait rien ; l'intérieur porte l'histoire de la journée.
+**Deux anneaux côte à côte, depuis le 2026-08-19** : « Appareils » à gauche,
+« Répartition » à droite. Chacun porte le titre **mot pour mot** de la carte
+chiffrée correspondante plus bas, ce qui relie une couleur d'arc à une ligne sans
+poser de légende supplémentaire.
 
-**Les deux couronnes ne se rapportent pas au même total, et c'est assumé** : deux
-catégories simultanées comptent chacune leur temps, donc leur somme peut dépasser
-le `coveredTotal` écrit au centre. Chaque couronne est une composition
-d'elle-même, et rien à l'écran n'invite à comparer un arc extérieur à un arc
-intérieur. L'anneau intérieur est plus **fin** que l'extérieur : deux couronnes
-de même épaisseur se concurrenceraient, et l'écart d'épaisseur dit lequel est le
-premier niveau de lecture. L'écart entre les deux n'est pas décoratif non plus —
-collées, elles se lisent comme un seul anneau épais à deux tons.
+**Ils ont d'abord été concentriques — un double anneau — et ça n'a pas tenu une
+journée.** Arthur, devant l'app installée : « à quoi correspond le deuxième
+anneau ? ». **C'est la question qui est le résultat, pas la réponse.** Sur sa
+machine un seul appareil est branché : la couronne extérieure était donc un
+cercle uni pendant que l'intérieure était bariolée, et au premier regard c'est la
+petite qui avait l'air d'être le graphique. Séparés, il n'y a plus rien à
+deviner. Leçon transposable : **une forme qui demande une légende pour être
+comprise n'est pas plus dense, elle est plus opaque** — et il y avait la place.
+
+**Le centre de l'anneau des catégories ne porte pas la somme des catégories**, et
+c'est délibéré : deux catégories simultanées comptent chacune leur temps, donc
+cette somme peut dépasser le temps passé devant un écran. Deux grands nombres
+côte à côte inviteraient à les comparer, et l'un des deux paraîtrait faux. Le
+centre nomme donc la **catégorie dominante** et sa durée, qui sont des faits et
+non un cumul.
+
+**`ViewThatFits` les met l'un sous l'autre** quand la fenêtre est trop étroite,
+sans qu'aucune vue ait à mesurer quoi que ce soit.
 
 Il garantit aussi qu'**une part minuscule reste visible** (plancher de 1,2 % de
 tour) : une minute sur huit heures fait 0,2 % de tour, soit un arc invisible, et

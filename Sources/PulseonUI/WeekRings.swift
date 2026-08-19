@@ -137,12 +137,12 @@ private struct DayRing: View {
     }
 }
 
-/// Un anneau sans centre écrit : les arcs, et rien d'autre.
+/// Un rond de journée : les arcs de `Ring`, à petit diamètre.
 ///
 /// `ActivityRing` porte un grand nombre en son cœur, ce qui n'a pas de sens à
-/// dix-huit points de diamètre. Le découpage, lui, est le même — `RingLayout`
-/// est partagé, donc un petit rond et le grand disent la composition de la même
-/// façon, plancher des parts minuscules compris.
+/// dix-huit points de diamètre — d'où le passage direct par `Ring`, la brique
+/// que les deux partagent. Le découpage est donc le même pour un petit rond et
+/// pour un grand, plancher des parts minuscules compris.
 private struct CompositionRing: View {
     let lanes: [Lane]
     let diameter: CGFloat
@@ -154,38 +154,18 @@ private struct CompositionRing: View {
     private var thickness: CGFloat { max(2.5, diameter * 0.24) }
 
     var body: some View {
-        let shown = lanes.filter { $0.total > 0 }
-        let arcs = RingLayout.arcs(for: shown.map(\.total))
-
-        ZStack {
-            Circle()
-                .stroke(palette.sunken, lineWidth: thickness)
-
-            // Du dernier au premier, pour que l'extrémité arrondie de chaque
-            // arc passe **sous** son voisin — même raison que `ActivityRing`.
-            ForEach(Array(zip(shown, arcs)).reversed(), id: \.0.device) { lane, arc in
-                if let arc {
-                    Circle()
-                        .trim(from: arc.start, to: arc.end)
-                        .stroke(
-                            AngularGradient(
-                                gradient: Gradient(
-                                    colors: ringTones(for: lane.device)),
-                                center: .center
-                            ),
-                            style: StrokeStyle(lineWidth: thickness, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                }
-            }
-        }
+        Ring(
+            segments: lanes.filter { $0.total > 0 }.map {
+                .init(
+                    id: $0.device.rawValue,
+                    value: $0.total,
+                    tones: PulseonTheme.ringTones(for: $0.device, in: palette)
+                )
+            },
+            thickness: thickness,
+            track: palette.sunken,
+            palette: palette
+        )
         .frame(width: diameter, height: diameter)
-    }
-
-    /// Le dégradé est calé sur le tour entier et boucle sur sa première teinte,
-    /// sinon un anneau d'un seul appareil porterait une couture visible.
-    private func ringTones(for device: Device) -> [Color] {
-        let tones = PulseonTheme.ringTones(for: device, in: palette)
-        return tones + [tones[0]]
     }
 }
