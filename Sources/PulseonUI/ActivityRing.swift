@@ -30,12 +30,6 @@ public struct ActivityRing: View {
     }
 
     private let segments: [Segment]
-    /// Un second anneau, à l'intérieur du premier. Vide par défaut.
-    ///
-    /// **Deux lectures du même temps dans une seule forme** : l'extérieur dit
-    /// *sur quel écran*, l'intérieur dit *à quoi*. Le même instant se lit « sur
-    /// le Mac » et « à coder » sans changer d'objet à l'écran.
-    private let innerSegments: [Segment]
     private let total: TimeInterval?
     private let caption: String
     private let palette: PulseonPalette
@@ -48,11 +42,9 @@ public struct ActivityRing: View {
         total: TimeInterval?,
         caption: String,
         palette: PulseonPalette,
-        diameter: CGFloat = 208,
-        innerSegments: [Segment] = []
+        diameter: CGFloat = 208
     ) {
         self.segments = segments
-        self.innerSegments = innerSegments
         self.total = total
         self.caption = caption
         self.palette = palette
@@ -61,22 +53,8 @@ public struct ActivityRing: View {
 
     private var thickness: CGFloat { diameter * 0.125 }
 
-    /// L'écart entre les deux anneaux. Il ne décore pas : collés, les deux se
-    /// lisent comme un seul anneau épais à deux tons, et la double lecture
-    /// disparaît.
-    private var gap: CGFloat { thickness * 0.34 }
-
-    private var innerDiameter: CGFloat { diameter - 2 * thickness - 2 * gap }
-
-    /// Plus fin que l'extérieur : c'est ce qui dit lequel des deux est le
-    /// premier niveau de lecture. Deux anneaux de même épaisseur se
-    /// concurrenceraient.
-    private var innerThickness: CGFloat { innerDiameter * 0.105 }
-
-    /// Ce qu'il reste au centre pour écrire, une fois les deux anneaux posés.
-    private var coreDiameter: CGFloat {
-        innerSegments.isEmpty ? diameter - 2 * thickness : innerDiameter - 2 * innerThickness
-    }
+    /// Ce qu'il reste au centre pour écrire.
+    private var coreDiameter: CGFloat { diameter - 2 * thickness }
 
     public var body: some View {
         ZStack {
@@ -89,19 +67,6 @@ public struct ActivityRing: View {
                 track: palette.sunken,
                 palette: palette
             )
-
-            if !innerSegments.isEmpty {
-                Ring(
-                    segments: innerSegments,
-                    thickness: innerThickness,
-                    // Pas de piste creuse pour l'anneau intérieur : deux
-                    // creux concentriques feraient une cible, et le fond
-                    // suffit à le poser.
-                    track: nil,
-                    palette: palette
-                )
-                .frame(width: innerDiameter, height: innerDiameter)
-            }
 
             center
         }
@@ -188,10 +153,10 @@ public struct DurationReadout: View {
 
 /// Un anneau d'arcs, sans centre écrit.
 ///
-/// Extrait pour servir les deux couronnes du double anneau : le même découpage
-/// (`RingLayout`), les mêmes précautions de dessin, à deux diamètres. Les
-/// recopier aurait fait diverger deux dessins censés être le même.
-private struct Ring: View {
+/// Sert le grand anneau d'un écran comme les petits ronds de la semaine : même
+/// découpage (`RingLayout`), mêmes précautions de dessin, à tous les diamètres.
+/// Les recopier aurait fait diverger deux dessins censés être le même.
+struct Ring: View {
     let segments: [ActivityRing.Segment]
     let thickness: CGFloat
     /// La piste creuse derrière les arcs, ou nil pour ne pas en poser. La

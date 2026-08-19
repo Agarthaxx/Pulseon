@@ -14,10 +14,9 @@ import SwiftUI
 /// juge » l'interdit. Les arcs font donc toujours le tour, comme sur l'écran du
 /// jour, et c'est le **diamètre** qui dit la longueur de la journée.
 ///
-/// **Le diamètre suit la racine carrée du temps**, et non le temps lui-même :
-/// l'œil compare des *surfaces*, donc un diamètre proportionnel ferait paraître
-/// une journée deux fois plus longue quatre fois plus grosse. C'est le défaut
-/// classique des graphiques à bulles, et il exagère toujours dans le même sens.
+/// **Le diamètre suit la racine carrée du temps** — voir `RingScale`, qui porte
+/// la règle et son pourquoi, et qui sert aussi aux ronds de catégories de
+/// l'écran du jour.
 struct WeekRingRow: View {
     let period: PeriodPresentation
     let palette: PulseonPalette
@@ -118,11 +117,15 @@ private struct DayRing: View {
         }
     }
 
-    /// La surface du rond est proportionnelle au temps, donc son diamètre suit
-    /// la racine carrée de la part.
+    /// Voir `RingScale` : la surface est proportionnelle au temps, donc le
+    /// diamètre suit sa racine carrée.
     private var diameter: CGFloat {
-        let share = min(1, max(0, day.total / scale))
-        return max(Self.minimumRingDiameter, maximumDiameter * sqrt(share))
+        RingScale.diameter(
+            for: day.total,
+            reference: scale,
+            maximum: maximumDiameter,
+            minimum: Self.minimumRingDiameter
+        )
     }
 
     private var valueLabel: String {
@@ -137,12 +140,12 @@ private struct DayRing: View {
     }
 }
 
-/// Un anneau sans centre écrit : les arcs, et rien d'autre.
+/// Un rond de journée : les arcs de `Ring`, à petit diamètre.
 ///
 /// `ActivityRing` porte un grand nombre en son cœur, ce qui n'a pas de sens à
-/// dix-huit points de diamètre. Le découpage, lui, est le même — `RingLayout`
-/// est partagé, donc un petit rond et le grand disent la composition de la même
-/// façon, plancher des parts minuscules compris.
+/// dix-huit points de diamètre — d'où le passage direct par `Ring`, la brique
+/// que les deux partagent. Le découpage est donc le même pour un petit rond et
+/// pour un grand, plancher des parts minuscules compris.
 private struct CompositionRing: View {
     let lanes: [Lane]
     let diameter: CGFloat
@@ -154,38 +157,18 @@ private struct CompositionRing: View {
     private var thickness: CGFloat { max(2.5, diameter * 0.24) }
 
     var body: some View {
-        let shown = lanes.filter { $0.total > 0 }
-        let arcs = RingLayout.arcs(for: shown.map(\.total))
-
-        ZStack {
-            Circle()
-                .stroke(palette.sunken, lineWidth: thickness)
-
-            // Du dernier au premier, pour que l'extrémité arrondie de chaque
-            // arc passe **sous** son voisin — même raison que `ActivityRing`.
-            ForEach(Array(zip(shown, arcs)).reversed(), id: \.0.device) { lane, arc in
-                if let arc {
-                    Circle()
-                        .trim(from: arc.start, to: arc.end)
-                        .stroke(
-                            AngularGradient(
-                                gradient: Gradient(
-                                    colors: ringTones(for: lane.device)),
-                                center: .center
-                            ),
-                            style: StrokeStyle(lineWidth: thickness, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                }
-            }
-        }
+        Ring(
+            segments: lanes.filter { $0.total > 0 }.map {
+                .init(
+                    id: $0.device.rawValue,
+                    value: $0.total,
+                    tones: PulseonTheme.ringTones(for: $0.device, in: palette)
+                )
+            },
+            thickness: thickness,
+            track: palette.sunken,
+            palette: palette
+        )
         .frame(width: diameter, height: diameter)
-    }
-
-    /// Le dégradé est calé sur le tour entier et boucle sur sa première teinte,
-    /// sinon un anneau d'un seul appareil porterait une couture visible.
-    private func ringTones(for device: Device) -> [Color] {
-        let tones = PulseonTheme.ringTones(for: device, in: palette)
-        return tones + [tones[0]]
     }
 }

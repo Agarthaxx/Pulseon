@@ -17,10 +17,15 @@ d'abord, iPhone ensuite. Ce qu'elle porte, dans l'ordre d'importance :
    de gris qui crée le relief.
 2. **Deux accents, l'or et le bleu nuit**, ceux de l'icône de l'app.
 3. **L'anneau en tête d'écran**, grand nombre au centre, unité en petit et en
-   gris. **Double depuis le 2026-08-19** : couronne extérieure = les appareils,
-   couronne intérieure = les catégories. Demandé par Arthur (« embellis plutôt le
-   rond ») en écartant un graphique de plus. L'intérieure est plus fine, et un
-   écart les sépare — collées, elles se lisent comme un seul anneau à deux tons.
+   gris, légende de couleurs dessous. **Les catégories sont une rangée de petits
+   ronds sous l'anneau** (2026-08-19), un par catégorie, taille ∝ durée, glyphe
+   au centre — même concept que la rangée de la semaine.
+   **Deux formes écartées le même jour, à ne pas reproposer :** une couronne
+   intérieure concentrique (« à quoi correspond le deuxième anneau ? » — une
+   forme qui demande une légende n'est pas plus dense, elle est plus opaque), et
+   deux anneaux pleins côte à côte (« je ne suis pas trop fan » — et il fallait
+   écrire au centre du second une somme de catégories qui n'est pas comparable au
+   total de la journée).
 4. **Des lignes denses** : pastille colorée à glyphe, libellé, durée, part,
    jauge fine, et le détail (les apps) en dessous.
 5. **Le clair *et* le sombre**, tous deux dessinés (écran 5 de la maquette).

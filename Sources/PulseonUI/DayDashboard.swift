@@ -175,7 +175,17 @@ private struct RingCard: View {
         let lanes = day.digest.lanes.filter { $0.total > 0 }
 
         Card(palette: palette) {
-            VStack(spacing: 12) {
+            VStack(spacing: 14) {
+                // L'anneau principal : les appareils, et le total de la journée
+                // en son centre.
+                //
+                // **Il est seul en tête**, après deux tentatives écartées le
+                // 2026-08-19 : une couronne intérieure concentrique, qui
+                // demandait une légende pour qu'on sache laquelle disait quoi ;
+                // puis un second anneau plein à côté, qui obligeait à écrire un
+                // chiffre en son centre alors que la somme des catégories n'est
+                // pas comparable au total de la journée. Les catégories sont
+                // désormais une rangée de petits ronds, en dessous.
                 ActivityRing(
                     segments: lanes.map {
                         .init(
@@ -186,29 +196,25 @@ private struct RingCard: View {
                     },
                     total: day.isEmpty ? nil : day.digest.coveredTotal,
                     caption: day.isEmpty ? "rien de branché" : "devant un écran",
-                    palette: palette,
-                    // La couronne intérieure : à quoi la journée a servi.
-                    //
-                    // **Les deux anneaux ne se rapportent pas au même total**,
-                    // et c'est assumé : deux catégories simultanées comptent
-                    // chacune leur temps, donc leur somme peut dépasser le
-                    // `coveredTotal` du centre. Chaque couronne est une
-                    // composition d'elle-même — la comparer arc à arc entre les
-                    // deux niveaux n'aurait pas de sens, et rien à l'écran n'y
-                    // invite.
-                    innerSegments: day.categories.map {
-                        .init(
-                            id: $0.category.rawValue,
-                            value: $0.total,
-                            tones: PulseonTheme.ringTones(for: $0.category, in: palette)
-                        )
-                    }
+                    palette: palette
                 )
+
+                if !lanes.isEmpty {
+                    DeviceLegend(lanes: lanes, palette: palette)
+                }
 
                 // La comparaison se lit juste sous le total, parce que c'est
                 // là que la question se pose : « 9 h 39, c'est beaucoup ? ».
                 if let comparison = day.comparison {
                     DayComparisonView(comparison: comparison, palette: palette)
+                }
+
+                if !day.categories.isEmpty {
+                    Divider()
+                        .overlay(palette.hairline)
+                        .padding(.horizontal, 8)
+
+                    DayCategoryRings(categories: day.categories, palette: palette)
                 }
 
                 // Le second total ne s'affiche que s'il dit autre chose : sans
