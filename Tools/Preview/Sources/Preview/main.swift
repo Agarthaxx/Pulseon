@@ -264,20 +264,29 @@ MainActor.assumeIsolated {
 /// se confondent si on les dessine mal : une journée **non mesurée** (le
 /// collecteur était éteint), un **vrai zéro** mesuré, et une journée **qui n'a
 /// pas encore eu lieu**.
-private func weekDay(_ hours: Double, measured: Bool = true) -> DayDigest {
-    let total = hours * 3600
+private func weekDay(
+    mac: Double, tv: Double = 0, playstation: Double = 0, measured: Bool = true
+) -> DayDigest {
+    let hour: TimeInterval = 3600
     return DayDigest(
         date: DateComponents(),
         lanes: [
             Lane(
-                device: .mac, total: total, blocks: [], topEntities: [],
+                device: .mac, total: mac * hour, blocks: [], topEntities: [],
                 isConnected: measured
             ),
-            Lane(device: .playstation, total: 0, blocks: [], topEntities: [], isConnected: false),
-            Lane(device: .tv, total: 0, blocks: [], topEntities: [], isConnected: false),
+            Lane(
+                device: .playstation, total: playstation * hour, blocks: [], topEntities: [],
+                isConnected: measured && playstation > 0
+            ),
+            Lane(
+                device: .tv, total: tv * hour, blocks: [], topEntities: [],
+                isConnected: measured && tv > 0
+            ),
         ],
-        summedTotal: total,
-        coveredTotal: total
+        summedTotal: (mac + tv + playstation) * hour,
+        // Aucun chevauchement dans cette démo : les journées y sont simples.
+        coveredTotal: (mac + tv + playstation) * hour
     )
 }
 
@@ -285,30 +294,41 @@ MainActor.assumeIsolated {
     let calendar = Calendar.current
     let weekStart = calendar.dateInterval(of: .weekOfYear, for: dayStart)?.start ?? dayStart
 
-    /// Volontairement contrastée : une grosse journée, une journée non mesurée,
-    /// un vrai zéro, une journée en cours, et le week-end qui n'a pas eu lieu.
-    let totals: [(hours: Double, measured: Bool)] = [
-        (6.2, true), (0, false), (8.6, true), (0, true), (3.1, true), (0, true), (0, true),
+    /// Volontairement contrastée, et **à plusieurs appareils** : c'est la
+    /// composition par couleur qu'il faut pouvoir juger sur un petit rond, pas
+    /// seulement la taille. Une journée non mesurée, un vrai zéro, une soirée
+    /// PlayStation, et le week-end qui n'a pas eu lieu.
+    let totals: [(mac: Double, tv: Double, ps: Double, measured: Bool)] = [
+        (5.4, 0.8, 0, true),
+        (0, 0, 0, false),
+        (7.1, 1.5, 0, true),
+        (0, 0, 0, true),
+        (2.3, 0.8, 1.8, true),
+        (0, 0, 0, true),
+        (0, 0, 0, true),
     ]
     let todayIndex = 4
 
     let days = totals.enumerated().map { index, day in
         PeriodPresentation.Day(
             start: calendar.date(byAdding: .day, value: index, to: weekStart) ?? weekStart,
-            digest: weekDay(day.hours, measured: day.measured),
+            digest: weekDay(
+                mac: day.mac, tv: day.tv, playstation: day.ps, measured: day.measured),
             isToday: index == todayIndex,
             isFuture: index > todayIndex
         )
     }
 
-    let weekTotal = totals.reduce(0) { $0 + $1.hours * 3600 }
-    let tvTotal: TimeInterval = 2.4 * 3600
+    let weekTotal = totals.reduce(0) { $0 + ($1.mac + $1.tv + $1.ps) * 3600 }
+    let macTotalWeek = totals.reduce(0) { $0 + $1.mac * 3600 }
+    let tvTotalWeek = totals.reduce(0) { $0 + $1.tv * 3600 }
+    let psTotalWeek = totals.reduce(0) { $0 + $1.ps * 3600 }
 
     let weekDigest = PeriodDigest(
         days: days.map(\.digest),
         lanes: [
             Lane(
-                device: .mac, total: weekTotal, blocks: [],
+                device: .mac, total: macTotalWeek, blocks: [],
                 topEntities: [
                     EntityTotal(entity: "Xcode", total: 9 * 3600),
                     EntityTotal(entity: "Ghostty", total: 4.2 * 3600),
@@ -316,15 +336,19 @@ MainActor.assumeIsolated {
                 ],
                 isConnected: true
             ),
-            Lane(device: .playstation, total: 0, blocks: [], topEntities: [], isConnected: false),
             Lane(
-                device: .tv, total: tvTotal, blocks: [], topEntities: [],
+                device: .playstation, total: psTotalWeek, blocks: [],
+                topEntities: [EntityTotal(entity: "Elden Ring", total: psTotalWeek)],
+                isConnected: true
+            ),
+            Lane(
+                device: .tv, total: tvTotalWeek, blocks: [], topEntities: [],
                 isConnected: true
             ),
         ],
-        summedTotal: weekTotal + tvTotal,
+        summedTotal: weekTotal,
         coveredTotal: weekTotal,
-        daysWithActivity: totals.count { $0.hours > 0 }
+        daysWithActivity: totals.count { $0.mac + $0.tv + $0.ps > 0 }
     )
 
     let weekCategories: [CategoryTotal] = [
@@ -387,7 +411,7 @@ MainActor.assumeIsolated {
         ),
         days: days.map {
             PeriodPresentation.Day(
-                start: $0.start, digest: weekDay(0, measured: false),
+                start: $0.start, digest: weekDay(mac: 0, measured: false),
                 isToday: $0.isToday, isFuture: $0.isFuture
             )
         }

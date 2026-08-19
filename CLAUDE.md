@@ -587,54 +587,64 @@ personne hors de ses tests**. Même angle mort que les icônes d'apps et
 `DayComparison` : il ne lui manquait qu'un écran. `PeriodBrowser` le lit,
 `WeekDashboard` le dessine.
 
+**Il a d'abord été livré en graphique à colonnes, et Arthur l'a écarté le
+2026-08-19** : « je n'aime pas les graphs en colonne, je me dis que si c'est en
+colonne, autant garder l'ancienne app temps d'écran macOS ». L'argument est
+produit avant d'être esthétique — **le rond est ce qui distingue Pulseon**, et il
+tient les deux échelles : un grand anneau pour la semaine, sept petits pour les
+journées. À ne pas reproposer.
+
+**La quantité passe par la taille du rond, jamais par son remplissage.** Un
+anneau rempli aux deux tiers se lirait « objectif atteint à 66 % » — c'est le
+« / 5h Daily Goal » retiré de la maquette, et la règle « aucune comparaison ne
+juge » l'interdit. Les arcs font donc toujours le tour, à toutes les échelles.
+
+**Le diamètre suit la racine carrée du temps**, pas le temps lui-même : l'œil
+compare des *surfaces*, donc un diamètre proportionnel ferait paraître une
+journée deux fois plus longue **quatre fois** plus grosse. C'est le défaut
+classique des graphiques à bulles, et il exagère toujours dans le même sens.
+
+**Quatre états de rond, jamais deux.** C'est la règle « pas encore branchée ≠
+journée à zéro » poussée jusqu'au bout, avec un cas que la journée seule ne
+rencontrait pas :
+
+| État | Ce que ça veut dire | Comment ça se dessine |
+|---|---|---|
+| Journée mesurée avec du temps | on sait, et il y a à montrer | un anneau, arcs par appareil |
+| Vrai zéro mesuré | une source branchée, rien n'a tourné | un **point plein** gris, « 0 min » |
+| Journée non mesurée | le collecteur était éteint | un cercle **pointillé** vide, « — » |
+| Journée à venir | elle n'a pas eu lieu | **rien du tout**, aucune valeur |
+
+Le dernier est celui qu'on oublie : une semaine en cours contient toujours des
+jours futurs, et les dessiner à zéro affirmerait qu'on n'a rien fait un jeudi qui
+n'est pas arrivé. **Le pointillé a dû être renforcé** — tracé en `hairline`, il
+disparaissait en apparence claire, et « on ne sait pas » redevenait
+indiscernable d'un zéro. Trouvé en PNG, pas par un test.
+
+**La moyenne exclut la journée en cours**, même règle que `DayComparison` : mêler
+une matinée à des journées entières tire la moyenne vers le bas pour une raison
+qui n'a rien à voir avec l'usage. Elle exclut aussi les journées non mesurées.
+Sans aucune journée mesurée *et terminée*, `dailyAverage` rend **nil** et l'écran
+se tait — zéro serait une affirmation fausse. **Aucune moyenne n'est tracée en
+travers du dessin** : à l'horizontale, elle se lit comme une barre à battre.
+
 **La semaine est celle du calendrier, pas « les sept derniers jours ».** Naviguer
 suppose des bornes stables : sur une fenêtre glissante, reculer d'un cran
 redécoupe chaque fois des journées différentes, et deux visites du même écran ne
 montrent pas la même chose. C'est aussi le calendrier qui décide du premier jour
 de la semaine — le supposer lundi casserait l'écran hors d'Europe.
 
-**Trois états de colonne, jamais deux.** C'est la règle « pas encore branchée ≠
-journée à zéro » portée à la semaine, avec un troisième cas que la journée seule
-ne rencontrait pas :
-
-| État | Ce que ça veut dire | Comment ça se dessine |
-|---|---|---|
-| Journée non mesurée | le collecteur était éteint | contour **pointillé**, valeur « — » |
-| Vrai zéro mesuré | une source était branchée, rien n'a tourné | trait **plein** gris, valeur « 0 min » |
-| Journée à venir | elle n'a pas eu lieu | **rien du tout**, creux estompé, aucune valeur |
-
-Le troisième est celui qu'on oublie : une semaine en cours contient toujours des
-jours futurs, et les dessiner à zéro affirmerait qu'on n'a rien fait un jeudi qui
-n'est pas arrivé. **Le pointillé du jour non mesuré a dû être renforcé** — tracé
-en `hairline`, il disparaissait en apparence claire, et l'état « on ne sait pas »
-redevenait indiscernable d'un zéro. Trouvé en PNG, pas par un test.
-
-**La moyenne exclut la journée en cours**, et c'est la même règle que
-`DayComparison` : mêler une matinée à des journées entières tire la moyenne vers
-le bas pour une raison qui n'a rien à voir avec l'usage. Elle exclut aussi les
-journées non mesurées. Sans aucune journée mesurée *et terminée*, `dailyAverage`
-rend **nil** et l'écran se tait — zéro serait une affirmation fausse.
-
-**Aucune ligne de moyenne en travers des colonnes.** À l'horizontale, elle se lit
-comme une barre à battre, et c'est la règle 7 : Pulseon ne juge pas. La moyenne
-est écrite en toutes lettres.
-
-**Les colonnes portent le `coveredTotal`, pas la somme des appareils.** Empiler
-les appareils dans la barre aurait donné une hauteur en `summedTotal`, donc une
-journée à fort chevauchement paraîtrait plus longue qu'une autre à temps d'écran
-égal — or des colonnes existent précisément pour se comparer entre elles. Les
-appareils gardent leurs vraies valeurs dans la carte du dessous.
-
-**L'échelle est la journée la plus longue de la période**, pas 24 h : une semaine
-à trois heures par jour donnerait sept traits collés au sol. Chaque colonne porte
-sa durée écrite, donc l'échelle reste explicite.
+**Une légende de couleurs sous le grand anneau** (`DeviceLegend`) : les cartes du
+dessous portent les mêmes pastilles, mais un anneau dont il faut descendre pour
+savoir ce que dit sa couleur perd ce qui fait son intérêt — la couleur est
+justement ce qu'on lit d'un coup d'œil.
 
 **Ce que la semaine partage avec le jour :** `Card`, `MeterRow`, `Chip`,
-`NavButton`, `UnpluggedRow`, `BreakdownCard` et `DevicesCard` sont sortis de
-`DayDashboard` vers `Bricks.swift`. Les recopier aurait fait diverger deux
-dessins censés être le même. `CategoryTotal.merged` cumule les catégories des
-journées — licite parce que **deux journées ne se chevauchent jamais**, le même
-argument qui autorise le `coveredTotal` d'une période.
+`NavButton`, `UnpluggedRow`, `BreakdownCard`, `DevicesCard` et `DeviceLegend`
+vivent dans `Bricks.swift`. Le découpage des arcs est le **même `RingLayout`**
+pour un rond de 18 points et pour celui de 178 — plancher des parts minuscules
+compris. `CategoryTotal.merged` cumule les catégories des journées, licite parce
+que **deux journées ne se chevauchent jamais**.
 
 ### L'onglet Chronologie
 

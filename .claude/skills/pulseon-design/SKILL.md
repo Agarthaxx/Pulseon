@@ -64,6 +64,12 @@ Pour ne pas le reproposer par morceaux :
 2. **Une version épurée** en cartes claires sur iPhone. Écartée sans détail.
 3. **Fond noir à accent vert acide**, d'après une référence qu'Arthur avait
    apportée. Implémentée entièrement (PR #22), puis : « j'aime pas du tout ».
+4. **Un graphique en colonnes** pour la semaine (PR #32, 2026-08-19) : « je
+   n'aime pas les graphs en colonne, je me dis que si c'est en colonne, autant
+   garder l'ancienne app temps d'écran macOS ». **Le rond est l'élément
+   signature**, et il tient toutes les échelles — un grand anneau pour une
+   période, des petits pour ses journées. Ne pas reproposer de barres, ni
+   empilées ni groupées.
 
 Les tentations à ne pas suivre : remettre du monospace pour « faire technique »,
 des étiquettes en capitales espacées, des hachures plutôt qu'un pointillé.
@@ -135,6 +141,12 @@ que la maquette.
 **Les formes portent autant d'information que les teintes** : plein pour du
 mesuré, pointillé pour de l'inconnu, gris neutre pour un appareil non branché.
 Une différence de forme survit au daltonisme, une différence de teinte non.
+
+**La quantité d'un anneau passe par sa taille, jamais par son remplissage.** Un
+anneau qui ne fait pas le tour se lit « objectif atteint à 66 % », ce qui est
+exactement ce qu'Arthur a retiré de sa maquette. Pour comparer des journées entre
+elles, faire varier le diamètre — et le calculer sur la **racine carrée** du
+temps, l'œil comparant des surfaces.
 
 **Un pourcentage non nul ne s'affiche jamais « 0 % ».** Trois minutes dans une
 journée font 0,4 %, tronqué à zéro juste à côté d'une durée non nulle — zéro est
