@@ -887,6 +887,30 @@ vers le sous-comptage plutôt que vers une session laissée ouverte.
 - une **réponse incompréhensible** vaut `unknown`, jamais `off` : un changement de
   firmware ne doit pas effacer une soirée.
 
+**Question ouverte : la télé peut-elle dire *quelle app* est à l'écran ?** Posée
+par Arthur le 2026-08-19 (« on ne peut pas voir les apps que j'utilise sur ma
+TV ? »). Ce serait le même niveau de détail que le nom d'app côté Mac — « 2 h de
+Netflix » au lieu de « 2 h de télé » — et **ça ne casserait pas la promesse du
+projet** : « rien ne sort de ta machine » interdit d'envoyer, pas de lire, et
+tout se passerait sur le réseau local, sans tiers. À ne pas confondre avec les
+favicons de sites, qui, elles, exigeraient d'interroger un tiers.
+
+**Rien n'est tenté avant d'avoir mesuré.** `Scripts/probe-tv-apps.sh` interroge
+les points d'entrée candidats (`/api/v2/applications/`, l'état d'apps connues par
+leur identifiant, `/channels/`) et rend un tableau lisible. À lancer depuis le
+réseau de la télé, **écran allumé, une app ouverte**. Le doute est réel : Samsung
+a fermé une grande partie de son API locale sur les millésimes récents, et celle
+d'Arthur est un S90C de 2023. C'est la même discipline que pour le `PowerState` —
+l'idée de détecter l'écran au ping paraissait évidente et était fausse.
+
+Deux conséquences si ça répond, à ne pas découvrir après coup :
+- l'API d'application **ne découvre rien**, elle répond « cette app-ci
+  tourne-t-elle ? » pour un identifiant donné. La collecte serait un balayage
+  d'une liste connue, donc aveugle à une app qu'on n'a pas listée ;
+- la piste WebSocket (`samsung.remote.control`) donne la liste installée mais
+  **exige un appairage** — un message d'autorisation s'affiche sur la télé et
+  rend un jeton, qui irait alors au Trousseau comme celui de la PlayStation.
+
 **Le nom de la télé se dépose dans les réglages, pas dans le Trousseau** — ce
 n'est pas un secret :
 
