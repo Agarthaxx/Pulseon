@@ -29,9 +29,24 @@ let macBlocks: [TraceBlock] = [
     block(14.0, 2.3, "Xcode"), block(16.4, 0.6, "Brave Browser"), block(17.1, 1.2, "Ghostty"),
     block(21.0, 2.1, "IINA"),
     block(23.2, 0.05, "Ghostty"),
+    // Volontairement minuscule : c'est le cas qui teste le plancher de
+    // visibilité de l'anneau et de la jauge.
+    block(13.05, 0.05, "Pixelmator"),
+]
+
+/// La télé, avec les horaires réels de la soirée du 2026-08-19 : c'est le cas
+/// qui a fait poser la question. Elle recouvre en partie le film sur le Mac,
+/// donc la journée porte aussi une simultanéité entre deux écrans.
+///
+/// **Aucune entité** : la télé ne dit pas ce qu'elle diffuse, seulement que
+/// l'écran était allumé.
+let tvBlocksToday: [TraceBlock] = [
+    TraceBlock(entity: nil, startOffset: 19.0 * 3600, duration: 8 * 60),
+    TraceBlock(entity: nil, startOffset: 19.16 * 3600, duration: 164 * 60),
 ]
 
 let macTotal = macBlocks.reduce(0) { $0 + $1.duration }
+let tvTotal = tvBlocksToday.reduce(0) { $0 + $1.duration }
 let psTotal: TimeInterval = 1.8 * 3600
 
 let digest = DayDigest(
@@ -51,10 +66,16 @@ let digest = DayDigest(
             topEntities: [EntityTotal(entity: "Elden Ring", total: psTotal)],
             isConnected: true
         ),
-        Lane(device: .tv, total: 0, blocks: [], topEntities: [], isConnected: false),
+        Lane(
+            device: .tv, total: tvTotal, blocks: tvBlocksToday,
+            topEntities: [], isConnected: true
+        ),
     ],
-    summedTotal: macTotal + psTotal,
-    coveredTotal: macTotal
+    summedTotal: macTotal + tvTotal + psTotal,
+    // La télé finit à 21 h 53 et le film sur le Mac démarre à 21 h : les deux
+    // écrans se recouvrent de 53 min, décomptées une seule fois ici — c'est tout
+    // l'écart entre `summedTotal` et `coveredTotal`.
+    coveredTotal: macTotal + tvTotal - 53 * 60
 )
 
 /// Une journée sans rien : aucune source branchée. L'état qu'on oublie de
@@ -137,35 +158,29 @@ let demoIcons = AppIconSource { name in
     return Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
 }
 
-/// À quoi la journée a servi. Calculé ici à la main : le classement réel vit
-/// côté macOS, qui sait lire la catégorie déclarée d'une app.
-let categories: [CategoryTotal] = [
-    CategoryTotal(
-        category: .development, total: 6 * 3600,
-        entities: [
-            EntityTotal(entity: "Xcode", total: 4.8 * 3600),
-            EntityTotal(entity: "Ghostty", total: 1.2 * 3600),
-        ]
-    ),
-    CategoryTotal(
-        category: .media, total: 2.1 * 3600,
-        entities: [EntityTotal(entity: "IINA", total: 2.1 * 3600)]
-    ),
-    CategoryTotal(
-        category: .game, total: psTotal,
-        entities: [EntityTotal(entity: "Elden Ring", total: psTotal)]
-    ),
-    CategoryTotal(
-        category: .web, total: 0.8 * 3600,
-        entities: [EntityTotal(entity: "Brave Browser", total: 0.8 * 3600)]
-    ),
-    // Volontairement minuscule : c'est le cas qui teste le plancher de
-    // visibilité de l'anneau et de la jauge.
-    CategoryTotal(
-        category: .communication, total: 3 * 60,
-        entities: [EntityTotal(entity: "Slack", total: 3 * 60)]
-    ),
-]
+/// À quoi la journée a servi.
+///
+/// **Passe par le vrai `CategoryDigestBuilder`**, et plus par une liste écrite à
+/// la main. L'ancienne version décrivait le résultat attendu au lieu de le
+/// calculer : le jour où la télé a cessé de tomber dans « Vidéo et musique »,
+/// la preview a continué d'afficher l'ancien classement, donc elle ne pouvait
+/// pas montrer le changement qu'on lui demandait de vérifier.
+///
+/// Seul le dictionnaire est écrit ici — c'est ce que le côté macOS résout en
+/// lisant la catégorie déclarée de chaque app. Ce qui n'y figure pas retombe
+/// sur le défaut de l'appareil : « Elden Ring » n'y est pas, et c'est voulu.
+let assignment = CategoryAssignment(byEntity: [
+    "Xcode": .development,
+    "Ghostty": .development,
+    "IINA": .media,
+    "Brave Browser": .web,
+    "Slack": .communication,
+    "Mail": .communication,
+    "Pixelmator": .creation,
+])
+
+let categories = CategoryDigestBuilder(classify: assignment.category(for:entity:))
+    .build(from: digest)
 
 MainActor.assumeIsolated {
     let now = dayStart.addingTimeInterval(19.4 * 3600)
