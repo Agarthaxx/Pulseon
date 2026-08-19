@@ -96,9 +96,13 @@ public struct DayDashboardContent: View {
                 header(title: day.title, isLive: day.now != nil)
                 RingCard(day: day, palette: palette)
                 if !day.categories.isEmpty {
-                    BreakdownCard(day: day, palette: palette)
+                    BreakdownCard(categories: day.categories, palette: palette)
                 }
-                DevicesCard(day: day, palette: palette)
+                DevicesCard(
+                    lanes: day.digest.lanes,
+                    summedTotal: day.digest.summedTotal,
+                    palette: palette
+                )
             case .failed(let reason):
                 header(title: "Journée", isLive: false)
                 FailureCard(reason: reason, palette: palette)
@@ -208,84 +212,3 @@ private struct RingCard: View {
     }
 }
 
-// MARK: - La répartition
-
-private struct BreakdownCard: View {
-    let day: DayPresentation
-    let palette: PulseonPalette
-
-    var body: some View {
-        // Les parts se calculent sur la somme des catégories, pas sur le total
-        // de la journée : deux catégories simultanées comptent chacune leur
-        // temps, donc leur somme peut dépasser le temps passé devant un écran.
-        // Rapporter au `coveredTotal` afficherait des pourcentages dépassant
-        // 100 %.
-        let sum = day.categories.reduce(0) { $0 + $1.total }
-
-        Card(palette: palette) {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("Répartition")
-                    .font(PulseonTheme.sectionTitle)
-                    .foregroundStyle(palette.inkSoft)
-                    .padding(.bottom, 2)
-
-                ForEach(day.categories) { category in
-                    MeterRow(
-                        symbol: PulseonTheme.symbol(for: category.category),
-                        tint: PulseonTheme.color(for: category.category, in: palette),
-                        fill: PulseonTheme.gradient(for: category.category, in: palette),
-                        label: category.category.label,
-                        apps: category.entities.prefix(3).map(\.entity),
-                        total: category.total,
-                        share: sum > 0 ? category.total / sum : 0,
-                        palette: palette
-                    )
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Les appareils
-
-private struct DevicesCard: View {
-    let day: DayPresentation
-    let palette: PulseonPalette
-
-    var body: some View {
-        let sum = day.digest.summedTotal
-
-        Card(palette: palette) {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("Appareils")
-                    .font(PulseonTheme.sectionTitle)
-                    .foregroundStyle(palette.inkSoft)
-                    .padding(.bottom, 2)
-
-                ForEach(day.digest.lanes, id: \.device) { lane in
-                    if lane.isConnected {
-                        MeterRow(
-                            symbol: PulseonTheme.symbol(for: lane.device),
-                            tint: PulseonTheme.color(for: lane.device, in: palette),
-                            fill: PulseonTheme.gradient(for: lane.device, in: palette),
-                            label: lane.device.label,
-                            // Sa part de l'anneau est honnête, sa place dans
-                            // la journée est inconnue — et doit se dire.
-                            detail: lane.kind == .counter ? "horaires inconnus" : "",
-                            apps: lane.kind == .counter
-                                ? []
-                                : lane.topEntities.prefix(3).map(\.entity),
-                            total: lane.total,
-                            share: sum > 0 ? lane.total / sum : 0,
-                            palette: palette
-                        )
-                    } else {
-                        // « Pas encore branchée » n'est pas « journée à zéro ».
-                        // Zéro est une affirmation ; ici on n'a rien mesuré.
-                        UnpluggedRow(device: lane.device, palette: palette)
-                    }
-                }
-            }
-        }
-    }
-}

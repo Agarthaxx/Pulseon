@@ -68,7 +68,7 @@ struct PulseonApp: App {
         // La fenêtre du dashboard. Elle n'existe que si on l'ouvre : l'app
         // reste un agent, et la collecte n'a jamais dépendu d'une fenêtre.
         Window("Pulseon", id: DashboardWindow.id) {
-            DashboardWindow(browser: engine.browser)
+            DashboardWindow(browser: engine.browser, periods: engine.periods)
         }
         .defaultSize(width: 860, height: 560)
         .modelContainer(engine.container)
@@ -81,6 +81,14 @@ private struct DashboardWindow: View {
     static let id = "dashboard"
 
     let browser: DayBrowser
+    let periods: PeriodBrowser
+
+    /// L'écran affiché. Un `@State` et non un réglage persistant : rouvrir
+    /// Pulseon doit montrer la journée, qui est la question à laquelle l'app
+    /// répond en premier.
+    @State private var screen: PulseonScreen = .day
+
+    @Environment(\.colorScheme) private var scheme
 
     /// La journée en cours grandit pendant qu'on la regarde. Une minute suffit
     /// — un bloc d'une minute fait moins d'un point de large sur 24 h, donc
@@ -90,20 +98,50 @@ private struct DashboardWindow: View {
         .autoconnect()
 
     var body: some View {
-        DayDashboard(
-            load: browser.load,
-            canGoForward: browser.canGoForward,
-            onPrevious: browser.goToPreviousDay,
-            onNext: browser.goToNextDay,
-            onToday: browser.goToToday
-        )
+        let palette = PulseonTheme.palette(for: scheme)
+
+        VStack(spacing: 0) {
+            ScreenPicker(selection: $screen, palette: palette)
+                .padding(.top, 12)
+
+            switch screen {
+            case .day:
+                DayDashboard(
+                    load: browser.load,
+                    canGoForward: browser.canGoForward,
+                    onPrevious: browser.goToPreviousDay,
+                    onNext: browser.goToNextDay,
+                    onToday: browser.goToToday
+                )
+            case .week:
+                WeekDashboard(
+                    load: periods.load,
+                    canGoForward: periods.canGoForward,
+                    onPrevious: periods.goToPreviousWeek,
+                    onNext: periods.goToNextWeek,
+                    onCurrent: periods.goToCurrentWeek
+                )
+            }
+        }
+        .background(palette.ground)
         // Les icônes descendent par l'environnement : les lignes qui les
         // affichent sont imbriquées loin sous le dashboard, et les traverser
         // toutes avec un argument de plus rendrait chaque vue intermédiaire
         // dépendante d'une chose qu'elle n'utilise pas.
         .environment(\.appIcons, browser.appIcons)
-        .onAppear { browser.reload() }
-        .onReceive(refresh) { _ in browser.reload() }
+        .onAppear { reloadVisible() }
+        // **Seul l'écran visible est relu.** Relire les deux chaque minute
+        // doublerait les requêtes pour une vue que personne ne regarde ; celle
+        // qu'on découvre est rafraîchie au moment où on l'affiche.
+        .onChange(of: screen) { reloadVisible() }
+        .onReceive(refresh) { _ in reloadVisible() }
+    }
+
+    private func reloadVisible() {
+        switch screen {
+        case .day: browser.reload()
+        case .week: periods.reload()
+        }
     }
 }
 
@@ -136,6 +174,9 @@ final class CollectionEngine {
     /// Ce qui alimente la fenêtre du dashboard. Détenu par le moteur pour que
     /// la journée affichée survive à la fermeture de la fenêtre.
     let browser: DayBrowser
+
+    /// Ce qui alimente l'écran de la semaine, détenu pour la même raison.
+    let periods: PeriodBrowser
 
     private let monitor: ActivityMonitor
     private let store: SessionStore
@@ -174,10 +215,9 @@ final class CollectionEngine {
         let store = SessionStore(context: container.mainContext)
         self.store = store
         self.monitor = ActivityMonitor(store: store)
-        self.browser = DayBrowser(
-            store: store,
-            registry: AppRegistry(context: container.mainContext)
-        )
+        let registry = AppRegistry(context: container.mainContext)
+        self.browser = DayBrowser(store: store, registry: registry)
+        self.periods = PeriodBrowser(store: store, registry: registry)
         start()
         startRefreshing()
     }

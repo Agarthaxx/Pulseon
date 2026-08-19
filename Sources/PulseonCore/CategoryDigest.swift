@@ -94,3 +94,44 @@ public struct CategoryDigestBuilder: Sendable {
             .sorted { $0.total > $1.total }
     }
 }
+
+extension CategoryTotal {
+    /// Cumule les catégories de plusieurs journées en une seule liste.
+    ///
+    /// **Additionner est licite ici, et pour une raison précise** : deux
+    /// journées ne se chevauchent jamais, là où deux appareils, eux, le
+    /// peuvent. C'est le même argument qui autorise le `coveredTotal` d'une
+    /// période à être la somme des totaux journaliers.
+    ///
+    /// Ce qui reste vrai en revanche, c'est que deux catégories simultanées
+    /// comptent chacune leur temps : la somme des catégories d'une semaine peut
+    /// dépasser le temps passé devant un écran, exactement comme au sein d'une
+    /// journée.
+    public static func merged(_ groups: [[CategoryTotal]]) -> [CategoryTotal] {
+        var totals: [AppCategory: TimeInterval] = [:]
+        var entities: [AppCategory: [String: TimeInterval]] = [:]
+
+        for group in groups {
+            for category in group {
+                totals[category.category, default: 0] += category.total
+                for entity in category.entities {
+                    entities[category.category, default: [:]][entity.entity, default: 0] +=
+                        entity.total
+                }
+            }
+        }
+
+        return totals
+            .map { category, total in
+                CategoryTotal(
+                    category: category,
+                    total: total,
+                    entities: (entities[category] ?? [:])
+                        .map { EntityTotal(entity: $0.key, total: $0.value) }
+                        .sorted { $0.total > $1.total }
+                )
+            }
+            .filter { $0.total > 0 }
+            .sorted { $0.total > $1.total }
+    }
+}

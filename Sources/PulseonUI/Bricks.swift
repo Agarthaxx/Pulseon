@@ -211,3 +211,93 @@ struct FailureCard: View {
         }
     }
 }
+
+// MARK: - La répartition
+
+/// À quoi le temps a servi. Vaut pour une journée comme pour une semaine :
+/// elle ne reçoit que des totaux par catégorie, sans savoir sur quelle durée
+/// ils ont été cumulés.
+struct BreakdownCard: View {
+    let categories: [CategoryTotal]
+    let palette: PulseonPalette
+
+    var body: some View {
+        // Les parts se calculent sur la somme des catégories, pas sur le total
+        // de la période : deux catégories simultanées comptent chacune leur
+        // temps, donc leur somme peut dépasser le temps passé devant un écran.
+        // Rapporter au `coveredTotal` afficherait des pourcentages dépassant
+        // 100 %.
+        let sum = categories.reduce(0) { $0 + $1.total }
+
+        Card(palette: palette) {
+            VStack(alignment: .leading, spacing: 15) {
+                Text("Répartition")
+                    .font(PulseonTheme.sectionTitle)
+                    .foregroundStyle(palette.inkSoft)
+                    .padding(.bottom, 2)
+
+                ForEach(categories) { category in
+                    MeterRow(
+                        symbol: PulseonTheme.symbol(for: category.category),
+                        tint: PulseonTheme.color(for: category.category, in: palette),
+                        fill: PulseonTheme.gradient(for: category.category, in: palette),
+                        label: category.category.label,
+                        apps: category.entities.prefix(3).map(\.entity),
+                        total: category.total,
+                        share: sum > 0 ? category.total / sum : 0,
+                        palette: palette
+                    )
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Les appareils
+
+/// Les appareils et leur temps. Les pistes d'une période portent les mêmes
+/// champs que celles d'une journée, à ceci près que leurs `blocks` sont vides —
+/// une position horaire n'a pas de sens sur sept jours. Cette carte n'en lit
+/// aucun, elle vaut donc pour les deux écrans.
+struct DevicesCard: View {
+    let lanes: [Lane]
+    /// Le dénominateur des parts : la somme des appareils, écrans simultanés
+    /// comptés deux fois. C'est le seul total dont les parts font 100 %.
+    let summedTotal: TimeInterval
+    let palette: PulseonPalette
+
+    var body: some View {
+        Card(palette: palette) {
+            VStack(alignment: .leading, spacing: 15) {
+                Text("Appareils")
+                    .font(PulseonTheme.sectionTitle)
+                    .foregroundStyle(palette.inkSoft)
+                    .padding(.bottom, 2)
+
+                ForEach(lanes, id: \.device) { lane in
+                    if lane.isConnected {
+                        MeterRow(
+                            symbol: PulseonTheme.symbol(for: lane.device),
+                            tint: PulseonTheme.color(for: lane.device, in: palette),
+                            fill: PulseonTheme.gradient(for: lane.device, in: palette),
+                            label: lane.device.label,
+                            // Sa part est honnête, sa place dans le temps est
+                            // inconnue — et doit se dire.
+                            detail: lane.kind == .counter ? "horaires inconnus" : "",
+                            apps: lane.kind == .counter
+                                ? []
+                                : lane.topEntities.prefix(3).map(\.entity),
+                            total: lane.total,
+                            share: summedTotal > 0 ? lane.total / summedTotal : 0,
+                            palette: palette
+                        )
+                    } else {
+                        // « Pas encore branchée » n'est pas « à zéro ». Zéro est
+                        // une affirmation ; ici on n'a rien mesuré.
+                        UnpluggedRow(device: lane.device, palette: palette)
+                    }
+                }
+            }
+        }
+    }
+}
