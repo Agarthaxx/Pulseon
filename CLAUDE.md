@@ -646,6 +646,47 @@ pour un rond de 18 points et pour celui de 178 — plancher des parts minuscules
 compris. `CategoryTotal.merged` cumule les catégories des journées, licite parce
 que **deux journées ne se chevauchent jamais**.
 
+### L'onglet Chronologie
+
+`TimelineGeometry` était pure, testée, et **lue par personne hors de ses tests**
+depuis que la timeline avait quitté l'écran du jour. Le troisième onglet lui rend
+un appelant, et rend surtout visible le parti pris du projet : « Temps d'écran »
+dit *combien*, ceci dit **quand**.
+
+**`RailLayout` vient de la PR #22, fermée sans merge.** Sa direction visuelle
+avait été écartée, pas son raisonnement : le découpage en rail est du calcul pur,
+couvert par dix tests, et il a été repris tel quel puis redessiné sur la palette
+de la maquette. À retenir : une PR fermée n'est pas du code mort, et relire
+pourquoi elle a été fermée évite de réécrire ce qui était bon dedans.
+
+**Un rail unique, divisé en hauteur — jamais une piste par appareil.** C'est la
+règle 6 de la skill `pulseon-design`, et elle est structurelle : une piste par
+appareil allonge l'écran et transforme les simultanéités en mur dès le troisième
+écran. Ici un appareil seul occupe toute la hauteur, deux la partagent en deux.
+**Une simultanéité se lit au fait que le rail est divisé**, jamais au fait que la
+page est plus longue — et c'est précisément ce qu'un total ne dira jamais.
+
+**La PlayStation n'est pas sur le rail**, et c'est la règle 1 : elle n'a aucun
+horaire, l'y placer serait inventer une heure. Elle vit sous un filet, dans une
+section « Sans horaire connu », en contour pointillé, centrée, libellée dessous.
+**Les cinq précautions sont cumulées parce qu'aucune ne suffit seule** : centré
+sous un axe des heures, le bloc se lisait « joué vers midi ». Le risque résiduel
+reste : il tombe visuellement sous « 12 h ». La largeur reste proportionnelle au
+temps, seule chose qu'on sache de lui.
+
+**La chronologie partage le `DayBrowser` de l'écran du jour**, elle n'a pas le
+sien : deux navigations séparées feraient dériver les deux écrans, et changer
+d'onglet changerait la date sans le dire.
+
+**La tête de lecture n'existe que sur aujourd'hui** (règle 5) — une journée
+passée est entièrement jouée. Elle est en `ink` et non en couleur d'accent, pour
+ne pas entrer en concurrence avec les couleurs d'appareil qui, elles, portent de
+l'information.
+
+Une journée sans rien dit **laquelle des deux choses** s'est passée : « le
+collecteur ne tournait pas » ou « il tournait et n'a rien vu passer ». La
+deuxième est une affirmation, la première non.
+
 ### Comparer une journée aux précédentes
 
 Un total seul ne veut rien dire, et c'est le manque qu'Arthur a ressenti en
@@ -998,8 +1039,10 @@ tout le parti pris visuel ci-dessus.
    comparaison aux journées précédentes). Mergée par la PR #31 le 2026-08-18,
    après avoir vécu cinq jours sur la seule machine d'Arthur.
    - ~~L'historique sur plusieurs jours~~ — l'écran de la semaine est livré
-     (voir « L'écran de la semaine »), avec la bascule Jour / Semaine.
-   - Reste l'onglet Timeline (écran 4 de la maquette).
+     (voir « L'écran de la semaine »).
+   - ~~L'onglet Timeline~~ (écran 4 de la maquette) — livré, sur un rail unique
+     repris de la PR #22 (voir « L'onglet Chronologie »).
+   - La fenêtre porte donc trois écrans : Jour / Semaine / Chronologie.
    - Porter ces vues sur iOS est l'étape B, et c'est un portage, pas une
      construction : il faudra un projet Xcode (SwiftPM seul ne fabrique pas
      d'app iOS) et le compte payant. Stack rediscutée puis reconfirmée le

@@ -8,6 +8,7 @@ import SwiftUI
 public enum PulseonScreen: String, CaseIterable, Identifiable, Sendable {
     case day
     case week
+    case timeline
 
     public var id: String { rawValue }
 
@@ -15,6 +16,7 @@ public enum PulseonScreen: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .day: "Jour"
         case .week: "Semaine"
+        case .timeline: "Chronologie"
         }
     }
 
@@ -22,6 +24,7 @@ public enum PulseonScreen: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .day: "circle.dashed"
         case .week: "chart.bar.fill"
+        case .timeline: "chart.bar.doc.horizontal"
         }
     }
 }
