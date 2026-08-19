@@ -330,6 +330,74 @@ rien eu à corriger.
 grave. Une donnée fausse mais *fermée* ne se distingue plus d'une donnée vraie —
 c'est elle qu'il faut chercher, pas celle qui saute aux yeux.
 
+### L'icône de l'app
+
+Livrée le 2026-08-19, **d'après une référence fournie par Arthur**
+(`Design/icon-reference-2026-08-19.jpg`, générée par Gemini) : carré arrondi
+bleu nuit, anneau en dégradé bleu → violet coupé à gauche et à droite, un
+battement qui le traverse, et des repères de cadran à 12 h, 3 h et 6 h — celui
+de 9 h manque parce que le battement entre par là. Jusqu'ici l'app portait le
+rectangle blanc générique de macOS.
+
+**Elle est dessinée en SwiftUI, pas importée.** `PulseonMark` et
+`PulseonAppIcon` vivent dans `PulseonUI`, en fractions du côté et jamais en
+points : la même vue rend le 1024 du Finder et le 16 d'une liste. Un PNG
+embarqué serait flou au premier écran Retina et illisible en petit ; et comme
+c'est du SwiftUI sans AppKit, l'app iOS la réutilisera telle quelle.
+
+**Chaque taille est redessinée, jamais réduite depuis le 1024.** Un trait de
+6 % du côté fait 62 points en 1024 et 1 point en 16 : la version réduite
+devient une bouillie grise là où la vue redessinée reste un anneau.
+`Scripts/make-icon.sh` rend les dix entrées de l'iconset puis appelle
+`iconutil` ; le `.icns` est **commité** (`Resources/AppIcon.icns`) pour que
+`build-app.sh` n'ait besoin de rien d'autre que du dépôt.
+
+**Le défaut trouvé en PNG et par rien d'autre** : au premier jet, le pic du
+battement montait jusqu'à l'anneau. Croisé avec la ligne horizontale, le dessin
+devenait un **réticule de visée** — reconnaissable, mais ce n'était pas un
+pouls. L'amplitude est bornée à un quart de tour de part et d'autre de l'axe :
+le battement reste contenu *dans* le cadran. Encore un défaut qu'aucun test ne
+pouvait voir.
+
+**L'épaisseur du trait est choisie sur planche, pas à l'estime.** Le premier jet
+tenait 6,2 % du côté — « c'est peut-être un peu trop épais ?  », et c'était
+juste. Quatre valeurs rendues côte à côte à cinq tailles : en dessous de 4 %,
+l'anneau devient fragile dès 32 points et le pic se casse. **Retenu : 4,8 %.**
+La même planche sert à toute retouche future — `Scripts/make-icon.sh` l'ouvre.
+
+**Trois autres formes ont été dessinées puis écartées le même jour**, Arthur
+ayant choisi le cadran (« j'aime beaucoup la version Cadran ! »). À ne pas
+reproposer :
+
+| Forme | Ce qu'elle donnait | Pourquoi elle n'est pas retenue |
+|---|---|---|
+| **épuré** | le cadran sans ses repères, battement traversant symétrique | plus net en petit, mais Arthur veut sa référence |
+| **contenu** | anneau fermé, battement entièrement à l'intérieur | l'anneau redevient un cercle ordinaire |
+| **parts** | l'anneau *du dashboard*, découpé en parts inégales | demande de connaître l'app pour être lu, or une icône se lit avant d'ouvrir |
+
+**Les repères disparaissent en dessous de 48 points, et c'est assumé** : à cette
+taille ils ne pèsent plus qu'un pixel, quand le cercle et le pic tiennent
+encore. Une marque doit se dégrader en perdant son détail, pas sa silhouette.
+Et ils **ne doivent jamais devenir une graduation** : Pulseon n'affiche pas un
+horaire qu'il n'a pas mesuré, jusque dans son icône.
+
+**Les couleurs de l'icône sont les seules `static let` du thème**, et c'est
+assumé : une icône vit dans le Dock et le Finder, pas dans nos fenêtres — elle
+est la même en clair et en sombre, donc elle n'a rien à résoudre depuis un
+`colorScheme`. Le bleu et le violet ne remplacent pas l'or : **l'or désigne du
+temps mesuré à l'intérieur de l'app**, où il s'oppose au fond ; une icône n'a
+rien à désigner, elle doit se reconnaître dans une rangée d'autres icônes.
+
+**Les proportions sont celles d'Apple, pas des valeurs choisies à l'œil** : sur
+une toile de 1024, le carré occupe 824 points et son rayon vaut 185,4. Une icône
+dessinée bord à bord paraît trop grosse à côté des autres du Dock.
+
+**Où elle se voit, et où elle ne se voit pas** : `LSUIElement` retire l'app du
+Dock, donc l'icône apparaît dans le Finder, `/Applications` et ⌘Tab — et dans le
+Dock seulement pendant qu'une fenêtre est ouverte, quand `DockPresence` bascule
+en `.regular`. La barre de menu, elle, garde le symbole système `waveform`, qui
+dit la même chose en monochrome : une icône couleur y serait hors sujet.
+
 ### Empaquetage et démarrage automatique
 
 `Scripts/build-app.sh` fabrique `Pulseon.app` à partir de l'exécutable

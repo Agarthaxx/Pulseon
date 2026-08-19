@@ -15,6 +15,12 @@ let package = Package(
                 .product(name: "PulseonCore", package: "creation_project"),
                 .product(name: "PulseonUI", package: "creation_project"),
             ]
-        )
+        ),
+        // L'icône : même paquet, parce qu'elle rend elle aussi des vues hors
+        // écran et n'a pas sa place dans l'app livrée.
+        .executableTarget(
+            name: "Icon",
+            dependencies: [.product(name: "PulseonUI", package: "creation_project")]
+        ),
     ]
 )

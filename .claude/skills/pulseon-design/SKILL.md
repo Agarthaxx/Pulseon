@@ -63,6 +63,25 @@ anneau qui se remplit vers une cible annoncerait une réussite ou un échec.
 future maquette en montre : c'est la règle 7, et elle a survécu à trois
 directions visuelles.
 
+### L'icône, arrêtée le 2026-08-19
+
+**Le cadran de la référence d'Arthur** (`Design/icon-reference-2026-08-19.jpg`) :
+carré bleu nuit, anneau bleu → violet coupé à gauche et à droite, battement qui
+le traverse, repères à 12 h, 3 h et 6 h. Dessinée en SwiftUI (`PulseonMark`),
+trait à 4,8 % du côté.
+
+**Trois formes écartées le même jour, à ne pas reproposer** : « épuré » (le même
+sans repères), « contenu » (anneau fermé, battement à l'intérieur) et « parts »
+(l'anneau du dashboard découpé — il demande de connaître l'app pour être lu, or
+une icône se lit avant d'ouvrir).
+
+**Le bleu et le violet ne remplacent pas l'or.** L'or *désigne du temps mesuré*
+à l'intérieur de l'app ; une icône n'a rien à désigner, elle doit se reconnaître
+dans une rangée d'autres icônes. Ne pas « harmoniser » l'un sur l'autre.
+
+**Les repères ne sont pas une graduation** et ne doivent jamais le devenir :
+c'est la règle 1 jusque dans l'icône.
+
 ### Ce qui a été essayé et écarté avant
 
 Pour ne pas le reproposer par morceaux :
