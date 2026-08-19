@@ -524,15 +524,26 @@ ne rattraperont pas ». Le rendu de démonstration le montre d'ailleurs sans le
 chercher : Xcode et Brave sortent en vrai, IINA, Slack et Elden Ring retombent
 sur leur glyphe. **Jamais de carré vide.**
 
-**`RingScale` porte la règle de taille**, partagée par les ronds de la semaine et
-ceux des catégories : la surface est proportionnelle à la durée, donc le diamètre
-suit sa **racine carrée**. Écrite une fois, testée, plutôt que recopiée à deux
-endroits.
+**Les ronds de catégories font tous la même taille**, décision d'Arthur le
+2026-08-19 : « je me fiche de la logique le rond grossit plus le temps est grand,
+laisse-les de la même taille ». **Ce n'est pas une entorse à la règle, c'est sa
+bonne portée** : sur la rangée de la *semaine*, les ronds servent à comparer des
+journées entre elles et la taille est le seul canal disponible, puisqu'un anneau
+fait toujours le tour. Ici la durée est déjà écrite au-dessus de chaque rond, donc
+la faire porter *aussi* par le diamètre ne disait rien de plus — et déformait la
+rangée pour rien, une catégorie dominante écrasant toutes les autres sur le
+plancher. À ne pas « restaurer ».
 
-**Le plancher de diamètre n'est pas un réglage d'humeur** : tout ce qui vaut
-moins de `(minimum / maximum)²` de la référence y tombe et devient indiscernable.
-À 24 sur 54, c'était un **cinquième** de la journée — « 48 min » et « 3 min »
-faisaient le même rond. À 20 sur 58, le plancher ne prend que sous 12 %.
+**`RingScale` porte la règle de taille** pour la semaine, qui en a besoin : la
+surface est proportionnelle à la durée, donc le diamètre suit sa **racine
+carrée** — l'œil compare des surfaces, et un diamètre proportionnel ferait
+paraître une journée deux fois plus longue quatre fois plus grosse. Écrite une
+fois et testée, plutôt qu'enfouie dans une vue.
+
+**Son plancher n'est pas un réglage d'humeur** : tout ce qui vaut moins de
+`(minimum / maximum)²` de la référence y tombe et devient indiscernable. Constaté
+en PNG à l'époque où les catégories l'utilisaient — à 24 sur 54, le seuil était à
+**un cinquième** de la journée, et « 48 min » et « 3 min » faisaient le même rond.
 
 **Une légende de couleurs sous l'anneau principal** (`DeviceLegend`), la même que
 sur l'écran de la semaine : sans elle, il faut descendre à la carte « Appareils »
