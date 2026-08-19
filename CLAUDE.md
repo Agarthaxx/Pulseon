@@ -1144,6 +1144,61 @@ tout le parti pris visuel ci-dessus.
    PlayStation toujours bloqué sur le jeton.
 7. Réévaluer l'intégration iPhone.
 
+### État au 2026-08-19 (fin de cinquième session)
+
+**L'app est passée d'un écran à trois** : Jour, Semaine, Chronologie. Huit PR
+mergées (#32 à #39), **126 → 157 tests**, et tout tourne sur la machine d'Arthur
+— rebâti et réinstallé quatre fois dans la journée, une seule instance à chaque
+fois.
+
+**Le fil conducteur n'était pas les écrans, c'était le back invisible.** Deux
+paquets entiers étaient écrits, testés, et appelés par personne hors de leurs
+tests : `buildPeriod` (9 tests, depuis la PR #21) et `TimelineGeometry` (6 tests,
+depuis que la timeline avait quitté l'écran du jour). Il ne leur manquait qu'un
+écran. `RailLayout` a été **récupéré de la PR #22**, fermée pour sa direction
+visuelle et non pour son raisonnement — une PR fermée n'est pas du code mort.
+
+**L'écran du jour a changé quatre fois avant de convenir**, et chaque version est
+passée par un PNG avant d'être montrée : anneau intérieur concentrique → deux
+anneaux côte à côte → ronds de catégories à taille variable → ronds uniformes,
+portant le logo de l'app dominante. Le retour le plus utile de la journée a été
+une question, pas une critique : « à quoi correspond le deuxième anneau ? ».
+**Une forme qui a besoin d'une légende pour être comprise n'est pas plus dense,
+elle est plus opaque.**
+
+**Trois suppressions valent d'être notées**, parce qu'elles sont l'inverse exact
+du problème du matin : `RingScale` et ses 5 tests, `PeriodPresentation.scale`, et
+`busiestDay` — cette dernière écrite dans la PR #32 et jamais lue par une vue.
+Une API sans appelant ressemble à une feature livrée ; le compilateur ne dit rien
+sur une propriété publique inutilisée. **Chercher l'appelant, pas la
+déclaration** — dans les deux sens.
+
+**Ce qui attend Arthur, et rien d'autre :**
+
+- **`Scripts/probe-tv-apps.sh`**, à lancer chez lui, télé allumée avec une app
+  ouverte. Question ouverte : la télé peut-elle nommer l'app à l'écran ? Ce
+  serait local, donc compatible avec la promesse du projet — mais Samsung a
+  fermé une grande partie de son API locale depuis 2022 et sa télé est de 2023.
+  **On mesure avant de coder** (voir la section TV).
+- **La TV n'a qu'une session en base** (1,6 h le 18/08), et ce n'est pas un bug :
+  Arthur n'était pas sur le réseau de la télé. Vérifié avec lui.
+
+**Ce que je ferais ensuite, par ordre de rendement :**
+
+1. **L'anatomie de la journée** — premier écran, dernier écran, plus longue
+   traite, coupures. Pur `PulseonCore`, testable sans simulateur, et c'est la
+   substance que n'importe quel écran affichera.
+2. **L'export CSV/JSON** — du core pur, et l'argument « tes données
+   t'appartiennent ».
+3. **Les apps de la télé**, si la sonde répond.
+
+**Un décalage connu, qui ne se verra qu'une fois la télé branchée pour de bon** :
+le cœur d'un rond de catégorie porte le logo de l'app dominante, or une télé n'a
+pas d'entité — ses blocs alimentent le total de « Vidéo et musique » sans jamais
+apparaître dans la liste des apps. Une soirée de 3 h de télé et 20 min d'IINA
+afficherait donc l'icône d'IINA. Correction proposée et non faite : afficher le
+glyphe de l'appareil quand une source sans entité domine.
+
 ### État au 2026-08-18 (fin de quatrième session)
 
 **Cette session** : les icônes d'apps ont été **branchées pour de vrai** — la
