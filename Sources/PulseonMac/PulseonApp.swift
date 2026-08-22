@@ -307,6 +307,10 @@ final class CollectionEngine {
         let witness = NetworkWitness()
         let monitor = TVMonitor(
             probe: SamsungTVProbe(host: host, hasNetwork: { witness.hasNetwork }),
+            // La même télé, interrogée sur une autre question : « quelle app est
+            // à l'écran ? ». Tout reste sur le réseau local — rien ne sort de la
+            // machine, contrairement à ce qu'exigerait un service de favicons.
+            appProbe: SamsungTVAppProbe(host: host),
             store: store
         )
         tv = monitor

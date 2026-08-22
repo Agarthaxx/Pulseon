@@ -23,6 +23,19 @@ public final class StoredApp {
     /// par CloudKit, qui est la cible de synchronisation du projet. L'unicité
     /// est donc tenue à la main dans `noteApp`.
     public var appName: String
+    /// **L'identité est propre à un appareil.** « Apple TV », « Spotify » et
+    /// « Netflix » existent à la fois sur le Mac et sur la télé, et sans cette
+    /// colonne les deux se disputeraient la même ligne : chaque relevé de la
+    /// télé réécrirait l'identifiant de bundle de l'app du Mac, puis
+    /// l'activation suivante le réécrirait en sens inverse. C'est exactement
+    /// l'écriture-à-chaque-tick que `noteApp` existe pour empêcher, doublée
+    /// d'une catégorie qui changerait de camp à chaque passage.
+    ///
+    /// Optionnelle, et nil vaut `.mac` : toutes les lignes écrites avant la
+    /// télé sont des apps du Mac, par construction. Un attribut optionnel
+    /// ajouté à un `@Model` est la seule forme de migration que SwiftData
+    /// sache faire sans plan de migration explicite.
+    public var deviceRaw: String?
     public var bundleID: String?
     /// La catégorie brute déclarée par l'app (`public.app-category.…`), stockée
     /// telle quelle. On garde la donnée d'origine plutôt que notre
@@ -33,14 +46,20 @@ public final class StoredApp {
 
     public init(
         appName: String,
+        device: Device = .mac,
         bundleID: String?,
         declaredCategory: String?,
         firstSeen: Date
     ) {
         self.appName = appName
+        self.deviceRaw = device.rawValue
         self.bundleID = bundleID
         self.declaredCategory = declaredCategory
         self.firstSeen = firstSeen
+    }
+
+    public var device: Device {
+        deviceRaw.flatMap(Device.init(rawValue:)) ?? .mac
     }
 }
 
@@ -89,16 +108,41 @@ public final class AppRegistry {
     /// - Parameter device: sert de repli quand l'app est inconnue de la base —
     ///   un jeu PlayStation n'a pas d'`Info.plist` à lire.
     public func category(ofApp name: String, on device: Device = .mac) -> AppCategory {
-        guard device == .mac else { return device.defaultCategory }
-        return category(ofApp: name)
+        switch device {
+        case .mac:
+            return category(ofApp: name, on: .mac, fallingBackTo: rules.category(forApp: name))
+
+        case .tv:
+            // **La télé ne classe que ce qu'elle a nommé.** Sans identité en
+            // base, on ne sait toujours qu'une chose de cet écran —
+            // `PowerState: on` — et c'est `.tv` qui le dit. Ne surtout pas
+            // retomber sur les règles du Mac ici : elles devineraient un
+            // navigateur d'après le nom, or une app de télé qui contiendrait
+            // « Arc » ou « Edge » n'en est pas un.
+            guard let identity = identity(ofApp: name, on: .tv) else {
+                return device.defaultCategory
+            }
+            return rules.category(
+                forApp: name,
+                bundleID: identity.bundleID,
+                declared: identity.declaredCategory
+            )
+
+        case .playstation:
+            // Une console est un écran, pas un contenu, et « Jeu » reste le
+            // classement d'un jeu **sur le Mac**. Rien à chercher en base.
+            return device.defaultCategory
+        }
     }
 
-    private func category(ofApp name: String) -> AppCategory {
-        let identity = identity(ofApp: name)
+    private func category(
+        ofApp name: String, on device: Device, fallingBackTo fallback: AppCategory
+    ) -> AppCategory {
+        guard let identity = identity(ofApp: name, on: device) else { return fallback }
         return rules.category(
             forApp: name,
-            bundleID: identity?.bundleID,
-            declared: identity?.declaredCategory
+            bundleID: identity.bundleID,
+            declared: identity.declaredCategory
         )
     }
 
@@ -108,10 +152,16 @@ public final class AppRegistry {
     /// désinstallée n'a plus d'icône, et une source à compteur (un jeu
     /// PlayStation) n'en a jamais eu. À l'appelant d'afficher un repli qui n'ait
     /// pas l'air cassé, jamais un carré vide.
+    /// Cherchée du côté du **Mac**, quel que soit l'appareil qui a consommé le
+    /// temps — et c'est voulu. « Netflix » sur la télé et « Netflix » sur le Mac
+    /// sont le même produit et le même logo : emprunter l'icône du Mac quand
+    /// elle existe est juste. Quand elle n'existe pas — le cas courant, aucune
+    /// app de télé n'étant installée sur le Mac — on rend nil, et l'appelant
+    /// affiche son repli.
     public func icon(ofApp name: String) -> NSImage? {
         if let cached = icons[name] { return cached }
         guard
-            let bundleID = identity(ofApp: name)?.bundleID,
+            let bundleID = identity(ofApp: name, on: .mac)?.bundleID,
             let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
         else { return nil }
         let icon = NSWorkspace.shared.icon(forFile: url.path)
@@ -136,14 +186,20 @@ public final class AppRegistry {
         }
     }
 
-    private func identity(ofApp name: String) -> StoredApp? {
-        if let cached = identities[name] { return cached }
+    private func identity(ofApp name: String, on device: Device) -> StoredApp? {
+        let key = "\(device.rawValue)\u{1}\(name)"
+        if let cached = identities[key] { return cached }
+        let raw = device.rawValue
+        let macRaw = Device.mac.rawValue
         var descriptor = FetchDescriptor<StoredApp>(
-            predicate: #Predicate { $0.appName == name }
+            // `??` et surtout pas `!` : SwiftData refuse le déballage forcé
+            // dans un prédicat. Les lignes écrites avant la télé n'ont pas de
+            // colonne d'appareil, et ce sont toutes des apps du Mac.
+            predicate: #Predicate { ($0.deviceRaw ?? macRaw) == raw && $0.appName == name }
         )
         descriptor.fetchLimit = 1
         guard let found = try? context.fetch(descriptor).first else { return nil }
-        identities[name] = found
+        identities[key] = found
         return found
     }
 }

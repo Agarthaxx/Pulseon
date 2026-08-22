@@ -249,18 +249,35 @@ public final class TVMonitor {
     /// sur le réseau local.
     public var interval: TimeInterval = 30
 
+    /// À quelle fréquence on redemande **quelle app** est à l'écran.
+    ///
+    /// Plus lent que le relevé d'alimentation, et pour une raison de coût : là
+    /// où l'état de l'écran tient en une requête, le nom de l'app peut en
+    /// demander une par app du catalogue quand rien n'est reconnu. Se tromper
+    /// d'une minute sur la frontière entre deux apps ne change pas le total de
+    /// la soirée — se tromper d'une minute sur l'extinction, si.
+    public var appInterval: TimeInterval = 60
+
     public private(set) var lastReading: TVReading?
     /// Dernier instant où l'écran a été observé allumé. C'est lui qui borne la
     /// fermeture de session, jamais l'heure courante.
     public private(set) var lastSeenOn: Date?
+    /// L'app vue à l'écran au dernier relevé, si la télé a su la nommer.
+    public private(set) var currentApp: TVApp?
 
     private let probe: TVProbe
+    private let appProbe: TVAppProbe?
     private let store: SessionStore
     private var timer: Timer?
     private var inFlight = false
+    private var lastAppScan: Date?
 
-    public init(probe: TVProbe, store: SessionStore) {
+    /// - Parameter appProbe: nil quand on ne cherche pas à nommer l'app. Le
+    ///   collecteur reste alors exactement celui d'avant : « la télé était
+    ///   allumée », sans entité.
+    public init(probe: TVProbe, appProbe: TVAppProbe? = nil, store: SessionStore) {
         self.probe = probe
+        self.appProbe = appProbe
         self.store = store
     }
 
@@ -290,29 +307,84 @@ public final class TVMonitor {
         Task { [weak self] in
             guard let self else { return }
             let reading = await self.probe.read()
-            self.apply(reading, at: Date())
+            let now = Date()
+            let app = await self.readApp(given: reading, at: now)
+            self.apply(reading, app: app, at: now)
             self.inFlight = false
         }
     }
 
+    /// N'interroge les apps que quand l'écran est allumé, et au plus une fois
+    /// par `appInterval`.
+    ///
+    /// Demander le nom de l'app d'une télé éteinte n'apprendrait rien et
+    /// réveillerait le réseau pour rien.
+    private func readApp(given reading: TVReading, at now: Date) async -> TVAppReading {
+        guard let appProbe, reading == .on else { return .unknown }
+        if let last = lastAppScan, now.timeIntervalSince(last) < appInterval { return .unknown }
+        lastAppScan = now
+        return await appProbe.visibleApp(preferring: currentApp?.id)
+    }
+
     /// Interne et non privée pour être testable avec une horloge fixe : ce qui
     /// se joue ici est l'honnêteté du comptage, pas de la plomberie.
-    func apply(_ reading: TVReading, at now: Date) {
+    func apply(_ reading: TVReading, app: TVAppReading = .unknown, at now: Date) {
         lastReading = reading
         if reading == .on { lastSeenOn = now }
+        note(app, at: now)
 
         let isOpen = store.hasOpenSession(for: .tv)
         switch TVDecision.next(
             reading: reading, isOpen: isOpen, now: now, lastSeenOn: lastSeenOn
         ) {
         case .open:
-            // Pas d'entité : la télé ne dit pas ce qu'elle diffuse, et le
-            // supposer serait une invention.
-            store.openSession(device: .tv, entity: nil, at: now)
+            // L'entité est le nom que **la télé** a donné, ou rien. Rien est
+            // une vraie réponse : entrée HDMI (la PS5 d'Arthur est branchée
+            // sur cette télé), ou app absente du catalogue. Dans les deux cas
+            // on ne sait qu'une chose de cet écran, et c'est déjà écrit.
+            store.openSession(device: .tv, entity: currentApp?.name, at: now)
         case .close(let end):
             store.closeOpenSession(device: .tv, at: end)
             lastSeenOn = nil
+            currentApp = nil
         case .nothing:
+            // La session tourne et l'écran est allumé : si l'app a changé, il
+            // faut couper ici. `openSession` ne fait rien quand l'entité est la
+            // même, donc le cas courant ne coûte pas une écriture.
+            //
+            // La coupure est datée de **maintenant** et non du dernier instant
+            // où l'ancienne app a été vue, contrairement à une extinction. La
+            // différence n'est pas un relâchement : l'écran, lui, a été observé
+            // allumé sans interruption des deux côtés de la bascule. Reculer la
+            // coupure creuserait un trou dans du temps mesuré. Seul le partage
+            // entre deux apps est approché, à un `appInterval` près.
+            if reading == .on, isOpen {
+                store.openSession(device: .tv, entity: currentApp?.name, at: now)
+            }
+        }
+    }
+
+    /// Retient l'app vue, et son identité en base.
+    ///
+    /// **`.unknown` garde le nom précédent.** Ne pas avoir pu demander n'est pas
+    /// « plus aucune app » : confondre les deux ferait basculer une soirée de
+    /// Netflix en « Télé » sur une seule requête perdue.
+    private func note(_ app: TVAppReading, at now: Date) {
+        switch app {
+        case .app(let seen):
+            currentApp = seen
+            // `noteApp` n'écrit rien si rien n'a changé, donc ce passage est
+            // gratuit tant que la même app reste à l'écran.
+            store.noteApp(
+                name: seen.name,
+                device: .tv,
+                bundleID: TVAppCatalog.bundleID(for: seen.id),
+                declaredCategory: TVAppCatalog.declaredCategory(for: seen.id),
+                at: now
+            )
+        case .noneVisible:
+            currentApp = nil
+        case .unknown:
             break
         }
     }

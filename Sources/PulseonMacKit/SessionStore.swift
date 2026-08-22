@@ -182,9 +182,22 @@ public final class SessionStore {
     /// et son identité ne bouge jamais : réécrire la même ligne à chaque
     /// activation refait l'erreur du `lastSeen` en base, celle qui coûtait 78 Ko
     /// par écriture pour une information inchangée.
-    public func noteApp(name: String, bundleID: String?, declaredCategory: String?, at date: Date) {
+    /// - Parameter device: l'identité est propre à un appareil. « Apple TV » et
+    ///   « Spotify » existent sur le Mac **et** sur la télé ; sans cette borne,
+    ///   les deux se disputeraient la même ligne et se réécriraient l'une
+    ///   l'autre à chaque relevé — l'erreur du `lastSeen` en base, exactement.
+    public func noteApp(
+        name: String,
+        device: Device = .mac,
+        bundleID: String?,
+        declaredCategory: String?,
+        at date: Date
+    ) {
+        let raw = device.rawValue
+        let macRaw = Device.mac.rawValue
         var descriptor = FetchDescriptor<StoredApp>(
-            predicate: #Predicate { $0.appName == name }
+            // `??` et jamais `!` : voir `sessions(from:to:)`.
+            predicate: #Predicate { ($0.deviceRaw ?? macRaw) == raw && $0.appName == name }
         )
         descriptor.fetchLimit = 1
 
@@ -192,6 +205,7 @@ public final class SessionStore {
             context.insert(
                 StoredApp(
                     appName: name,
+                    device: device,
                     bundleID: bundleID,
                     declaredCategory: declaredCategory,
                     firstSeen: date
