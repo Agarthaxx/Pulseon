@@ -268,6 +268,24 @@ public final class SessionStore {
         return try context.fetch(descriptor).map(\.asSession)
     }
 
+    /// **Tout** l'historique, pour l'export.
+    ///
+    /// Sans bornes, contrairement à `sessions(from:to:)` : ici on veut
+    /// justement ce que les bornes écartent. Le coût est assumé parce que
+    /// l'appel est rare et volontaire — un export est un geste de
+    /// l'utilisateur, pas une relecture par minute.
+    public func allSessions() throws -> [ActivitySession] {
+        let descriptor = FetchDescriptor<StoredSession>(sortBy: [SortDescriptor(\.start)])
+        return try context.fetch(descriptor).map(\.asSession)
+    }
+
+    public func allSamples() throws -> [CounterSample] {
+        let descriptor = FetchDescriptor<StoredCounterSample>(
+            sortBy: [SortDescriptor(\.recordedAt)]
+        )
+        return try context.fetch(descriptor).map(\.asSample)
+    }
+
     /// Enregistre un relevé de compteur, **sauf s'il n'apprend rien**.
     ///
     /// Les sources à compteur se relèvent périodiquement, et la plupart des
