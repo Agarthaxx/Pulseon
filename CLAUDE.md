@@ -733,6 +733,52 @@ demande de savoir lire la catégorie déclarée d'une app — ce que seul le cô
 macOS sait faire. `PulseonCore` reçoit une fonction de classement et ne devine
 rien.
 
+### Deux nombres qui ne font pas le troisième
+
+**Trouvé par Arthur devant l'app, le 2026-08-22** : « le rond indique 1h29 mais
+j'ai 1h29 de télé et de pc ? donc ça devrait me montrer le double non ? ».
+
+Le rond avait raison. Ses vrais chiffres du soir : Mac 1h16, télé 1h29, et
+**1h15 pendant lesquelles les deux étaient allumés en même temps** — il regardait
+la télé en étant sur son Mac. Ces minutes-là sont les mêmes minutes, donc
+`coveredTotal` vaut 1h30 et non 2h45. C'est la distinction que le projet porte
+depuis le début.
+
+**Le défaut n'était pas le chiffre, c'était l'écran.** Juste sous le grand
+nombre, la légende affichait « Mac 1h16 · TV 1h29 » : deux nombres qui ne font
+pas le troisième. La note qui l'expliquait existait bien, mais **tout en bas de
+la carte**, en gris pâle, sous la rangée de catégories — trop loin de la
+contradiction pour la résoudre. Et elle énonçait une méthode de calcul
+(« écrans simultanés comptés deux fois ») là où il fallait un fait de la soirée.
+
+Elle est remplacée par une ligne posée **directement sous la légende** :
+« deux écrans à la fois pendant 1h15 ». C'est un fait mesuré, et c'est
+précisément ce qu'un total ne dira jamais.
+
+**Le calcul n'est pas `summedTotal - coveredTotal`**, et ce n'est pas un détail :
+
+- cette soustraction donne le temps compté en trop par l'addition, pas le temps
+  passé sur plusieurs écrans. À **trois** appareils allumés une heure ensemble
+  elle rend deux heures, alors qu'on n'a vécu qu'une heure de simultanéité ;
+- elle inclurait le total d'une **source à compteur**. La PlayStation n'a aucun
+  horaire : affirmer qu'elle tournait en même temps que la télé serait inventer
+  un placement horaire, c'est-à-dire violer la règle 1.
+
+`IntervalMath.simultaneity(of:)` balaie donc les vrais blocs, **après avoir
+fusionné ceux de chaque appareil** — un appareil ne peut pas être allumé deux
+fois en même temps, et l'oublier ferait passer un défaut d'écriture pour une
+soirée sur deux écrans. C'est la leçon de la journée de 51 heures, appliquée à un
+nouveau calcul.
+
+Deux précisions de formulation qui sont des précisions de mesure :
+
+- **« deux » ou « plusieurs » selon le pic observé.** Écrire « deux » un jour où
+  trois écrans tournaient ensemble sous-entendrait une mesure qu'on n'a pas
+  faite.
+- **Jamais « les deux »**, qui renverrait aux pastilles de la légende — or elle
+  peut en porter une troisième, la PlayStation, dont on ignore justement les
+  horaires.
+
 ### L'anatomie de la journée
 
 Un total dit *combien*, l'anneau dit *de quoi c'est fait*, et
