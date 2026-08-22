@@ -7,25 +7,43 @@ import Foundation
 /// catégorie en a exactement le même besoin — deux apps de la même catégorie
 /// peuvent se chevaucher — donc elle sort ici plutôt que d'être recopiée.
 enum IntervalMath {
-    /// Le temps couvert par au moins un bloc, chaque instant compté une fois.
-    static func mergedDuration(of blocks: [TraceBlock]) -> TimeInterval {
-        let ranges = blocks
-            .map { ($0.startOffset, $0.startOffset + $0.duration) }
-            .sorted { $0.0 < $1.0 }
+    /// Un intervalle de la journée, en secondes depuis minuit local.
+    struct Run: Sendable, Equatable {
+        var start: TimeInterval
+        var end: TimeInterval
 
-        var total: TimeInterval = 0
-        var current: (Double, Double)?
+        var duration: TimeInterval { end - start }
+    }
+
+    /// Les blocs fondus en traites continues, dans l'ordre.
+    ///
+    /// C'est la brique commune : le total n'en est que la somme des durées, et
+    /// l'anatomie de la journée a besoin des bornes elles-mêmes. Extraire les
+    /// traites plutôt que de recopier la boucle évite qu'un jour les deux se
+    /// mettent à répondre des choses différentes sur les mêmes données.
+    static func mergedRuns(of blocks: [TraceBlock]) -> [Run] {
+        let ranges = blocks
+            .map { Run(start: $0.startOffset, end: $0.startOffset + $0.duration) }
+            .sorted { $0.start < $1.start }
+
+        var runs: [Run] = []
+        var current: Run?
 
         for range in ranges {
-            if var open = current, range.0 <= open.1 {
-                open.1 = max(open.1, range.1)
+            if var open = current, range.start <= open.end {
+                open.end = max(open.end, range.end)
                 current = open
             } else {
-                if let open = current { total += open.1 - open.0 }
+                if let open = current { runs.append(open) }
                 current = range
             }
         }
-        if let open = current { total += open.1 - open.0 }
-        return total
+        if let open = current { runs.append(open) }
+        return runs
+    }
+
+    /// Le temps couvert par au moins un bloc, chaque instant compté une fois.
+    static func mergedDuration(of blocks: [TraceBlock]) -> TimeInterval {
+        mergedRuns(of: blocks).reduce(0) { $0 + $1.duration }
     }
 }

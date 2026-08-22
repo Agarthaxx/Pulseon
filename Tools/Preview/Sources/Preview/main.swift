@@ -183,7 +183,13 @@ let categories = CategoryDigestBuilder(classify: assignment.category(for:entity:
     .build(from: digest)
 
 MainActor.assumeIsolated {
-    let now = dayStart.addingTimeInterval(19.4 * 3600)
+    // **Après le dernier bloc de la journée, et c'est important.** Le jeu de
+    // démonstration s'arrêtait à 19 h 24 alors que ses blocs courent jusqu'à
+    // 23 h 15 : la tête de lecture précédait donc du temps d'écran, un état que
+    // la vraie app ne peut pas produire (une session ouverte est bornée à
+    // l'horizon d'activité). Trouvé en regardant la carte « Déroulé », qui
+    // annonçait « dernier écran 23:15 — jusqu'ici » à 19 h 24.
+    let now = dayStart.addingTimeInterval(23.4 * 3600)
     let today = DayPresentation(
         digest: digest, dayStart: dayStart, dayLength: day, now: now,
         categories: categories,
@@ -191,7 +197,11 @@ MainActor.assumeIsolated {
         // dans les journées de référence, et la phrase doit le dire.
         comparison: DayComparison(
             subject: macTotal, average: macTotal - 4_800, referenceDays: 7, isPartial: true
-        )
+        ),
+        // **Passe par le vrai `DayAnatomyBuilder`**, comme les catégories : une
+        // preview qui écrirait les quatre faits à la main ne pourrait pas voir
+        // un bug de découpage des traites.
+        anatomy: DayAnatomyBuilder().build(from: digest)
     )
 
     shoot(
@@ -224,6 +234,15 @@ MainActor.assumeIsolated {
     shoot(
         dashboard(.loaded(today), canGoForward: false, scheme: .dark),
         size: CGSize(width: 560, height: 900), named: "pulseon-narrow"
+    )
+
+    // Plus étroit encore : c'est le seul rendu où la carte « Déroulé » replie
+    // ses quatre faits en deux lignes. Un état qu'on ne rend pas est un état
+    // qu'on ne regarde jamais — et celui-ci ne se déclenche qu'en dessous de la
+    // largeur du cas « étroit » ci-dessus.
+    shoot(
+        dashboard(.loaded(today), canGoForward: false, scheme: .dark),
+        size: CGSize(width: 440, height: 900), named: "pulseon-cramped"
     )
 
     // **Le cas réel d'Arthur : un seul appareil branché.** C'est la journée
@@ -458,7 +477,13 @@ MainActor.assumeIsolated {
         .environment(\.colorScheme, scheme)
     }
 
-    let now = dayStart.addingTimeInterval(19.4 * 3600)
+    // **Après le dernier bloc de la journée, et c'est important.** Le jeu de
+    // démonstration s'arrêtait à 19 h 24 alors que ses blocs courent jusqu'à
+    // 23 h 15 : la tête de lecture précédait donc du temps d'écran, un état que
+    // la vraie app ne peut pas produire (une session ouverte est bornée à
+    // l'horizon d'activité). Trouvé en regardant la carte « Déroulé », qui
+    // annonçait « dernier écran 23:15 — jusqu'ici » à 19 h 24.
+    let now = dayStart.addingTimeInterval(23.4 * 3600)
 
     // **Le cas qui teste le rail : deux écrans en même temps.** Le film du soir
     // recouvre une session Mac, donc le rail doit se diviser en hauteur — c'est

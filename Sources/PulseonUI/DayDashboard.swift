@@ -95,6 +95,9 @@ public struct DayDashboardContent: View {
             case .loaded(let day):
                 header(title: day.title, isLive: day.now != nil)
                 RingCard(day: day, palette: palette)
+                if let anatomy = day.anatomy {
+                    DayAnatomyCard(anatomy: anatomy, day: day, palette: palette)
+                }
                 if !day.categories.isEmpty {
                     BreakdownCard(categories: day.categories, palette: palette)
                 }
