@@ -126,7 +126,11 @@ public final class DayBrowser {
                     // cours : une journée passée est entièrement jouée.
                     now: isToday ? now : nil,
                     categories: categories(of: digest),
-                    comparison: comparison
+                    comparison: comparison,
+                    // Du calcul pur sur un agrégat déjà en mémoire : rien à
+                    // relire, donc rien à mettre en cache. Contrairement à la
+                    // comparaison, qui coûte quatorze requêtes.
+                    anatomy: DayAnatomyBuilder().build(from: digest)
                 )
             )
         } catch {

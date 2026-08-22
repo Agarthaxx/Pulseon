@@ -733,6 +733,57 @@ demande de savoir lire la catégorie déclarée d'une app — ce que seul le cô
 macOS sait faire. `PulseonCore` reçoit une fonction de classement et ne devine
 rien.
 
+### L'anatomie de la journée
+
+Un total dit *combien*, l'anneau dit *de quoi c'est fait*, et
+`DayAnatomy` dit **comment la journée s'est déroulée** : premier écran, dernier
+écran, plus longue traite, coupures. Deux journées de 6 h n'ont rien à voir selon
+qu'elles tiennent d'une traite le matin ou en vingt reprises jusqu'à minuit —
+c'est le parti pris du projet à l'échelle d'une carte.
+
+**Quatre faits, et pas un de plus.** Le nombre de sessions, la durée moyenne
+d'une traite, l'heure la plus chargée : chacun demanderait une ligne à
+interpréter, or l'intérêt de la carte est qu'elle se lise d'un coup d'œil, comme
+la rangée de ronds.
+
+Ce qui a demandé une décision :
+
+- **Les traites fusionnent tous les appareils.** Passer du Mac à la télé n'est
+  pas une coupure : l'écran n'a pas cessé, seul l'écran a changé. Même raison qui
+  fait exister `coveredTotal` à côté de `summedTotal`.
+- **Une source à compteur est écartée** (règle 1). La PlayStation ne donne qu'un
+  total : la faire entrer inventerait une heure de début. La carte le **dit**
+  les jours où elle a du temps, plutôt que de la taire — une mise en garde
+  permanente sur une source inactive serait du bruit.
+- **Nil, jamais des zéros.** Sans le moindre horaire connu, la journée n'a pas
+  d'anatomie et la carte n'existe pas. Zéro affirmerait qu'elle a commencé à
+  minuit. Même règle que « pas encore branchée ≠ journée à zéro ».
+- **Un seuil décide de ce qui mérite le nom de coupure** (5 min). Le collecteur
+  tolère déjà deux minutes d'inactivité avant de fragmenter une session :
+  annoncer « 47 coupures » sur une matinée décrirait le pas d'échantillonnage,
+  pas la journée. **Le seuil ne touche aucun total**, il ne nomme que les trous.
+  Et une nuit n'est pas une coupure : il n'y en a qu'**entre** deux traites.
+- **L'amplitude n'est pas du temps d'écran** et ne doit jamais s'afficher comme
+  tel : 2 h d'écran peuvent s'étaler sur 14 h.
+- **Sur la journée en cours, « dernier écran » veut dire « jusqu'ici »**, et le
+  taire laisserait lire une fin de journée qui n'a pas eu lieu.
+
+**Deux défauts trouvés en PNG, invisibles à la compilation :**
+
+- **`frame(maxWidth: .infinity)` rend une vue infiniment compressible, donc
+  `ViewThatFits` retient toujours sa première proposition.** La rangée de quatre
+  faits « tenait » en fenêtre étroite et c'est le texte qui se faisait tronquer
+  (« la plus longue 54… ») au lieu de replier la rangée en deux lignes. Ce sont
+  les `Spacer` qui écartent les colonnes, jamais les colonnes qui s'étirent — et
+  le détail porte un `fixedSize` pour ne jamais *proposer* de se tronquer, ce qui
+  est ce qui décide si la rangée tient.
+- **La tête de lecture du jeu de démonstration précédait du temps d'écran.**
+  `now` valait 19 h 24 alors que les blocs couraient jusqu'à 23 h 15 — un état
+  que la vraie app ne peut pas produire, une session ouverte étant bornée à
+  l'horizon d'activité. Il dormait là depuis des sessions ; c'est la carte
+  « Déroulé » qui l'a révélé en annonçant « dernier écran 23:15 — jusqu'ici ».
+  **Un jeu de démonstration incohérent valide des cas qui n'existent pas.**
+
 ### Lire l'historique
 
 `DayDigestBuilder.buildPeriod(from:through:...)` agrège une plage de journées.
@@ -1309,6 +1360,8 @@ tout le parti pris visuel ci-dessus.
      (voir « L'écran de la semaine »).
    - ~~L'onglet Timeline~~ (écran 4 de la maquette) — livré, sur un rail unique
      repris de la PR #22 (voir « L'onglet Chronologie »).
+   - ~~L'anatomie de la journée~~ — livrée le 2026-08-22, carte « Déroulé » sur
+     l'écran du jour (voir « L'anatomie de la journée »).
    - La fenêtre porte donc trois écrans : Jour / Semaine / Chronologie.
    - Porter ces vues sur iOS est l'étape B, et c'est un portage, pas une
      construction : il faudra un projet Xcode (SwiftPM seul ne fabrique pas
@@ -1353,6 +1406,14 @@ correctif d'`InstanceLock` tient** : plus rien de comparable au 51 h du 18/08.
   et un module compilé de façon incrémentale comparait les anciens aux nouveaux :
   `.other` sortait « égal » à `.tv`, à deux cas d'écart exactement.
   `swift package clean` suffit.
+  **Deuxième manifestation, le 2026-08-22, et bien plus violente** : ajouter une
+  propriété stockée à un `struct` public change sa disposition mémoire, et un
+  module client compilé contre l'ancienne fait tomber toute la suite sur un
+  **signal 11**, sans un seul test en échec — donc rien à lire pour comprendre.
+  Le même jour, le paquet de preview refusait de compiler sur un
+  `cannot find type` pour un type qui existait. **Réflexe à avoir avant de
+  chercher un bug : `swift package clean`** (et `--package-path Tools/Preview`
+  pour la preview, qui a son propre `.build`).
 
 **Ce qui attend Arthur** : inchangé — `Scripts/probe-tv-apps.sh` à lancer chez
 lui, télé allumée avec une app ouverte. Et une conséquence nouvelle à connaître :

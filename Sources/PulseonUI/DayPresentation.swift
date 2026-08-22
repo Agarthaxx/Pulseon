@@ -22,6 +22,11 @@ public struct DayPresentation: Sendable {
     /// n'y a pas de quoi comparer honnêtement — moins de trois journées
     /// mesurées, ou une lecture qui a échoué.
     public let comparison: DayComparison?
+    /// La forme de la journée — première et dernière minute d'écran, plus
+    /// longue traite, coupures. Nil quand aucune source à intervalles n'a le
+    /// moindre horaire ce jour-là : une journée sans horaire connu n'a pas
+    /// d'anatomie, et surtout pas une anatomie à zéro.
+    public let anatomy: DayAnatomy?
 
     public init(
         digest: DayDigest,
@@ -29,7 +34,8 @@ public struct DayPresentation: Sendable {
         dayLength: TimeInterval,
         now: Date?,
         categories: [CategoryTotal] = [],
-        comparison: DayComparison? = nil
+        comparison: DayComparison? = nil,
+        anatomy: DayAnatomy? = nil
     ) {
         self.digest = digest
         self.dayStart = dayStart
@@ -37,6 +43,16 @@ public struct DayPresentation: Sendable {
         self.now = now
         self.categories = categories
         self.comparison = comparison
+        self.anatomy = anatomy
+    }
+
+    /// L'heure qu'il était, pour un instant repéré en secondes depuis minuit.
+    ///
+    /// Passe par une vraie `Date` plutôt que par une division : les journées de
+    /// changement d'heure ne font pas 24 h, et « 14 h après minuit » n'y tombe
+    /// pas à 14:00.
+    public func clockLabel(atOffset offset: TimeInterval) -> String {
+        Self.clock.string(from: dayStart.addingTimeInterval(offset))
     }
 
     /// Où planter la tête de lecture, en secondes depuis minuit.
