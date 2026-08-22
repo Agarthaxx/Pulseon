@@ -242,12 +242,12 @@ Trois conséquences à ne pas défaire :
   n'était pas sur son réseau » — ce serait affirmer un zéro non mesuré (règle 2).
   La carte « Appareils », elle, garde la distinction.
 
-Le jour où la télé nommera son app (`Scripts/probe-tv-apps.sh`), son temps
-repartira vers une vraie catégorie de contenu et ces deux cas redeviendront le
-seul repli — **sans rien perdre de l'historique**, la catégorie brute étant
-stockée telle quelle. Ce changement règle aussi le décalage signalé la veille :
-le cœur d'un rond ne peut plus emprunter le logo d'une app Mac pour du temps de
-télé, la télé n'ayant aucune entité.
+**C'est arrivé le 2026-08-22** : la télé nomme son app quand elle la reconnaît,
+et ce temps-là repart vers une vraie catégorie de contenu — `Télé` devient le
+repli, comme prévu, **sans rien perdre de l'historique**, la catégorie brute
+étant stockée telle quelle. Le repli n'est pas résiduel pour autant : la PS5 est
+branchée sur cette télé, et une entrée HDMI reste un écran allumé sans app
+visible. Voir « Ce que la télé sait nommer ».
 
 **Une seule rangée de ronds, toujours** (choix d'Arthur le 2026-08-19 :
 « je préfère la photo avec une seule rangée »). Passer de cinq catégories à sept
@@ -1009,29 +1009,84 @@ vers le sous-comptage plutôt que vers une session laissée ouverte.
 - une **réponse incompréhensible** vaut `unknown`, jamais `off` : un changement de
   firmware ne doit pas effacer une soirée.
 
-**Question ouverte : la télé peut-elle dire *quelle app* est à l'écran ?** Posée
-par Arthur le 2026-08-19 (« on ne peut pas voir les apps que j'utilise sur ma
-TV ? »). Ce serait le même niveau de détail que le nom d'app côté Mac — « 2 h de
-Netflix » au lieu de « 2 h de télé » — et **ça ne casserait pas la promesse du
-projet** : « rien ne sort de ta machine » interdit d'envoyer, pas de lire, et
-tout se passerait sur le réseau local, sans tiers. À ne pas confondre avec les
-favicons de sites, qui, elles, exigeraient d'interroger un tiers.
+#### Ce que la télé sait nommer, et ce qu'elle ne nommera pas
 
-**Rien n'est tenté avant d'avoir mesuré.** `Scripts/probe-tv-apps.sh` interroge
-les points d'entrée candidats (`/api/v2/applications/`, l'état d'apps connues par
-leur identifiant, `/channels/`) et rend un tableau lisible. À lancer depuis le
-réseau de la télé, **écran allumé, une app ouverte**. Le doute est réel : Samsung
-a fermé une grande partie de son API locale sur les millésimes récents, et celle
-d'Arthur est un S90C de 2023. C'est la même discipline que pour le `PowerState` —
-l'idée de détecter l'écran au ping paraissait évidente et était fausse.
+Question posée par Arthur le 2026-08-19 (« on ne peut pas voir les apps que
+j'utilise sur ma TV ? »), **répondue par la mesure le 2026-08-22**, télé allumée
+sur YouTube, `Scripts/probe-tv-apps.sh` lancé depuis le réseau de la maison. La
+télé **sait**, et le résultat est le même niveau de détail que côté Mac : « 2 h
+de YouTube » au lieu de « 2 h de télé ». Rien ne sort de la machine — tout se
+passe en HTTP sur le réseau local, sans tiers. (À ne pas confondre avec les
+favicons de sites, qui, elles, exigeraient d'interroger un tiers.)
 
-Deux conséquences si ça répond, à ne pas découvrir après coup :
-- l'API d'application **ne découvre rien**, elle répond « cette app-ci
-  tourne-t-elle ? » pour un identifiant donné. La collecte serait un balayage
-  d'une liste connue, donc aveugle à une app qu'on n'a pas listée ;
-- la piste WebSocket (`samsung.remote.control`) donne la liste installée mais
-  **exige un appairage** — un message d'autorisation s'affiche sur la télé et
-  rend un jeton, qui irait alors au Trousseau comme celui de la PlayStation.
+Ce que la mesure a donné, exactement :
+
+| Point d'entrée | Réponse | Ce qu'on en fait |
+|---|---|---|
+| `/api/v2/applications/` (la liste) | **404** | pas de découverte possible |
+| `/api/v2/applications/<id>` | 200 avec `name`, `running`, `visible` | **le bon signal** |
+| `/api/v2/channels/` | 404 | rien |
+| identifiant d'une app non installée | 404 | « pas là », appris une fois |
+
+Quatre choses à ne pas perdre :
+
+- **`running` ment, seul `visible` compte.** Pendant qu'Arthur regardait
+  YouTube, trois apps déclaraient `running: true` (YouTube, Prime Video, Apple
+  TV) pour un seul écran. Compter `running` aurait attribué la même soirée à
+  trois apps à la fois. Même famille d'erreur que le ping ICMP pour l'état de
+  l'écran : un signal qui existe, qu'on croit lire, et qui ne dit pas ce qu'on
+  croit.
+- **Le nom vient de la télé, jamais de nous.** `TVAppCatalog` ne code en dur que
+  des identifiants ; le libellé est le champ `name` de la réponse, donc déjà
+  localisé et déjà juste. Personne n'aurait deviné « Spotify - Musique et
+  podcasts » ni « b.tv » depuis un catalogue écrit à la main.
+- **La collecte est un balayage aveugle, et c'est une limite, pas un oubli.**
+  La liste installée n'étant pas exposée, on interroge un catalogue
+  d'identifiants. Une app qui n'y figure pas **ne prend pas un faux nom** : elle
+  reste du temps de « Télé ». C'est le repli honnête, jamais une approximation.
+  La seule autre voie connue est le WebSocket `samsung.remote.control`, qui donne
+  la liste installée mais **exige un appairage** (message d'autorisation sur la
+  télé, jeton à déposer au Trousseau comme celui de la PlayStation) — à garder
+  pour le jour où le balayage montrera ses limites.
+- **Un 404 s'apprend une fois.** `SamsungTVAppProbe` retient les absentes et
+  cesse de les demander, ce qui permet un catalogue large sans le payer. Coût
+  mesuré sur le réseau d'Arthur : **≈ 60 ms** quand l'app d'avant est encore à
+  l'écran (une seule requête, le cas courant), 884 ms au premier balayage
+  complet, 541 ms ensuite. Le pire cas est celui d'une entrée HDMI, une fois par
+  minute (`TVMonitor.appInterval`), et seulement télé allumée.
+
+**Le temps de télé nommé rejoint une vraie catégorie de contenu**, et le
+non-nommé reste « Télé ». Les deux coexistent vraiment dans une même soirée, ce
+que la preview montre côte à côte. Le cas non-nommé n'est pas résiduel : **la
+PS5 d'Arthur est branchée sur cette télé**, donc une soirée de jeu se présente
+comme un écran allumé sans app visible — exactement ce que `.tv` est là pour
+dire.
+
+**Changer d'app coupe la session, et la coupure est datée de l'instant du
+relevé** — pas du dernier instant où l'ancienne app a été vue, contrairement à
+une extinction. Ce n'est pas un relâchement de la règle : l'écran a été observé
+allumé des deux côtés de la bascule, donc reculer la coupure creuserait un trou
+dans du temps mesuré. Seul le partage entre deux apps est approché, à une minute
+près.
+
+**`.unknown` garde le nom précédent.** Ne pas avoir pu demander n'est pas « plus
+aucune app » : sans cette distinction, une seule requête perdue ferait basculer
+une soirée de Netflix dans « Télé ». Même discipline que les trois états de
+`TVReading`.
+
+**`StoredApp` porte désormais son appareil.** « Apple TV », « Spotify » et
+« Netflix » existent des deux côtés ; la table étant indexée par nom, les deux
+lignes se seraient disputé la même et **se seraient réécrites l'une l'autre à
+chaque relevé** — l'erreur du `lastSeen` en base, doublée d'une catégorie
+changeant de camp à chaque passage. La colonne est optionnelle et nil vaut
+`.mac` : toutes les lignes écrites avant la télé sont des apps du Mac, par
+construction, et un attribut optionnel est la seule migration que SwiftData
+sache faire sans plan explicite.
+
+**Les icônes, elles, restent cherchées du côté du Mac**, quel que soit
+l'appareil, et c'est voulu : « Netflix » sur la télé et « Netflix » sur le Mac
+sont le même produit et le même logo. Quand l'app n'est pas installée sur le
+Mac — le cas courant — on rend nil et l'appelant affiche son repli.
 
 **Le nom de la télé se dépose dans les réglages, pas dans le Trousseau** — ce
 n'est pas un secret :
@@ -1262,8 +1317,9 @@ tout le parti pris visuel ci-dessus.
      porter les collecteurs natifs, et remplacerait CloudKit par un backend
      à héberger.
 5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
-6. ~~Collecteur TV~~ — tourne, par l'API HTTP locale de la télé. Collecteur
-   PlayStation toujours bloqué sur le jeton.
+6. ~~Collecteur TV~~ — tourne, par l'API HTTP locale de la télé, et **nomme
+   l'app à l'écran** depuis le 2026-08-22. Collecteur PlayStation toujours
+   bloqué sur le jeton.
 7. Réévaluer l'intégration iPhone.
 
 ### État au 2026-08-19 (fin de sixième session)

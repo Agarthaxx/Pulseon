@@ -38,11 +38,15 @@ let macBlocks: [TraceBlock] = [
 /// qui a fait poser la question. Elle recouvre en partie le film sur le Mac,
 /// donc la journée porte aussi une simultanéité entre deux écrans.
 ///
-/// **Aucune entité** : la télé ne dit pas ce qu'elle diffuse, seulement que
-/// l'écran était allumé.
+/// **Les deux cas de la télé, côte à côte, parce qu'ils coexistent vraiment.**
+/// Depuis que la télé sait nommer l'app à l'écran, elle écrit une entité —
+/// mais seulement pour ce que son catalogue reconnaît. Les huit premières
+/// minutes n'ont pas de nom : c'est l'entrée HDMI (la PS5 est branchée sur
+/// cette télé), ou une app hors catalogue. Ce temps-là reste « Télé », l'autre
+/// part vers une vraie catégorie de contenu.
 let tvBlocksToday: [TraceBlock] = [
     TraceBlock(entity: nil, startOffset: 19.0 * 3600, duration: 8 * 60),
-    TraceBlock(entity: nil, startOffset: 19.16 * 3600, duration: 164 * 60),
+    TraceBlock(entity: "YouTube", startOffset: 19.16 * 3600, duration: 164 * 60),
 ]
 
 let macTotal = macBlocks.reduce(0) { $0 + $1.duration }
@@ -68,7 +72,8 @@ let digest = DayDigest(
         ),
         Lane(
             device: .tv, total: tvTotal, blocks: tvBlocksToday,
-            topEntities: [], isConnected: true
+            topEntities: [EntityTotal(entity: "YouTube", total: 164 * 60)],
+            isConnected: true
         ),
     ],
     summedTotal: macTotal + tvTotal + psTotal,
@@ -177,6 +182,10 @@ let assignment = CategoryAssignment(byEntity: [
     "Slack": .communication,
     "Mail": .communication,
     "Pixelmator": .creation,
+    // Nommée par la télé, donc classée par son contenu — ce que `AppRegistry`
+    // résout depuis `TVAppCatalog`. Le temps de télé sans nom, lui, n'est pas
+    // dans ce dictionnaire et retombe sur « Télé ».
+    "YouTube": .media,
 ])
 
 let categories = CategoryDigestBuilder(classify: assignment.category(for:entity:))
