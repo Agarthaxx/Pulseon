@@ -1227,6 +1227,56 @@ d'une dépendance externe de plus (compte Samsung, jeton OAuth) — pour un gain
 faible, la télé ayant peu de chances d'être allumée précisément les jours où
 Arthur est absent.
 
+### Sortir ses données
+
+`DataExport` écrit tout l'historique en CSV ou en JSON, depuis le menu de la
+barre. **C'est l'envers de « rien ne sort de ta machine »** : rien n'en sort tout
+seul, et tout doit pouvoir en sortir sur demande. Une app de mesure qui garde ses
+mesures prisonnières demande de lui faire confiance sans contrepartie.
+
+**On exporte le brut, jamais l'agrégat.** Un total par jour et par catégorie
+serait plus commode à ouvrir dans un tableur, et ce serait **notre
+interprétation** — le classement d'un navigateur, le seuil d'une coupure, la
+fusion des intervalles sont tous des choix de Pulseon. Les sessions, elles, sont
+ce qui a été mesuré. Même règle que la catégorie déclarée d'une app, stockée
+brute pour que l'historique se reclasse si l'on change d'avis.
+
+Ce qui ne s'invente pas, et se vérifie dans le fichier :
+
+- **Une session ouverte n'a pas de fin.** Y écrire l'heure courante ferait passer
+  une session en cours pour une session terminée, dans un fichier que plus
+  personne ne pourra recouper avec la base.
+- **Une entité absente reste vide**, jamais « Autre » : c'est une absence de
+  mesure, pas une valeur.
+- **Une source à compteur n'a ni début ni fin** — d'où la colonne `kind`, qui
+  sépare les deux natures de mesure du projet. Les mélanger sans le dire
+  produirait un fichier où des colonnes vides ressembleraient à des zéros.
+- **Les champs inconnus sortent en `null`, jamais absents.** `JSONEncoder` omet
+  les optionnels nuls par défaut ; l'encodage est donc écrit à la main. Une clé
+  absente se lit « ce format n'a pas cette colonne », une clé à `null` se lit
+  « on ne sait pas » — la distinction « pas branchée ≠ zéro », portée jusque dans
+  le fichier.
+- **Chaque instant porte son décalage horaire**, et le JSON porte le fuseau. Une
+  heure locale muette est ambiguë deux fois par an : la nuit du passage à l'heure
+  d'hiver contient deux fois 02:30. Un instant UTC serait exact et illisible, or
+  le sujet se lit en heures de sa propre journée.
+- **L'échappement RFC 4180 n'est pas décoratif** : le nom d'une app vient de la
+  machine ou de la télé (« Spotify - Musique et podcasts »), et une seule virgule
+  décalerait toutes les colonnes de sa ligne — un fichier qui ment sans prévenir.
+  En revanche **on ne neutralise pas** les noms commençant par `=` ou `+`, qu'un
+  tableur prendrait pour des formules : les préfixer protégerait le tableur en
+  falsifiant le nom.
+
+**Un bug attrapé par un test, et par rien d'autre** : `$0.end.map { Int($0.timeIntervalSince($0.start)...) }`
+— à l'intérieur d'un `map` sur `end`, `$0` désigne la date de fin et non la
+session, donc la durée se calculait entre la fin et elle-même. **Zéro partout, et
+ça compile sans un mot.** Nommer la variable de fermeture dès qu'un `map`
+s'imbrique dans un autre.
+
+Vérifié sur la vraie base (une copie faite par `sqlite3 .backup`, pour ne pas
+toucher à celle du collecteur) : **3 572 sessions**, huit colonnes sur chaque
+ligne, les sessions ouvertes sans fin, le JSON relu par un parseur.
+
 ### Les secrets vont dans le Trousseau, pas dans un `.env`
 
 `Secrets` est le seul fichier qui sait où vivent les secrets ; le collecteur
@@ -1609,8 +1659,8 @@ journée de 51 heures »). 117 tests sur la branche, 126 une fois combinée à
 2. **L'anatomie de la journée** — premier écran, dernier écran, plus longue
    traite, coupures. Pur `PulseonCore`, testable sans simulateur, aucun design,
    et c'est la substance que n'importe quel écran affichera.
-3. **L'export CSV/JSON** — du core pur, et l'argument « tes données
-   t'appartiennent ».
+3. ~~**L'export CSV/JSON**~~ — livré le 2026-08-22 (voir « Sortir ses
+   données »).
 4. **L'onglet Timeline** (écran 4 de la maquette) : `TimelineGeometry` est déjà
    là, pure et testée. Attention le jour où il se construira — la maquette y
    place la PlayStation à 12:20, or elle ne connaît pas ses horaires.

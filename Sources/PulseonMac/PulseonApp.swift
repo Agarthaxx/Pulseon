@@ -168,6 +168,9 @@ final class CollectionEngine {
     /// et sera perdue. Le menu doit le dire — un agent qui ne dit rien laisse
     /// croire qu'il enregistre.
     private(set) var failure: String?
+    /// Ce que le dernier export a produit, affiché dans le menu. Un export
+    /// silencieux ne distingue pas « tout est là » de « le fichier est vide ».
+    private(set) var lastExport: String?
     private(set) var launchAtLogin: LaunchAtLogin.State = LaunchAtLogin.state
     /// Non-nil quand la *lecture* a échoué — distinct de `failure`, qui parle
     /// de l'écriture. Les deux méritent d'être dits séparément.
@@ -317,6 +320,37 @@ final class CollectionEngine {
         monitor.start()
     }
 
+    /// Écrit tout l'historique dans un fichier choisi par l'utilisateur.
+    ///
+    /// **L'envers de « rien ne sort de ta machine »** : rien n'en sort tout
+    /// seul, et tout doit pouvoir en sortir sur demande. Une app de mesure qui
+    /// garde ses mesures prisonnières demande de lui faire confiance sans
+    /// contrepartie.
+    func export(_ format: DataExport.Format) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = Exporter.suggestedName(for: format, on: Date())
+        panel.canCreateDirectories = true
+        panel.title = "Exporter les données de Pulseon"
+
+        // Une app en barre de menu n'est pas active au moment du clic : sans
+        // ça, le panneau s'ouvrirait derrière la fenêtre du dessus.
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let written = try Exporter.write(format, from: store, to: url)
+            failure = nil
+            lastExport = "\(written.sessions) sessions exportées"
+            // La confirmation standard de macOS, et la seule qui prouve
+            // vraiment quelque chose : le fichier est là, on le voit.
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        } catch {
+            // Un export raté doit se dire. Un fichier absent après un clic
+            // ressemble à un export réussi qu'on n'a pas su retrouver.
+            failure = "Export impossible — \(error.localizedDescription)"
+        }
+    }
+
     func setLaunchAtLogin(_ enabled: Bool) {
         if let error = LaunchAtLogin.setEnabled(enabled) {
             failure = error
@@ -425,6 +459,14 @@ private struct MenuContent: View {
             NSApplication.shared.activate(ignoringOtherApps: true)
         }
         .keyboardShortcut("j")
+
+        Divider()
+
+        Button("Exporter en CSV…") { engine.export(.csv) }
+        Button("Exporter en JSON…") { engine.export(.json) }
+        if let lastExport = engine.lastExport {
+            Text(lastExport)
+        }
 
         Divider()
 
