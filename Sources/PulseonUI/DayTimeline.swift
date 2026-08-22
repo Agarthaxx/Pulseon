@@ -92,10 +92,27 @@ public struct DayTimelineContent: View {
             }
         }
         .padding(22)
-        .frame(maxWidth: DayDashboardContent.columnWidth)
+        // **Le seul écran où la largeur porte de l'information**, et donc le
+        // seul qui ne se borne pas à la colonne de 720. Doubler la largeur
+        // double la résolution horaire : un bloc de dix minutes fait 5 points
+        // dans 720 et 10 dans 1470, et deux écrans simultanés se distinguent
+        // d'autant mieux. Choix d'Arthur le 2026-08-22, en même temps que la
+        // grille — une carte de 720 flottant au milieu de 1512 paraissait de
+        // surcroît vide à côté des deux autres onglets.
+        //
+        // La règle « la maquette est une colonne, pas une surface à remplir »
+        // vaut toujours pour les listes du jour et de la semaine, dont les
+        // jauges deviendraient illisibles étirées sur 1500 points. Une
+        // chronologie, elle, n'a pas de jauge : elle a des heures.
+        .frame(maxWidth: Self.maximumWidth)
         .frame(maxWidth: .infinity)
         .background(palette.ground)
     }
+
+    /// Une chronologie profite de la largeur, mais pas à l'infini : au-delà,
+    /// une heure occupe tellement de place que la journée cesse de se lire d'un
+    /// coup d'œil, ce qui est tout ce qu'on lui demande.
+    static let maximumWidth: CGFloat = 1400
 
     @ViewBuilder
     private func header(title: String, isLive: Bool) -> some View {

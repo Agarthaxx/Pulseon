@@ -191,6 +191,58 @@ let assignment = CategoryAssignment(byEntity: [
 let categories = CategoryDigestBuilder(classify: assignment.category(for:entity:))
     .build(from: digest)
 
+// MARK: - La journée la plus chargée possible
+
+/// Une journée qui touche **les dix catégories**. `AppCategory` n'en a pas
+/// davantage : c'est donc une borne, pas une hypothèse. Elle ne sert qu'à
+/// regarder ce que la grille fait quand sa colonne de droite est pleine.
+let denseAssignment = CategoryAssignment(byEntity: [
+    "Xcode": .development,
+    "Brave Browser": .web,
+    "Slack": .communication,
+    "IINA": .media,
+    "Pixelmator": .creation,
+    "Notion": .productivity,
+    "Baldur's Gate 3": .game,
+    // « Sans nom » n'est dans aucune case : il retombe sur `other`, ce qui est
+    // précisément la dixième catégorie qu'on cherche à faire apparaître.
+])
+
+let denseBlocks: [TraceBlock] = [
+    block(8.0, 3.0, "Xcode"),
+    block(11.0, 1.0, "Brave Browser"),
+    block(12.0, 0.7, "Slack"),
+    block(13.0, 1.2, "IINA"),
+    block(14.5, 0.6, "Pixelmator"),
+    block(15.5, 0.8, "Notion"),
+    block(16.5, 1.5, "Baldur's Gate 3"),
+    block(18.5, 0.4, "Sans nom"),
+]
+
+let denseDigest = DayDigest(
+    date: digest.date,
+    lanes: [
+        Lane(
+            device: .mac, total: denseBlocks.reduce(0) { $0 + $1.duration }, blocks: denseBlocks,
+            topEntities: [EntityTotal(entity: "Xcode", total: 3 * 3600)], isConnected: true
+        ),
+        Lane(
+            device: .playstation, total: 1.4 * 3600, blocks: [],
+            topEntities: [EntityTotal(entity: "Elden Ring", total: 1.4 * 3600)], isConnected: true
+        ),
+        Lane(
+            device: .tv, total: 2.0 * 3600,
+            blocks: [TraceBlock(entity: nil, startOffset: 20 * 3600, duration: 2 * 3600)],
+            topEntities: [], isConnected: true
+        ),
+    ],
+    summedTotal: denseBlocks.reduce(0) { $0 + $1.duration } + 3.4 * 3600,
+    coveredTotal: denseBlocks.reduce(0) { $0 + $1.duration } + 3.4 * 3600
+)
+
+let denseCategories = CategoryDigestBuilder(classify: denseAssignment.category(for:entity:))
+    .build(from: denseDigest)
+
 MainActor.assumeIsolated {
     // **Après le dernier bloc de la journée, et c'est important.** Le jeu de
     // démonstration s'arrêtait à 19 h 24 alors que ses blocs courent jusqu'à
@@ -211,6 +263,12 @@ MainActor.assumeIsolated {
         // preview qui écrirait les quatre faits à la main ne pourrait pas voir
         // un bug de découpage des traites.
         anatomy: DayAnatomyBuilder().build(from: digest)
+    )
+
+    let dense = DayPresentation(
+        digest: denseDigest, dayStart: dayStart, dayLength: day, now: nil,
+        categories: denseCategories,
+        anatomy: DayAnatomyBuilder().build(from: denseDigest)
     )
 
     shoot(
@@ -252,6 +310,35 @@ MainActor.assumeIsolated {
     shoot(
         dashboard(.loaded(today), canGoForward: false, scheme: .dark),
         size: CGSize(width: 440, height: 900), named: "pulseon-cramped"
+    )
+
+    // La grille en apparence claire. La maquette existe dans les deux, et une
+    // disposition validée seulement en sombre est une disposition à moitié
+    // regardée.
+    shoot(
+        dashboard(.loaded(today), canGoForward: false, scheme: .light),
+        size: CGSize(width: 1512, height: 949), named: "pulseon-grid-light"
+    )
+
+    // **Le pire cas de la grille : les dix catégories à la fois.**
+    //
+    // `AppCategory` en compte exactement dix, donc c'est le maximum qu'une
+    // journée puisse produire — pas une hypothèse, une borne. C'est la colonne
+    // de droite qui décide alors si la fenêtre défile ou non, et c'est
+    // exactement ce qu'Arthur a demandé de ne pas avoir. Un cas rare, mais qui
+    // doit être regardé plutôt que supposé.
+    shoot(
+        dashboard(.loaded(dense), canGoForward: false, scheme: .dark),
+        size: CGSize(width: 1512, height: 949), named: "pulseon-dense"
+    )
+
+    // **La bascule entre la grille et la colonne.** Juste au-dessus du seuil :
+    // c'est la largeur la plus ingrate, celle où la grille est retenue de
+    // justesse et où ses deux colonnes sont les plus étroites qu'elles seront
+    // jamais. Si une jauge doit devenir illisible, c'est ici.
+    shoot(
+        dashboard(.loaded(today), canGoForward: false, scheme: .dark),
+        size: CGSize(width: 1040, height: 900), named: "pulseon-grid-tight"
     )
 
     // **Le cas réel d'Arthur : un seul appareil branché.** C'est la journée
@@ -529,6 +616,14 @@ MainActor.assumeIsolated {
     shoot(
         timeline(.loaded(mixedDay), canGoForward: false, scheme: .dark),
         size: CGSize(width: 860, height: 340), named: "pulseon-timeline-dark"
+    )
+
+    // À la taille de la fenêtre d'Arthur, pour se voir à côté des deux autres
+    // onglets passés en grille. La chronologie ne défilait déjà pas ; la
+    // question est seulement de savoir si sa colonne bornée détonne.
+    shoot(
+        timeline(.loaded(mixedDay), canGoForward: false, scheme: .dark),
+        size: CGSize(width: 1512, height: 949), named: "pulseon-timeline-wide"
     )
     shoot(
         timeline(.loaded(mixedDay), canGoForward: true, scheme: .light),

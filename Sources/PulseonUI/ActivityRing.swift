@@ -29,6 +29,10 @@ public struct ActivityRing: View {
         }
     }
 
+    /// La taille de l'anneau en colonne. La grille du tableau de bord le
+    /// grossit, parce que c'est sa case principale.
+    public static let defaultDiameter: CGFloat = 208
+
     private let segments: [Segment]
     private let total: TimeInterval?
     private let caption: String
@@ -42,7 +46,7 @@ public struct ActivityRing: View {
         total: TimeInterval?,
         caption: String,
         palette: PulseonPalette,
-        diameter: CGFloat = 208
+        diameter: CGFloat = ActivityRing.defaultDiameter
     ) {
         self.segments = segments
         self.total = total
