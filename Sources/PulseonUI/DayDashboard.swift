@@ -289,6 +289,24 @@ private struct RingCard: View {
                     DeviceLegend(lanes: lanes, palette: palette)
                 }
 
+                // **Le chiffre qui répond à la question là où elle se pose.**
+                // Arthur, devant l'app le 2026-08-22 : « le rond indique 1h29
+                // mais j'ai 1h29 de télé et de pc ? donc ça devrait me montrer
+                // le double non ? ». La légende juste au-dessus affichait
+                // « Mac 1h16 · TV 1h29 » — deux nombres qui ne font pas le
+                // troisième, et rien pour dire pourquoi.
+                //
+                // La note qui l'expliquait existait, mais tout en bas de la
+                // carte, en gris pâle, sous la rangée de catégories : trop loin
+                // de la contradiction pour la résoudre. Elle disait de surcroît
+                // une méthode de calcul (« écrans simultanés comptés deux
+                // fois ») là où il fallait un fait de la soirée.
+                if let line = simultaneityLine {
+                    Text(line)
+                        .font(PulseonTheme.caption)
+                        .foregroundStyle(palette.inkFaint)
+                }
+
                 // La comparaison se lit juste sous le total, parce que c'est
                 // là que la question se pose : « 9 h 39, c'est beaucoup ? ».
                 if let comparison = day.comparison {
@@ -303,20 +321,26 @@ private struct RingCard: View {
                     DayCategoryRings(categories: day.categories, palette: palette)
                 }
 
-                // Le second total ne s'affiche que s'il dit autre chose : sans
-                // chevauchement, répéter le même chiffre sous un autre nom ne
-                // fait qu'embrouiller.
-                if day.digest.summedTotal - day.digest.coveredTotal > 60 {
-                    Text(
-                        "\(DurationFormat.compact(day.digest.summedTotal)) en cumulant les appareils, écrans simultanés comptés deux fois"
-                    )
-                    .font(PulseonTheme.caption)
-                    .foregroundStyle(palette.inkFaint)
-                    .multilineTextAlignment(.center)
-                }
             }
             .frame(maxWidth: .infinity)
         }
+    }
+
+    /// « deux écrans à la fois pendant 1h15 », ou rien.
+    ///
+    /// **« deux » ou « plusieurs » selon ce qui a été mesuré** : écrire « deux »
+    /// un jour où trois écrans tournaient ensemble sous-entendrait une mesure
+    /// qu'on n'a pas faite. Et jamais « les deux », qui renverrait aux pastilles
+    /// de la légende — or elle peut en porter une troisième, la PlayStation,
+    /// dont on ignore justement les horaires.
+    ///
+    /// En dessous d'une minute, on se tait : deux sessions qui se frôlent à la
+    /// seconde ne sont pas une soirée sur deux écrans.
+    private var simultaneityLine: String? {
+        let simultaneity = day.digest.simultaneity
+        guard simultaneity.duration >= 60 else { return nil }
+        let screens = simultaneity.peak > 2 ? "plusieurs" : "deux"
+        return "\(screens) écrans à la fois pendant \(DurationFormat.compact(simultaneity.duration))"
     }
 }
 

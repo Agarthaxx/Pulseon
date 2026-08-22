@@ -46,4 +46,53 @@ enum IntervalMath {
     static func mergedDuration(of blocks: [TraceBlock]) -> TimeInterval {
         mergedRuns(of: blocks).reduce(0) { $0 + $1.duration }
     }
+
+    /// Combien de temps **au moins deux appareils** étaient allumés au même
+    /// instant, et combien il y en a eu au maximum à la fois.
+    ///
+    /// **Ce n'est pas `summedTotal - coveredTotal`**, et la différence n'est pas
+    /// théorique. Cette soustraction donne le temps compté en trop par
+    /// l'addition, pas le temps passé sur plusieurs écrans : à trois appareils
+    /// allumés une heure ensemble, elle rend deux heures alors qu'on n'a vécu
+    /// qu'une heure de simultanéité. Et surtout elle inclurait le total d'une
+    /// source à compteur — la PlayStation n'a aucun horaire, donc on ne peut
+    /// **pas** dire qu'elle tournait en même temps que la télé.
+    ///
+    /// - Parameter perDevice: les blocs de chaque appareil, séparément. Les
+    ///   blocs d'un même appareil sont fusionnés d'abord : **un appareil ne peut
+    ///   pas être allumé deux fois en même temps**, et l'oublier ferait passer
+    ///   deux sessions voisines du même Mac pour une simultanéité. C'est la
+    ///   leçon de la journée de 51 heures, appliquée ici.
+    static func simultaneity(of perDevice: [[TraceBlock]]) -> (
+        duration: TimeInterval, peak: Int
+    ) {
+        // +1 quand un appareil s'allume, -1 quand il s'éteint. La profondeur
+        // courante est le nombre d'écrans allumés à cet instant.
+        var events: [(at: TimeInterval, delta: Int)] = []
+        for blocks in perDevice {
+            for run in mergedRuns(of: blocks) where run.duration > 0 {
+                events.append((run.start, 1))
+                events.append((run.end, -1))
+            }
+        }
+        guard !events.isEmpty else { return (0, 0) }
+
+        // À instant égal, les fermetures d'abord : deux sessions qui se touchent
+        // bout à bout ne sont pas une simultanéité d'une durée nulle, elles se
+        // suivent.
+        events.sort { $0.at == $1.at ? $0.delta < $1.delta : $0.at < $1.at }
+
+        var duration: TimeInterval = 0
+        var peak = 0
+        var depth = 0
+        var previous = events[0].at
+
+        for event in events {
+            if depth >= 2 { duration += event.at - previous }
+            depth += event.delta
+            peak = max(peak, depth)
+            previous = event.at
+        }
+        return (duration, peak)
+    }
 }

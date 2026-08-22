@@ -75,6 +75,44 @@ public struct DayDigest: Sendable {
     /// admises dans une moyenne.
     public var hasMeasuredSource: Bool { lanes.contains(where: \.isConnected) }
 
+    /// Combien de temps plusieurs écrans étaient allumés en même temps.
+    ///
+    /// **Le chiffre qui manquait à l'écran**, et Arthur l'a repéré le
+    /// 2026-08-22 devant l'app : le rond annonçait 1h30 alors que la légende
+    /// juste dessous affichait « Mac 1h16 · TV 1h29 ». Deux nombres qui ne font
+    /// pas le troisième, sans rien pour dire pourquoi — il a naturellement
+    /// conclu à un bug. Il n'y en avait pas : il avait regardé la télé **en
+    /// étant sur son Mac** pendant 1h15, et ces minutes-là sont les mêmes
+    /// minutes.
+    ///
+    /// C'est un fait mesuré, pas une note de méthode, et c'est ce qu'un total
+    /// ne dira jamais — exactement le parti pris du projet.
+    ///
+    /// **Calculé sur les blocs, jamais par `summedTotal - coveredTotal`** : voir
+    /// `IntervalMath.simultaneity(of:)` pour les deux raisons, dont celle qui
+    /// compte le plus ici — une source à compteur n'a aucun horaire, donc on ne
+    /// peut pas affirmer qu'elle tournait en même temps qu'une autre.
+    public var simultaneity: Simultaneity {
+        let (duration, peak) = IntervalMath.simultaneity(
+            of: lanes.filter { $0.kind == .interval }.map(\.blocks)
+        )
+        return Simultaneity(duration: duration, peak: peak)
+    }
+
+    public struct Simultaneity: Sendable, Equatable {
+        /// Le temps où **au moins deux** écrans étaient allumés ensemble.
+        public let duration: TimeInterval
+        /// Le plus grand nombre d'écrans allumés au même instant. Sert à
+        /// choisir entre « les deux » et « plusieurs » : dire « deux » quand il
+        /// y en avait trois serait sous-entendre une mesure qu'on n'a pas faite.
+        public let peak: Int
+
+        public init(duration: TimeInterval, peak: Int) {
+            self.duration = duration
+            self.peak = peak
+        }
+    }
+
     public init(
         date: DateComponents,
         lanes: [Lane],
