@@ -1483,6 +1483,81 @@ tout le parti pris visuel ci-dessus.
    bloqué sur le jeton.
 7. Réévaluer l'intégration iPhone.
 
+### État au 2026-08-22 (fin de septième session)
+
+**Quatre PR mergées (#43 à #46), 158 → 205 tests**, app rebâtie et réinstallée à
+23:32, une seule instance. La séance a commencé par une question d'Arthur — « as-tu
+une nouvelle liste de feature ? je sais plus trop où on en est » — et par un
+constat : **la télé était allumée**, condition qu'on attendait depuis trois jours
+pour lancer `Scripts/probe-tv-apps.sh`.
+
+**La sonde a répondu, et c'est ce qui a orienté la soirée.** La télé sait nommer
+l'app à l'écran. Détail dans « Ce que la télé sait nommer » ; les trois choses à
+retenir : `running` ment (trois apps le déclaraient vrai pour un seul écran, seul
+`visible` compte), la liste des apps installées n'est pas exposée (404, donc
+balayage aveugle d'un catalogue), et **le nom vient de la télé** — personne
+n'aurait deviné « Spotify - Musique et podcasts » ni « b.tv ».
+
+**Vérifié en direct après réinstallation** : `tv | YouTube | en cours` en base,
+identité `tv.samsung.app.111299001912` classée `public.app-category.video`. Les 37
+lignes d'apps antérieures ont survécu à la migration de `StoredApp` (colonne
+d'appareil optionnelle, nil = Mac).
+
+**Trois autres livraisons**, toutes demandées ou validées par Arthur :
+
+- **L'anatomie de la journée** — carte « Déroulé » : premier écran, dernier écran,
+  plus longue traite, coupures.
+- **L'export CSV / JSON** — le brut, jamais l'agrégat. Vérifié sur une copie de la
+  vraie base : 3 572 sessions.
+- **La grille** — sa demande en voyant « Déroulé » arriver dans une colonne qui
+  débordait : « on ne doit pas scroller, genre en grille de 4 cases ». Les trois
+  onglets tiennent maintenant dans sa fenêtre de 1512 × 949.
+
+**Quatre défauts trouvés en regardant les PNG, aucun par un test :**
+
+- **`frame(maxWidth: .infinity)` rend une vue infiniment compressible**, donc
+  `ViewThatFits` retient toujours sa première proposition et l'écrase au lieu de
+  la laisser céder. Payé **deux fois le même jour** : sur la rangée de la carte
+  « Déroulé » (texte tronqué), puis à l'échelle de l'écran entier (la grille
+  choisie en fenêtre étroite). Une proposition doit annoncer sa largeur réelle.
+- **La tête de lecture du jeu de démonstration précédait ses propres blocs** —
+  `now` à 19 h 24 pour des blocs allant jusqu'à 23 h 15, un état que la vraie app
+  ne peut pas produire. Il dormait là depuis des sessions ; c'est la carte
+  « Déroulé » qui l'a révélé. **Un jeu de démonstration incohérent valide des cas
+  qui n'existent pas.**
+- **La rangée des sept journées s'étalait** dans la carte élargie : chaque rond
+  porte un `frame(maxWidth: .infinity)`, donc 150 points les séparaient. On lisait
+  sept ronds, plus une semaine.
+- **La chronologie flottait**, carte de 720 au milieu de 1512.
+
+**Deux leçons de méthode :**
+
+- **Un build incrémental périmé peut tuer toute la suite sur un signal 11**, sans
+  un seul test en échec — ajouter une propriété stockée à un `struct` public change
+  sa disposition mémoire. Le même jour, le paquet de preview refusait de compiler
+  sur un `cannot find type` pour un type qui existait. **Réflexe avant de chercher
+  un bug : `swift package clean`.**
+- **Un `$0` dans un `map` imbriqué** faisait calculer la durée d'export entre la
+  fin et elle-même. Zéro partout, et ça compile sans un mot.
+
+**Ce qui attend Arthur** : rien de bloquant. Le collecteur PSN reste le seul front
+fermé (jeton `npsso`), et le compte Apple payant conditionne toujours CloudKit,
+l'app iOS et le widget.
+
+**Ce que je ferais ensuite, par ordre de rendement :**
+
+1. **Étendre le catalogue d'apps de la télé.** Il tient dix identifiants installés
+   chez Arthur et sept autres à l'aveugle. Un balayage plus large, télé allumée,
+   dirait ce qu'elle a vraiment — et chaque identifiant manquant est du temps qui
+   reste « Télé » au lieu d'être nommé. Coût : une requête par identifiant, apprise
+   une fois.
+2. **L'écran du mois ou de l'année.** `buildPeriod` est déjà générique et l'écran
+   de la semaine ne fait que l'appeler sur sept jours ; la base porte maintenant
+   huit jours de données réelles, assez pour que la question se pose.
+3. **Le vide sous le rail de la chronologie**, signalé le 2026-08-22 et laissé
+   ouvert : cet onglet occupe une carte dans une fenêtre de 949 de haut. C'est du
+   dessin, donc une décision d'Arthur.
+
 ### État au 2026-08-19 (fin de sixième session)
 
 **Une seule PR, née d'une question d'Arthur devant l'app** : « pourquoi ma
