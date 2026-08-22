@@ -784,6 +784,64 @@ Ce qui a demandé une décision :
   « Déroulé » qui l'a révélé en annonçant « dernier écran 23:15 — jusqu'ici ».
   **Un jeu de démonstration incohérent valide des cas qui n'existent pas.**
 
+### La fenêtre s'ouvre en grille, et ne défile plus
+
+Demande d'Arthur le 2026-08-22, en voyant la carte « Déroulé » arriver dans une
+colonne qui débordait déjà : « je voudrais que quand l'appli desktop est ouverte,
+on ne doive pas scroller, genre en grille de 4 cases plutôt que de devoir
+scroller ? comme ça on a toutes les informations importantes ». Sa fenêtre fait
+**1512 × 949** et affichait une colonne de 720 centrée dedans : il fallait
+défiler pour voir les appareils alors que la moitié de l'écran était vide.
+
+| Écran | En grille | En colonne (fenêtre étroite) |
+|---|---|---|
+| Jour | 4 cases : anneau · répartition / déroulé · appareils | tout à la suite |
+| Semaine | 3 cases : anneau · répartition / appareils | tout à la suite |
+| Chronologie | une carte, **pleine largeur** | idem |
+
+**Toutes les cases ne pèsent pas le même poids** (57 / 43). L'anneau porte le
+total de la journée, sa composition par appareil, la comparaison aux journées
+précédentes *et* la rangée de catégories : lui donner la même largeur qu'à la
+carte des appareils, qui porte trois lignes, dirait qu'elles se valent. Il
+grossit aussi (248 points contre 208).
+
+**`WeightedColumns` est un `Layout` pur**, testé sans vue comme `RingLayout` et
+`TimelineGeometry` : SwiftUI sait faire deux colonnes égales
+(`frame(maxWidth: .infinity)` sur chacune), pas deux colonnes dans un rapport
+donné.
+
+**En dessous de 980 points, la grille cède la place à la colonne.** Deux colonnes
+illisibles seraient pires qu'une colonne lisible qui défile. Et c'est un
+`minWidth` **explicite** qui l'annonce à `ViewThatFits` : sans lui la grille
+serait extensible, donc toujours retenue, et se ferait écraser au lieu de céder
+— exactement le piège payé le même jour sur la carte « Déroulé ».
+
+**La chronologie est le seul écran qui ne se borne pas à la colonne** (choix
+d'Arthur le même jour). C'est le seul où la largeur porte de l'information :
+doubler la largeur double la résolution horaire, un bloc de dix minutes passe de
+5 à 10 points, et `TimelineGeometry` resserre d'elle-même la graduation de 3 h à
+2 h. La règle « la maquette est une colonne, pas une surface à remplir » vaut
+toujours pour les listes du jour et de la semaine, dont les jauges deviendraient
+illisibles étirées sur 1500 points — **une chronologie n'a pas de jauge, elle a
+des heures.**
+
+**Limite assumée, mesurée plutôt que supposée** : `AppCategory` compte dix cas,
+donc une journée en produit au plus dix. Jusqu'à **huit** catégories la fenêtre
+ne défile pas ; à dix elle déborde d'environ 90 points et redevient défilante.
+Arthur a tranché : **on laisse défiler** plutôt que de resserrer les lignes (ce
+qui coûterait les icônes d'apps) ou de tronquer à « + 2 autres » (ce qui
+cacherait des données mesurées, précisément ce que le projet évite partout
+ailleurs).
+
+**Deux défauts trouvés en PNG en élargissant, et par rien d'autre :**
+
+- **La rangée des sept journées de la semaine s'étalait.** Chaque `DayRing` porte
+  un `frame(maxWidth: .infinity)`, donc les ronds se sont retrouvés à 150 points
+  les uns des autres dans la carte élargie : on lisait sept ronds, plus une
+  semaine. Bornée à 560 points, elle redevient une bande.
+- **La chronologie flottait** : une carte de 720 au milieu de 1512, à côté de
+  deux onglets passés en pleine largeur. C'est ce rendu qui a posé la question.
+
 ### Lire l'historique
 
 `DayDigestBuilder.buildPeriod(from:through:...)` agrège une plage de journées.

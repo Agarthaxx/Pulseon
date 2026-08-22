@@ -169,6 +169,35 @@ montre *quand*.**
    classement plutôt qu'à l'horaire — **ne pas affirmer ce qu'on n'a pas
    mesuré**, ici un genre de contenu plutôt qu'une heure.
 
+### La disposition : grille quand il y a la place, colonne sinon
+
+**Arrêté le 2026-08-22, sur demande d'Arthur** : « quand l'appli desktop est
+ouverte, on ne doit pas scroller, genre en grille de 4 cases ». Sa fenêtre fait
+1512 × 949.
+
+- **Au-dessus de 980 points de large** : une grille à deux colonnes pondérées
+  **57 / 43** (`WeightedColumns`). Jour = 4 cases (anneau · répartition /
+  déroulé · appareils), semaine = 3. L'anneau prend la colonne large **et**
+  grossit (248 au lieu de 208) : c'est la case principale, et une case
+  principale qui porterait le même anneau qu'ailleurs ne dirait pas qu'elle
+  l'est.
+- **En dessous** : la colonne bornée à 720, qui défile. Deux colonnes illisibles
+  sont pires qu'une colonne lisible qui défile.
+- **La chronologie ne se borne pas** : c'est le seul écran où la largeur porte de
+  l'information — deux fois plus large, deux fois plus de résolution par heure.
+  Les listes, elles, gardent leur colonne : leurs jauges deviendraient illisibles
+  étirées sur 1500 points.
+
+**Le piège, payé deux fois le même jour** : `frame(maxWidth: .infinity)` rend une
+vue infiniment compressible, donc `ViewThatFits` retient **toujours** sa première
+proposition et la fait écraser au lieu de la laisser céder. Une proposition doit
+annoncer sa largeur réelle (`minWidth` explicite, colonnes à taille intrinsèque,
+texte en `fixedSize`) pour que la bascule fonctionne.
+
+**Limite assumée** : à dix catégories — le maximum possible — la fenêtre déborde
+d'environ 90 points et défile. On laisse défiler : resserrer coûterait les icônes
+d'apps, tronquer cacherait des données mesurées.
+
 ### Couleurs et typographie
 
 Tout vit dans `PulseonTheme` (`Sources/PulseonUI/PulseonTheme.swift`) — **s'y
