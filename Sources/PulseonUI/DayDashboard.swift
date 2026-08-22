@@ -94,31 +94,31 @@ public struct DayDashboardContent: View {
             switch load {
             case .loaded(let day):
                 header(title: day.title, isLive: day.now != nil)
-                RingCard(day: day, palette: palette)
-                if let anatomy = day.anatomy {
-                    DayAnatomyCard(anatomy: anatomy, day: day, palette: palette)
+                // **Une grille dès qu'il y a la place, une colonne sinon.**
+                // Demande d'Arthur le 2026-08-22 : « je voudrais que quand
+                // l'appli desktop est ouverte, on ne doive pas scroller, genre
+                // en grille de 4 cases ». Sur sa fenêtre (1512 × 949), tout
+                // tient sans défilement ; en dessous, deux colonnes écraseraient
+                // les jauges et la rangée de ronds, donc on revient à la
+                // colonne unique — qui, elle, défile.
+                //
+                // `ViewThatFits` compare la largeur **idéale** de chaque
+                // proposition à la place disponible. La grille annonce la
+                // sienne par un `minWidth` explicite : sans ça elle serait
+                // extensible, donc toujours retenue, et se ferait écraser au
+                // lieu de céder la place. C'est exactement le piège payé sur la
+                // carte « Déroulé » le même jour.
+                ViewThatFits(in: .horizontal) {
+                    grid(day).frame(minWidth: Self.gridMinimumWidth)
+                    column(day).frame(maxWidth: Self.columnWidth)
                 }
-                if !day.categories.isEmpty {
-                    BreakdownCard(categories: day.categories, palette: palette)
-                }
-                DevicesCard(
-                    lanes: day.digest.lanes,
-                    summedTotal: day.digest.summedTotal,
-                    palette: palette
-                )
             case .failed(let reason):
                 header(title: "Journée", isLive: false)
                 FailureCard(reason: reason, palette: palette)
+                    .frame(maxWidth: Self.columnWidth)
             }
         }
         .padding(22)
-        // **La maquette est une colonne, pas une surface à remplir.** Sans
-        // cette borne, une fenêtre large étire les jauges sur 1500 points et
-        // l'anneau se perd au milieu d'une carte vide : à l'écran ça ne
-        // ressemblait plus du tout à la maquette, alors que le rendu à 860
-        // paraissait juste. Le second `frame` centre la colonne dans ce qui
-        // reste.
-        .frame(maxWidth: Self.columnWidth)
         .frame(maxWidth: .infinity)
         .background(palette.ground)
     }
@@ -126,7 +126,86 @@ public struct DayDashboardContent: View {
     /// Assez large pour qu'une ligne porte libellé, durée, part et détail sans
     /// se serrer ; assez étroite pour qu'une jauge reste lisible d'un coup
     /// d'œil au lieu de traverser l'écran.
+    ///
+    /// **La maquette est une colonne, pas une surface à remplir** : sans cette
+    /// borne, une fenêtre large étirait les jauges sur 1500 points et l'anneau
+    /// se perdait au milieu d'une carte vide. Elle ne vaut plus que pour le
+    /// repli en colonne — la grille, elle, occupe toute la largeur, et c'est
+    /// justement ce qu'on lui demande.
     static let columnWidth: CGFloat = 720
+
+    /// En dessous, la grille cède la place à la colonne.
+    ///
+    /// Deux colonnes de 470 points : assez pour qu'une jauge et sa ligne de
+    /// détail restent lisibles de chaque côté. Plus bas, on obtiendrait deux
+    /// colonnes illisibles au lieu d'une colonne lisible — le défilement est un
+    /// moindre mal que l'écrasement.
+    static let gridMinimumWidth: CGFloat = 980
+
+    // MARK: Les deux dispositions
+
+    /// La colonne d'origine : tout à la suite, dans l'ordre de lecture.
+    @ViewBuilder
+    private func column(_ day: DayPresentation) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            RingCard(day: day, palette: palette)
+            if let anatomy = day.anatomy {
+                DayAnatomyCard(anatomy: anatomy, day: day, palette: palette)
+            }
+            if !day.categories.isEmpty {
+                BreakdownCard(categories: day.categories, palette: palette)
+            }
+            devicesCard(day)
+        }
+    }
+
+    /// La grille : quatre cases, et **toutes ne pèsent pas le même poids**.
+    ///
+    /// L'anneau porte le total de la journée, sa composition par appareil, la
+    /// comparaison aux journées précédentes et la rangée de catégories : il
+    /// mérite la colonne large. La répartition, le déroulé et les appareils sont
+    /// du détail, à droite et en dessous.
+    ///
+    /// Les cases absentes ne laissent pas de trou : sans anatomie la colonne
+    /// gauche n'a qu'une carte, sans répartition la droite n'en a qu'une. C'est
+    /// le cas normal d'une journée vide ou du premier jour d'utilisation.
+    @ViewBuilder
+    private func grid(_ day: DayPresentation) -> some View {
+        WeightedColumns(weights: [Self.leadingWeight, Self.trailingWeight], spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
+                RingCard(day: day, palette: palette, ringDiameter: Self.gridRingDiameter)
+                if let anatomy = day.anatomy {
+                    DayAnatomyCard(anatomy: anatomy, day: day, palette: palette)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                if !day.categories.isEmpty {
+                    BreakdownCard(categories: day.categories, palette: palette)
+                }
+                devicesCard(day)
+            }
+        }
+    }
+
+    /// 57 / 43. Assez pour que la hiérarchie se voie au premier regard, assez
+    /// peu pour que la colonne de droite garde des jauges lisibles.
+    static let leadingWeight: CGFloat = 57
+    static let trailingWeight: CGFloat = 43
+
+    /// L'anneau grossit en grille : c'est la case principale, et une case
+    /// principale qui porterait le même anneau qu'en colonne étroite ne dirait
+    /// pas qu'elle est principale.
+    static let gridRingDiameter: CGFloat = 248
+
+    @ViewBuilder
+    private func devicesCard(_ day: DayPresentation) -> some View {
+        DevicesCard(
+            lanes: day.digest.lanes,
+            summedTotal: day.digest.summedTotal,
+            palette: palette
+        )
+    }
 
     @ViewBuilder
     private func header(title: String, isLive: Bool) -> some View {
@@ -173,6 +252,9 @@ public struct DayDashboardContent: View {
 private struct RingCard: View {
     let day: DayPresentation
     let palette: PulseonPalette
+    /// Nil pour la taille par défaut de `ActivityRing`. La grille le grossit :
+    /// voir `DayDashboardContent.gridRingDiameter`.
+    var ringDiameter: CGFloat?
 
     var body: some View {
         let lanes = day.digest.lanes.filter { $0.total > 0 }
@@ -199,7 +281,8 @@ private struct RingCard: View {
                     },
                     total: day.isEmpty ? nil : day.digest.coveredTotal,
                     caption: day.isEmpty ? "rien de branché" : "devant un écran",
-                    palette: palette
+                    palette: palette,
+                    diameter: ringDiameter ?? ActivityRing.defaultDiameter
                 )
 
                 if !lanes.isEmpty {

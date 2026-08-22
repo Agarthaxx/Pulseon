@@ -96,27 +96,69 @@ public struct WeekDashboardContent: View {
             switch load {
             case .loaded(let period):
                 header(title: period.title, isCurrent: period.isCurrent)
-                WeekChartCard(period: period, palette: palette)
-                if !period.categories.isEmpty {
-                    BreakdownCard(categories: period.categories, palette: palette)
+                // **La même bascule que l'écran du jour**, et pour la même
+                // raison : la fenêtre d'Arthur fait 1512 points de large, et une
+                // colonne de 720 centrée dedans obligeait à défiler pour voir
+                // les appareils alors que la moitié de l'écran était vide.
+                // Changer d'onglet ne doit pas changer la façon dont l'écran
+                // occupe la place.
+                ViewThatFits(in: .horizontal) {
+                    grid(period).frame(minWidth: DayDashboardContent.gridMinimumWidth)
+                    column(period).frame(maxWidth: DayDashboardContent.columnWidth)
                 }
-                DevicesCard(
-                    lanes: period.digest.lanes,
-                    summedTotal: period.digest.summedTotal,
-                    palette: palette
-                )
             case .failed(let reason):
                 header(title: "Semaine", isCurrent: false)
                 FailureCard(reason: reason, palette: palette)
+                    .frame(maxWidth: DayDashboardContent.columnWidth)
             }
         }
         .padding(22)
-        // Même colonne bornée que l'écran du jour : sans elle, une fenêtre
-        // large étire les jauges sur 1500 points et le dessin ne ressemble
-        // plus à la maquette.
-        .frame(maxWidth: DayDashboardContent.columnWidth)
         .frame(maxWidth: .infinity)
         .background(palette.ground)
+    }
+
+    @ViewBuilder
+    private func column(_ period: PeriodPresentation) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            WeekChartCard(period: period, palette: palette)
+            if !period.categories.isEmpty {
+                BreakdownCard(categories: period.categories, palette: palette)
+            }
+            devicesCard(period)
+        }
+    }
+
+    /// Trois cases plutôt que quatre : la semaine n'a pas de déroulé — une
+    /// anatomie n'a de sens que dans une journée, où les heures veulent dire
+    /// quelque chose. La colonne gauche n'a donc qu'une carte, et c'est très
+    /// bien : l'anneau de la semaine porte aussi ses sept ronds de journées.
+    @ViewBuilder
+    private func grid(_ period: PeriodPresentation) -> some View {
+        WeightedColumns(
+            weights: [DayDashboardContent.leadingWeight, DayDashboardContent.trailingWeight],
+            spacing: 14
+        ) {
+            WeekChartCard(
+                period: period, palette: palette,
+                ringDiameter: DayDashboardContent.gridRingDiameter
+            )
+
+            VStack(alignment: .leading, spacing: 14) {
+                if !period.categories.isEmpty {
+                    BreakdownCard(categories: period.categories, palette: palette)
+                }
+                devicesCard(period)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func devicesCard(_ period: PeriodPresentation) -> some View {
+        DevicesCard(
+            lanes: period.digest.lanes,
+            summedTotal: period.digest.summedTotal,
+            palette: palette
+        )
     }
 
     @ViewBuilder
@@ -159,6 +201,9 @@ public struct WeekDashboardContent: View {
 private struct WeekChartCard: View {
     let period: PeriodPresentation
     let palette: PulseonPalette
+    /// Nil pour la taille de la colonne. La grille le grossit, comme sur
+    /// l'écran du jour : c'est la case principale.
+    var ringDiameter: CGFloat?
 
     var body: some View {
         let lanes = period.digest.lanes.filter { $0.total > 0 }
@@ -179,7 +224,7 @@ private struct WeekChartCard: View {
                     total: period.isEmpty ? nil : period.digest.coveredTotal,
                     caption: period.isEmpty ? "rien de mesuré" : "devant un écran",
                     palette: palette,
-                    diameter: 178
+                    diameter: ringDiameter ?? 178
                 )
 
                 if !lanes.isEmpty {

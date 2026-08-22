@@ -34,7 +34,19 @@ struct WeekRingRow: View {
                 DayRing(day: day, diameter: diameter, palette: palette)
             }
         }
+        // **La semaine est une bande, pas une rangée qui s'étale.** Chaque
+        // journée occupe une part égale de la largeur disponible ; dans la
+        // colonne de 720 points ça donnait une bande compacte, mais la grille
+        // du 2026-08-22 a élargi la carte et les sept ronds se sont retrouvés
+        // à 150 points les uns des autres — on lisait sept ronds, plus une
+        // semaine. Trouvé en PNG, comme d'habitude.
+        .frame(maxWidth: Self.maximumWidth)
+        .frame(maxWidth: .infinity)
     }
+
+    /// Assez pour que les sept ronds respirent, assez peu pour qu'ils restent
+    /// un groupe. Sept ronds de 48 points et leurs libellés.
+    static let maximumWidth: CGFloat = 560
 }
 
 /// Une journée, dans l'un de ses quatre états.
