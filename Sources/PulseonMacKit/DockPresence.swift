@@ -21,6 +21,20 @@ public final class DockPresence {
 
     private var observers: [NSObjectProtocol] = []
 
+    /// Le retour à l'état d'agent, en attente de la fin de l'animation. Retenu
+    /// pour pouvoir l'annuler : une fenêtre rouverte entre-temps doit garder
+    /// l'icône du Dock, pas la voir partir une demi-seconde plus tard.
+    private var pendingRelease: DispatchWorkItem?
+
+    /// Le délai avant de rendre l'icône du Dock et la barre de menus, une fois
+    /// la dernière fenêtre fermée.
+    ///
+    /// **Mesuré, pas choisi à l'estime.** L'animation de fermeture d'une
+    /// fenêtre de 1512 × 949 portant le vrai dashboard dure **83 ms** et rend
+    /// six images (filmée à l'écran, `Tools/Preview` cible `Bench`). 250 ms
+    /// couvre trois fois la marge sans que l'icône traîne dans le Dock.
+    static let closeGrace: TimeInterval = 0.25
+
     private init() {}
 
     /// Branche l'observation. Appelable plusieurs fois sans dommage.
@@ -55,16 +69,56 @@ public final class DockPresence {
     /// apparaîtrait un instant sans ses menus. Basculer d'abord évite ce
     /// clignotement.
     public func prepareForWindow() {
-        apply(.regular)
+        becomeRegular()
     }
 
     /// Recalcule la politique d'activation d'après les fenêtres réellement
     /// présentes.
     private func sync(excluding closing: NSWindow? = nil) {
-        let hasWindow = NSApp.windows.contains { window in
+        if hasCountingWindow(excluding: closing) {
+            becomeRegular()
+        } else {
+            scheduleRelease()
+        }
+    }
+
+    private func hasCountingWindow(excluding closing: NSWindow?) -> Bool {
+        NSApp.windows.contains { window in
             window !== closing && Self.counts(styleMask: window.styleMask, isVisible: window.isVisible)
         }
-        apply(hasWindow ? .regular : .accessory)
+    }
+
+    /// Devenir une vraie app est immédiat : la fenêtre ne doit jamais
+    /// apparaître sans ses menus.
+    private func becomeRegular() {
+        pendingRelease?.cancel()
+        pendingRelease = nil
+        apply(.regular)
+    }
+
+    /// Redevenir un agent attend la fin de l'animation, et c'est le seul
+    /// intérêt de ce délai.
+    ///
+    /// `setActivationPolicy` ne coûte que ~6 ms de fil principal (mesuré sur
+    /// huit fermetures) : ce n'est pas un problème de vitesse. Mais appelée
+    /// depuis `willCloseNotification`, elle retire l'icône du Dock et démonte
+    /// la barre de menus **pendant que la fenêtre s'efface encore** — deux
+    /// disparitions simultanées là où l'œil en attend une seule, puis l'autre.
+    /// On laisse donc la fenêtre partir d'abord.
+    private func scheduleRelease() {
+        pendingRelease?.cancel()
+
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingRelease = nil
+            // Revérifié à l'échéance : une fenêtre a pu rouvrir pendant le
+            // délai, et l'annulation ne couvre pas tout (une fenêtre qui
+            // s'ouvre sans devenir clé, par exemple).
+            guard !self.hasCountingWindow(excluding: nil) else { return }
+            self.apply(.accessory)
+        }
+        pendingRelease = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.closeGrace, execute: work)
     }
 
     private func apply(_ policy: NSApplication.ActivationPolicy) {

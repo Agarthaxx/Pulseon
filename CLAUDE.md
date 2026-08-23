@@ -508,6 +508,45 @@ Deux pièges tenus dans le code, tous deux invisibles à la compilation :
   allumerait l'icône Dock en permanence, ce qui annule `LSUIElement`. D'où le
   critère `.titled`, seul point testable de la classe et donc `nonisolated`.
 
+#### L'app ne se retire qu'une fois la fenêtre partie
+
+Question d'Arthur le 2026-08-23 : « quand je fais ⌘W ou ⌘M, les animations ne
+sont pas du tout fluides, pourquoi ? ». La réponse tenait en une hypothèse
+plausible — `sync` retombe en `.accessory` depuis `willCloseNotification`, donc
+**pendant** l'animation — et cette hypothèse était fausse sur les chiffres.
+
+**Ce que la mesure a dit** (banc `Tools/Preview`, cible `Bench` : il ouvre puis
+ferme la vraie `DayDashboard` dans une fenêtre de 1512 × 949, avec un tick de
+2 ms sur le fil principal ; 8 cycles par mode) :
+
+| | avant | après | témoin sans bascule |
+|---|---|---|---|
+| Trou du fil principal à la fermeture | 12,1 ms | **5,7 ms** | 4,4 ms |
+| Images perdues (> 16,7 ms) | 0 | 0 | 0 |
+| Coût de `setActivationPolicy` | 5,9 ms | 3,9 ms | — |
+
+**Aucune image perdue, ni avant ni après : le fil principal n'a jamais été la
+cause.** L'écran filmé le confirme — l'animation de fermeture rend 6 images en
+83 ms (72 im/s), et la réduction 25 images en 442 ms (57 im/s), sans un seul
+gel. Ce qui change avec le correctif n'est donc pas une vitesse mais **un
+ordre** : la fenêtre s'efface d'abord, l'icône du Dock et la barre de menus
+partent 250 ms plus tard, au lieu de disparaître dans la même image.
+
+Trois choses à ne pas réapprendre :
+
+- **Les 615 ms de fil principal bloqué à la réduction sont l'animation
+  « genie » elle-même**, pas un défaut : `miniaturize(nil)` ne rend la main
+  qu'à la fin, et le chiffre est identique quand on ne touche jamais à la
+  politique d'activation (mode témoin). Un blocage du fil principal n'est pas
+  une image perdue — la fenêtre réduite est une capture, dessinée par le
+  WindowServer.
+- **Le délai est mesuré, pas estimé** : 83 ms d'animation, 250 ms de grâce.
+  Il est annulé dès qu'une fenêtre rouvre, et **revérifié à l'échéance** —
+  l'annulation seule ne couvre pas une fenêtre ouverte sans devenir clé.
+- **Ce correctif ne se teste pas hors session graphique**, comme le reste de
+  la classe : `counts` reste le seul point pur. C'est le banc qui vérifie, et
+  c'est pour ça qu'il est commité plutôt que jeté après usage.
+
 **Et une leçon sur la vérification** : `lsappinfo info -only ApplicationType`
 répond `Foreground` dès que l'app est active, *quelle que soit* sa politique
 d'activation. Ça ne distingue pas `.regular` de `.accessory` — le relevé
