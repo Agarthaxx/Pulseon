@@ -16,6 +16,17 @@ let package = Package(
                 .product(name: "PulseonUI", package: "creation_project"),
             ]
         ),
+        // Le banc de mesure des animations de fenêtre : il ouvre et ferme la
+        // vraie vue du dashboard pour chronométrer ce qui bloque le fil
+        // principal. Même raison d'être que la preview — un outil qui regarde
+        // l'app, pas un morceau de l'app.
+        .executableTarget(
+            name: "Bench",
+            dependencies: [
+                .product(name: "PulseonCore", package: "creation_project"),
+                .product(name: "PulseonUI", package: "creation_project"),
+            ]
+        ),
         // L'icône : même paquet, parce qu'elle rend elle aussi des vues hors
         // écran et n'a pas sa place dans l'app livrée.
         .executableTarget(
