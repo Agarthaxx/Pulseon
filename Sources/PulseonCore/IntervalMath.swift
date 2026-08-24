@@ -6,9 +6,9 @@ import Foundation
 /// fois le temps de deux appareils allumés en même temps. Le classement par
 /// catégorie en a exactement le même besoin — deux apps de la même catégorie
 /// peuvent se chevaucher — donc elle sort ici plutôt que d'être recopiée.
-enum IntervalMath {
+public enum IntervalMath {
     /// Un intervalle de la journée, en secondes depuis minuit local.
-    struct Run: Sendable, Equatable {
+    public struct Run: Sendable, Equatable {
         var start: TimeInterval
         var end: TimeInterval
 
@@ -21,7 +21,7 @@ enum IntervalMath {
     /// l'anatomie de la journée a besoin des bornes elles-mêmes. Extraire les
     /// traites plutôt que de recopier la boucle évite qu'un jour les deux se
     /// mettent à répondre des choses différentes sur les mêmes données.
-    static func mergedRuns(of blocks: [TraceBlock]) -> [Run] {
+    public static func mergedRuns(of blocks: [TraceBlock]) -> [Run] {
         let ranges = blocks
             .map { Run(start: $0.startOffset, end: $0.startOffset + $0.duration) }
             .sorted { $0.start < $1.start }

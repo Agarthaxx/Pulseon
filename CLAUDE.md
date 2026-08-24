@@ -553,6 +553,179 @@ d'activation. Ça ne distingue pas `.regular` de `.accessory` — le relevé
 automatique n'a rien prouvé, c'est l'œil d'Arthur qui a validé. À retenir avant
 de bâtir une sonde : vérifier qu'elle mesure bien ce qu'on croit.
 
+### Le mouvement, et le sens dans lequel il a le droit d'échouer
+
+Arthur, le 2026-08-24, sur l'app installée : elle « fait figé, pas fini ». Le
+diagnostic n'était pas une impression — **zéro animation dans tout `PulseonUI`**,
+et deux raccourcis clavier en tout (⌘J, ⌘Q). Un anneau apparaissait d'un bloc,
+une journée en remplaçait une autre par saut.
+
+Ce qui bouge désormais : l'anneau **se trace en s'enroulant** à l'ouverture, le
+total monte avec lui, et les journées **glissent dans le sens de la navigation**
+— sans direction, reculer et avancer produisent la même transition et
+l'animation ne dit plus rien. Au clavier : ←/→ pour la journée, ⌘1/⌘2/⌘3 pour
+les onglets, ⌘T pour revenir à aujourd'hui.
+
+**La décision qui compte est la valeur par défaut : le mouvement est éteint.**
+`\.pulseonMotion` vaut `false`, et seule la fenêtre de l'app l'allume. Une
+animation d'apparition part d'un état vide — anneau à zéro, chiffre à zéro — or
+`ImageRenderer` rend une image **synchrone**, sans faire avancer une seule
+image : une preview aurait capturé cet état et sorti un **anneau vide**. On
+aurait cru à un bug de dessin, et surtout on aurait perdu l'outil qui trouve la
+plupart des vrais défauts de ce projet. En partant de `false`, le repli est
+« tout est dessiné », jamais « rien n'est dessiné » — même discipline que
+partout : un doute se résout du côté qui montre ce qui a été mesuré.
+
+Trois détails qui ne se devinent pas :
+
+- **`Text` ne s'interpole pas.** SwiftUI ne sait pas animer entre deux chaînes ;
+  c'est `Animatable` qui fait le travail, en interpolant `animatableData` et en
+  redemandant le corps à chaque image. Et en Swift 6 la conformance doit être
+  `nonisolated` — `View` porte l'isolation au fil principal, or le moteur
+  d'animation interpole depuis chez lui.
+- **L'anneau ne se rejoue pas à chaque relecture.** La journée est relue chaque
+  minute ; rejouer le tracé ferait clignoter l'écran tout seul pendant qu'on le
+  regarde.
+- **Les flèches ne sont pas des `keyboardShortcut`.** Une flèche seule n'est pas
+  un raccourci de menu, et l'affecter à un bouton invisible la volerait à tout
+  champ de saisie. `onKeyPress` la rend au premier répondant qui en veut. Les
+  raccourcis à modificateur, eux, passent par des boutons cachés plutôt que par
+  `.commands` : la barre de menus de cet agent n'existe que le temps d'une
+  fenêtre ouverte (voir `DockPresence`), donc un raccourci porté par la vue vit
+  exactement aussi longtemps que la fenêtre qu'il pilote.
+
+**Une entorse assumée, et bornée.** Le compteur qui monte affiche pendant une
+demi-seconde des valeurs qui n'ont pas été mesurées — contraire à la règle
+« ne jamais afficher un chiffre non mesuré ». Elle est tolérée le temps d'un
+geste d'ouverture, et **la barre de menu ne compte jamais** : c'est le seul
+endroit où le total est lu en continu, donc le seul où un chiffre faux aurait le
+temps d'être cru.
+
+### Ce qu'Arthur reproche à l'app, et ce qui reste à faire
+
+Le 2026-08-24, questionné sur ce que « bof à utiliser » voulait dire, Arthur a
+retenu **deux** raisons sur quatre : « ça fait figé, pas fini » et « je n'ai pas
+de raison de l'ouvrir ». Elles ne se réparent pas de la même façon.
+
+La première est traitée ci-dessus, et elle se referme complètement. **La seconde
+est le vrai sujet, et aucune animation ne la règle** : l'app est un miroir qu'on
+a déjà vu. Ce qui donne une raison de revenir, c'est quelque chose qui **change**
+ou quelque chose à **explorer**. Les trois chantiers retenus avec lui, dans
+l'ordre :
+
+1. ~~**Le mouvement et le glissement**~~ — livré (PR #51).
+2. **L'année en anneaux** — 365 petits ronds en damier, un par jour.
+   `buildPeriod` est déjà générique, c'est surtout du dessin. C'est l'objet qu'on
+   ouvre pour le plaisir, et celui où la signature visuelle du projet paye le
+   plus.
+3. **La fiche d'une app** — cliquer sur « Xcode » n'importe où mène à son écran :
+   total, évolution semaine par semaine, et à quelles heures elle sert. C'est ce
+   qui fait passer l'app de « papier peint » à « chose qu'on interroge » — **rien
+   n'est cliquable aujourd'hui**, les onze boutons de `PulseonUI` sont tous de la
+   navigation.
+
+Deux autres idées gardées de côté, présentées et non retenues en priorité : le
+**menu de la barre redessiné** (mini-anneau, apps du moment avec leurs icônes —
+c'est l'écran le plus vu et le seul jamais dessiné) et **la grille heure × jour**
+(« tu es sur ton Mac entre 14 h et 18 h, la télé après 21 h ») — le seul de la
+liste qui apprendrait à Arthur quelque chose qu'il ne sait pas déjà.
+
+### La direction artistique : éditoriale, arrêtée le 2026-08-24
+
+**Choisie par Arthur sur planche** — trois directions rendues côte à côte sur la
+même journée, à la taille de sa fenêtre : « la version editorial est vraiment
+sympa ! j'adore la editorial sombre/light ».
+
+Elle est née d'un reproche précis. Devant une première passe qui n'avait touché
+qu'aux marges et à la disposition : « **tu m'as rajouté une feature ok mais
+qu'en est-il du design de l'app ? le front n'a pas bougé ?** ». Il avait raison,
+et c'est la leçon de méthode de la séance : **régler des marges n'est pas une
+direction artistique**. Une DA change ce qu'on voit *avant* de lire.
+
+Ce qu'elle est :
+
+- **Pas de cartes.** Un filet fin annonce chaque bloc, et le bord gauche
+  s'aligne sur la marge de la page au lieu d'un retrait de carte. L'écran cesse
+  d'être une grille de boîtes et devient une page — la suite logique de la
+  référence donnée dès le 2026-08-16 : *la donnée est le design*.
+- **Les titres portent l'or**, à 21 points, resserrés. Sans cadre, c'est le titre
+  seul qui dit « nouvelle rubrique » : l'or cesse d'être décoratif, il structure.
+- **Les libellés de ligne passent de 13 à 16 points**, les durées de 15 à 18.
+  C'est le second levier le plus visible après le grand nombre : à 13 points une
+  liste se lit « tableau de bord », à 16 elle se lit « page ».
+- **Les jauges s'affinent de 6 à 3 points.** Sans cadre autour, une jauge épaisse
+  redevient l'élément le plus lourd de l'écran et vole la vedette au chiffre.
+- **Le total au centre de l'anneau passe de 30 % à 38 % du cœur** — le levier le
+  plus visible de tous.
+
+**Deux directions ont été rendues à fond puis écartées le même jour**, à ne pas
+reproposer :
+
+| Direction | Ce qu'elle donnait | Pourquoi elle n'est pas retenue |
+|---|---|---|
+| **pleine** | cartes pleines, filet, ombre portée — ce qui existait | c'est elle qu'Arthur trouvait « trop simple » : un tableau de bord parmi d'autres |
+| **verre** | surfaces translucides, champs de couleur violet/bleu, reflet, arête asymétrique | plus séduisante au premier regard, mais c'est une mode — et une mode datée se voit plus vite qu'une composition sobre |
+
+**Le type `PulseonSkin` qui permettait de les rendre côte à côte a été
+supprimé** une fois le choix fait. Une option qui survit à la décision qu'elle
+servait devient une dette — même leçon que `RingScale`, retiré le jour où plus
+personne ne l'appelait.
+
+**Ce que le verre a appris au passage, et qui resservira** : au premier jet il
+était indistinguable de la peau pleine. Ce qui manquait n'était pas la
+transparence mais **le bord et le reflet** — un verre se reconnaît à ses arêtes.
+Et un translucide posé sur un fond presque uni ne donne qu'un gris sale : il lui
+faut de la matière à réfracter, d'où les deux champs de couleur du fond. Même
+famille que l'accent unique décliné en opacités, qui donnait un olive sali.
+
+**Un défaut trouvé en PNG, et qui guettait déjà l'ancienne direction** : dès que
+la taille du grand nombre montait, le total passait à la ligne — « 1h41 » puis
+« 1 » en dessous. Un total à deux chiffres d'heures dans une fenêtre étroite
+l'aurait déclenché sans qu'on change quoi que ce soit. Les chiffres rétrécissent
+désormais au lieu de se couper.
+
+**Un second, révélé par le seul écran assez court pour ça** : le fond ne couvrait
+que le contenu. Sur la chronologie, dont la carte est courte, la fenêtre
+affichait une bande blanche au-dessus et en dessous — invisible sur l'écran du
+jour, qui remplit sa hauteur. Les trois écrans bornent maintenant leur hauteur et
+s'alignent en haut.
+
+### Le battement de la journée
+
+Le motif de l'icône, **fait de vraies données**. Pulseon portait un battement
+dans sa marque et dans le symbole de sa barre de menu, et ne l'avait nulle part
+dans ses écrans.
+
+`DayPulse` (dans `PulseonCore`, pur et testé) donne, pour chaque quart d'heure,
+la **part** de cette tranche passée devant un écran. Trois règles y sont tenues :
+
+- **les appareils sont fusionnés, jamais additionnés.** Regarder la télé en étant
+  sur son Mac ne fait pas 200 % d'une tranche : c'est `coveredTotal` contre
+  `summedTotal`, et la leçon de la journée de 51 heures appliquée à un nouveau
+  calcul ;
+- **une source à compteur est écartée** (règle 1). La PlayStation n'a aucun
+  horaire : la placer dans une tranche inventerait une heure. La carte le **dit**,
+  sans quoi son absence se lirait comme un creux ;
+- **la longueur du jour est fournie**, jamais supposée égale à 86 400 — une
+  journée de changement d'heure décalerait toutes ses tranches.
+
+**C'est le seul endroit où la palette de l'icône entre dans l'app**, et c'est
+une exception raisonnée : le bleu et le violet sont ailleurs réservés à la
+marque, l'or au temps mesuré. Ici la **forme** est celle de la marque, donc elle
+en porte les couleurs — ce n'est pas une teinte de plus dans le vocabulaire des
+données, c'est la marque qui se montre une fois.
+
+**Il comble le vide qu'Arthur voulait bouché**, en bas de la colonne gauche —
+~290 points sur sa fenêtre. **Pas avec du remplissage** : en répondant à la
+question du projet, *quand*.
+
+**Un défaut trouvé en PNG** : la carte annonçait « le plus dense vers 08:45 »
+pour une journée dont le cœur était l'après-midi. Une journée de travail met
+vingt tranches à 100 %, et « la plus haute » en désigne alors une au hasard.
+`densestWindow(spanning:)` cherche la vraie fenêtre de deux heures la plus
+chargée, et **garde la plus précoce à égalité** — arbitraire mais stable, sans
+quoi deux ouvertures de la même journée afficheraient deux heures différentes.
+
 ### Ce que la barre de menu affiche
 
 Le libellé porte **l'icône et le total du jour, qui défile à la seconde**

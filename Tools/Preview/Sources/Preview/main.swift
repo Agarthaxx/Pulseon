@@ -656,3 +656,25 @@ MainActor.assumeIsolated {
         size: CGSize(width: 560, height: 340), named: "pulseon-timeline-narrow"
     )
 }
+
+// MARK: - L'écran du jour à la taille de la fenêtre d'Arthur
+
+/// La direction éditoriale, arrêtée le 2026-08-24, sur sa fenêtre de
+/// 1512 × 949. C'est ce rendu qui a servi à la choisir parmi trois.
+let editorialDay = DayPresentation(
+    digest: digest, dayStart: dayStart, dayLength: day,
+    now: dayStart.addingTimeInterval(23.4 * 3600),
+    categories: categories,
+    comparison: DayComparison(
+        subject: macTotal, average: macTotal - 4_800, referenceDays: 7, isPartial: true
+    ),
+    anatomy: DayAnatomyBuilder().build(from: digest)
+)
+
+for scheme in [ColorScheme.dark, .light] {
+    shoot(
+        dashboard(.loaded(editorialDay), canGoForward: false, scheme: scheme),
+        size: CGSize(width: 1512, height: 949),
+        named: "pulseon-jour-\(scheme == .dark ? "sombre" : "clair")"
+    )
+}

@@ -88,6 +88,11 @@ private struct DashboardWindow: View {
     /// répond en premier.
     @State private var screen: PulseonScreen = .day
 
+    /// Dans quel sens la dernière navigation est allée, pour que la journée
+    /// glisse **dans le sens du geste**. Sans ça, reculer et avancer produisent
+    /// la même transition et l'animation ne dit plus rien.
+    @State private var direction: SlideDirection = .forward
+
     @Environment(\.colorScheme) private var scheme
 
     /// La journée en cours grandit pendant qu'on la regarde. Une minute suffit
@@ -109,18 +114,25 @@ private struct DashboardWindow: View {
                 DayDashboard(
                     load: browser.load,
                     canGoForward: browser.canGoForward,
-                    onPrevious: browser.goToPreviousDay,
-                    onNext: browser.goToNextDay,
-                    onToday: browser.goToToday
+                    onPrevious: { navigate(.backward, browser.goToPreviousDay) },
+                    onNext: { navigate(.forward, browser.goToNextDay) },
+                    onToday: { navigate(.forward, browser.goToToday) }
                 )
+                // L'identité change avec la journée : c'est ce qui fait que
+                // SwiftUI remplace la vue au lieu de la mettre à jour, donc ce
+                // qui rend une transition possible.
+                .id(browser.dayStart)
+                .transition(direction.transition)
             case .week:
                 WeekDashboard(
                     load: periods.load,
                     canGoForward: periods.canGoForward,
-                    onPrevious: periods.goToPreviousWeek,
-                    onNext: periods.goToNextWeek,
-                    onCurrent: periods.goToCurrentWeek
+                    onPrevious: { navigate(.backward, periods.goToPreviousWeek) },
+                    onNext: { navigate(.forward, periods.goToNextWeek) },
+                    onCurrent: { navigate(.forward, periods.goToCurrentWeek) }
                 )
+                .id(periods.weekStart)
+                .transition(direction.transition)
             case .timeline:
                 // La chronologie regarde **la même journée** que l'écran du
                 // jour, et partage donc son `DayBrowser` : deux navigations
@@ -129,13 +141,20 @@ private struct DashboardWindow: View {
                 DayTimeline(
                     load: browser.load,
                     canGoForward: browser.canGoForward,
-                    onPrevious: browser.goToPreviousDay,
-                    onNext: browser.goToNextDay,
-                    onToday: browser.goToToday
+                    onPrevious: { navigate(.backward, browser.goToPreviousDay) },
+                    onNext: { navigate(.forward, browser.goToNextDay) },
+                    onToday: { navigate(.forward, browser.goToToday) }
                 )
+                .id(browser.dayStart)
+                .transition(direction.transition)
             }
         }
         .background(palette.ground)
+        // **Le mouvement n'est allumé qu'ici.** Partout ailleurs — previews,
+        // rendus hors écran — les vues se dessinent complètes. Voir
+        // `PulseonMotion`.
+        .environment(\.pulseonMotion, true)
+        .background(keyboard)
         // Les icônes descendent par l'environnement : les lignes qui les
         // affichent sont imbriquées loin sous le dashboard, et les traverser
         // toutes avec un argument de plus rendrait chaque vue intermédiaire
@@ -147,6 +166,64 @@ private struct DashboardWindow: View {
         // qu'on découvre est rafraîchie au moment où on l'affiche.
         .onChange(of: screen) { reloadVisible() }
         .onReceive(refresh) { _ in reloadVisible() }
+        .onKeyPress(.leftArrow) { goBack(); return .handled }
+        .onKeyPress(.rightArrow) { goForward(); return .handled }
+    }
+
+    /// Navigue, en retenant le sens pour la transition.
+    private func navigate(_ way: SlideDirection, _ move: () -> Void) {
+        direction = way
+        withAnimation(PulseonMotion.slide) { move() }
+    }
+
+    /// Les raccourcis clavier.
+    ///
+    /// Des boutons cachés plutôt qu'un `.commands` : la fenêtre appartient à un
+    /// agent en barre de menu, dont la barre de menus n'existe que le temps
+    /// d'une fenêtre ouverte (voir `DockPresence`). Un raccourci porté par la
+    /// vue vit exactement aussi longtemps que la fenêtre qu'il pilote.
+    ///
+    /// **Les flèches ne sont pas des `keyboardShortcut`** : une flèche seule
+    /// n'est pas un raccourci de menu, et l'affecter à un bouton invisible la
+    /// volerait à tout champ de saisie. `onKeyPress` la rend au premier
+    /// répondant qui en veut.
+    @ViewBuilder
+    private var keyboard: some View {
+        ZStack {
+            Button("") { screen = .day }.keyboardShortcut("1", modifiers: .command)
+            Button("") { screen = .week }.keyboardShortcut("2", modifiers: .command)
+            Button("") { screen = .timeline }.keyboardShortcut("3", modifiers: .command)
+            Button("") { goToStart() }.keyboardShortcut("t", modifiers: .command)
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
+    }
+
+    /// Ramène à aujourd'hui — ou à la semaine en cours, selon l'écran regardé.
+    private func goToStart() {
+        switch screen {
+        case .day, .timeline: navigate(.forward, browser.goToToday)
+        case .week: navigate(.forward, periods.goToCurrentWeek)
+        }
+    }
+
+    private func goBack() {
+        switch screen {
+        case .day, .timeline: navigate(.backward, browser.goToPreviousDay)
+        case .week: navigate(.backward, periods.goToPreviousWeek)
+        }
+    }
+
+    private func goForward() {
+        switch screen {
+        case .day, .timeline:
+            guard browser.canGoForward else { return }
+            navigate(.forward, browser.goToNextDay)
+        case .week:
+            guard periods.canGoForward else { return }
+            navigate(.forward, periods.goToNextWeek)
+        }
     }
 
     private func reloadVisible() {

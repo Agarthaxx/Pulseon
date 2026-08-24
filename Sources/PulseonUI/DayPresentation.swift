@@ -46,6 +46,16 @@ public struct DayPresentation: Sendable {
         self.anatomy = anatomy
     }
 
+    /// Le battement de la journée, tranche par tranche.
+    ///
+    /// Calculé ici et non côté navigateur : c'est une dérivation pure du digest
+    /// et de la longueur du jour, sans aucune lecture de base. Le sortir vers
+    /// `DayBrowser` obligerait à le recalculer à chaque relecture minute pour
+    /// une valeur qui ne dépend que de données déjà en main.
+    public var pulse: DayPulse {
+        DayPulseBuilder.build(lanes: digest.lanes, dayLength: dayLength)
+    }
+
     /// L'heure qu'il était, pour un instant repéré en secondes depuis minuit.
     ///
     /// Passe par une vraie `Date` plutôt que par une division : les journées de

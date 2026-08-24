@@ -25,6 +25,7 @@ struct MeterRow: View {
     let share: Double
     let palette: PulseonPalette
 
+
     /// Trois minutes dans une journée font 0,4 % : tronqué à l'entier, ça
     /// s'affichait « 0 % » juste à côté d'une durée non nulle. Zéro est une
     /// affirmation, et celle-ci était fausse.
@@ -41,11 +42,11 @@ struct MeterRow: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(label)
-                        .font(PulseonTheme.row)
+                        .font(PulseonTheme.rowLabel)
                         .foregroundStyle(palette.ink)
                     Spacer(minLength: 6)
                     Text(DurationFormat.compact(total))
-                        .font(.system(size: 15, weight: .semibold).monospacedDigit())
+                        .font(PulseonTheme.rowValue)
                         .foregroundStyle(palette.ink)
                     Text(Self.percentage(share))
                         .font(PulseonTheme.caption.monospacedDigit())
@@ -75,6 +76,13 @@ struct Meter: View {
     let fill: LinearGradient
     let palette: PulseonPalette
 
+
+    /// La part effectivement dessinée. **Part à sa valeur finale**, donc une
+    /// preview rend la jauge pleine : le repli est « tout est dessiné ». Voir
+    /// `PulseonMotion`.
+    @State private var drawn: Double?
+    @Environment(\.pulseonMotion) private var motion
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -83,10 +91,25 @@ struct Meter: View {
                     .fill(fill)
                     // Une part minuscule doit rester visible : à 0,5 % la jauge
                     // ferait 0,3 point de large et se lirait « rien ».
-                    .frame(width: max(3, geometry.size.width * min(1, max(0, share))))
+                    .frame(
+                        width: max(
+                            3,
+                            geometry.size.width * min(1, max(0, drawn ?? share))
+                        )
+                    )
             }
         }
-        .frame(height: 6)
+        .frame(height: PulseonEditorial.meterHeight)
+        .onAppear {
+            guard motion else { return }
+            drawn = 0
+            withAnimation(PulseonMotion.fill) { drawn = share }
+        }
+        // La jauge suit sa donnée quand la journée change sous elle, au lieu de
+        // rester figée sur la valeur qu'elle avait à son apparition.
+        .onChange(of: share) { _, new in
+            withAnimation(motion ? PulseonMotion.fill : nil) { drawn = new }
+        }
     }
 }
 
@@ -95,17 +118,19 @@ struct Chip: View {
     let tint: Color
     let palette: PulseonPalette
 
+
     var body: some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
+        let side = PulseonEditorial.chipSide
+        RoundedRectangle(cornerRadius: side * 0.29, style: .continuous)
             .fill(tint.opacity(0.18))
-            .frame(width: 34, height: 34)
+            .frame(width: side, height: side)
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: side * 0.29, style: .continuous)
                     .strokeBorder(tint.opacity(0.28), lineWidth: 0.5)
             )
             .overlay(
                 Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: side * 0.41, weight: .semibold))
                     .foregroundStyle(tint)
             )
     }
@@ -149,19 +174,13 @@ struct Card<Content: View>: View {
     let palette: PulseonPalette
     @ViewBuilder let content: Content
 
+    @Environment(\.colorScheme) private var scheme
+
     var body: some View {
         content
-            .padding(18)
+            .padding(PulseonEditorial.blockInsets)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(palette.surfaceGradient)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5)
-            )
-            .shadow(color: palette.shadow, radius: 16, y: 8)
+            .background(BlockRule(palette: palette))
     }
 }
 
@@ -221,6 +240,7 @@ struct BreakdownCard: View {
     let categories: [CategoryTotal]
     let palette: PulseonPalette
 
+
     var body: some View {
         // Les parts se calculent sur la somme des catégories, pas sur le total
         // de la période : deux catégories simultanées comptent chacune leur
@@ -230,10 +250,8 @@ struct BreakdownCard: View {
         let sum = categories.reduce(0) { $0 + $1.total }
 
         Card(palette: palette) {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("Répartition")
-                    .font(PulseonTheme.sectionTitle)
-                    .foregroundStyle(palette.inkSoft)
+            VStack(alignment: .leading, spacing: PulseonEditorial.rowGap) {
+                CardTitle("Répartition", palette: palette)
                     .padding(.bottom, 2)
 
                 ForEach(categories) { category in
@@ -266,12 +284,11 @@ struct DevicesCard: View {
     let summedTotal: TimeInterval
     let palette: PulseonPalette
 
+
     var body: some View {
         Card(palette: palette) {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("Appareils")
-                    .font(PulseonTheme.sectionTitle)
-                    .foregroundStyle(palette.inkSoft)
+            VStack(alignment: .leading, spacing: PulseonEditorial.rowGap) {
+                CardTitle("Appareils", palette: palette)
                     .padding(.bottom, 2)
 
                 ForEach(lanes, id: \.device) { lane in
@@ -309,6 +326,36 @@ struct DevicesCard: View {
 /// couleur — et c'est précisément la couleur qu'on est censé lire d'un coup
 /// d'œil. Ne montre que les appareils qui ont du temps : légender une source
 /// absente ajouterait du bruit sans rien dire.
+/// La légende des couleurs d'appareil, **en colonne**.
+///
+/// Sert la case principale en fenêtre large, où l'anneau laissait ~420 points
+/// de vide de chaque côté. Les mêmes faits, rangés à sa droite : la durée y est
+/// alignée à droite, donc les trois chiffres se comparent d'un coup d'œil, ce
+/// qu'une légende horizontale ne permet pas.
+struct DeviceLegendColumn: View {
+    let lanes: [Lane]
+    let palette: PulseonPalette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PulseonSpace.tight) {
+            ForEach(lanes, id: \.device) { lane in
+                HStack(spacing: PulseonSpace.tight) {
+                    Circle()
+                        .fill(PulseonTheme.gradient(for: lane.device, in: palette))
+                        .frame(width: 9, height: 9)
+                    Text(lane.device.label)
+                        .font(PulseonTheme.row)
+                        .foregroundStyle(palette.inkSoft)
+                    Spacer(minLength: PulseonSpace.base)
+                    Text(DurationFormat.compact(lane.total))
+                        .font(.system(size: 14, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(palette.ink)
+                }
+            }
+        }
+    }
+}
+
 struct DeviceLegend: View {
     let lanes: [Lane]
     let palette: PulseonPalette

@@ -69,6 +69,8 @@ public struct DayDashboardContent: View {
     let load: DayDashboard.Load
     let canGoForward: Bool
     let palette: PulseonPalette
+    /// Sert au fond, dont le halo est plus discret en apparence claire.
+    @Environment(\.colorScheme) private var scheme
     let onPrevious: () -> Void
     let onNext: () -> Void
     let onToday: () -> Void
@@ -119,8 +121,14 @@ public struct DayDashboardContent: View {
             }
         }
         .padding(22)
-        .frame(maxWidth: .infinity)
-        .background(palette.ground)
+        // **La hauteur aussi, et alignée en haut.** Sans `maxHeight`, le fond
+        // ne couvre que le contenu : sur la chronologie, dont la carte est
+        // courte, la fenêtre affichait une bande blanche au-dessus et en
+        // dessous. Invisible sur l'écran du jour, qui remplit sa hauteur —
+        // trouvé en PNG le 2026-08-24, sur le seul écran assez court pour le
+        // révéler.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(PulseonBackground(palette: palette, scheme: scheme))
     }
 
     /// Assez large pour qu'une ligne porte libellé, durée, part et détail sans
@@ -147,11 +155,12 @@ public struct DayDashboardContent: View {
     /// La colonne d'origine : tout à la suite, dans l'ordre de lecture.
     @ViewBuilder
     private func column(_ day: DayPresentation) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: PulseonEditorial.blockGap) {
             RingCard(day: day, palette: palette)
             if let anatomy = day.anatomy {
                 DayAnatomyCard(anatomy: anatomy, day: day, palette: palette)
             }
+            DayPulseCard(pulse: day.pulse, day: day, palette: palette)
             if !day.categories.isEmpty {
                 BreakdownCard(categories: day.categories, palette: palette)
             }
@@ -171,19 +180,35 @@ public struct DayDashboardContent: View {
     /// le cas normal d'une journée vide ou du premier jour d'utilisation.
     @ViewBuilder
     private func grid(_ day: DayPresentation) -> some View {
-        WeightedColumns(weights: [Self.leadingWeight, Self.trailingWeight], spacing: 14) {
-            VStack(alignment: .leading, spacing: 14) {
-                RingCard(day: day, palette: palette, ringDiameter: Self.gridRingDiameter)
+        WeightedColumns(
+            weights: [Self.leadingWeight, Self.trailingWeight], spacing: PulseonEditorial.blockGap
+        ) {
+            VStack(alignment: .leading, spacing: PulseonEditorial.blockGap) {
+                RingCard(
+                    day: day, palette: palette,
+                    ringDiameter: Self.gridRingDiameter, isWide: true
+                )
+                .entrance(rank: 0)
                 if let anatomy = day.anatomy {
                     DayAnatomyCard(anatomy: anatomy, day: day, palette: palette)
+                        .entrance(rank: 2)
                 }
+                // **Ce qui comblait le vide, et pas avec du remplissage.** La
+                // colonne gauche s'arrêtait ~290 points au-dessus de la droite,
+                // sur la fenêtre d'Arthur. Un `Spacer` aurait aligné les bas
+                // sans rien dire de plus ; le battement occupe la place en
+                // répondant à la question du projet — *quand*.
+                DayPulseCard(pulse: day.pulse, day: day, palette: palette)
+                    .entrance(rank: 4)
             }
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: PulseonEditorial.blockGap) {
                 if !day.categories.isEmpty {
                     BreakdownCard(categories: day.categories, palette: palette)
+                        .entrance(rank: 1)
                 }
                 devicesCard(day)
+                    .entrance(rank: 3)
             }
         }
     }
@@ -193,10 +218,14 @@ public struct DayDashboardContent: View {
     static let leadingWeight: CGFloat = 57
     static let trailingWeight: CGFloat = 43
 
-    /// L'anneau grossit en grille : c'est la case principale, et une case
-    /// principale qui porterait le même anneau qu'en colonne étroite ne dirait
-    /// pas qu'elle est principale.
-    static let gridRingDiameter: CGFloat = 248
+    /// L'anneau en grille.
+    ///
+    /// Il valait 248 quand il était seul en tête d'une carte pleine largeur.
+    /// Depuis qu'il partage la case avec les faits de la journée, cette taille
+    /// le faisait toucher le retrait de la carte : à côté d'un texte, un anneau
+    /// n'a pas besoin d'être plus gros qu'en colonne pour rester le premier
+    /// élément lu — c'est sa position qui le dit, pas son diamètre.
+    static let gridRingDiameter: CGFloat = 236
 
     @ViewBuilder
     private func devicesCard(_ day: DayPresentation) -> some View {
@@ -255,12 +284,75 @@ private struct RingCard: View {
     /// Nil pour la taille par défaut de `ActivityRing`. La grille le grossit :
     /// voir `DayDashboardContent.gridRingDiameter`.
     var ringDiameter: CGFloat?
+    /// Vrai en grille, où la carte occupe la colonne large.
+    ///
+    /// **C'est le vide qui a imposé cette bascule.** En fenêtre large, l'anneau
+    /// de 248 points était centré dans une carte de ~1090 : ~420 points de vide
+    /// de chaque côté, et une carte vide aux deux tiers est ce qui se lit le
+    /// plus vite comme « pas fini ». Les faits qui l'accompagnaient — légende,
+    /// simultanéité, comparaison — s'empilaient dessous alors qu'ils tiennent
+    /// à côté.
+    var isWide: Bool = false
+
 
     var body: some View {
         let lanes = day.digest.lanes.filter { $0.total > 0 }
 
         Card(palette: palette) {
-            VStack(spacing: 14) {
+            VStack(spacing: PulseonEditorial.blockGap) {
+                if isWide {
+                    HStack(alignment: .center, spacing: PulseonSpace.page) {
+                        // Centré dans sa part plutôt que collé au bord : posé à
+                        // gauche, l'anneau frôlait le retrait de la carte et on
+                        // le lisait comme rogné.
+                        ring(lanes)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, PulseonSpace.tight)
+
+                        VStack(alignment: .leading, spacing: PulseonSpace.snug) {
+                            if !lanes.isEmpty {
+                                DeviceLegendColumn(lanes: lanes, palette: palette)
+                            }
+                            if let line = simultaneityLine {
+                                Text(line)
+                                    .font(PulseonTheme.caption)
+                                    .foregroundStyle(palette.inkFaint)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            if let comparison = day.comparison {
+                                DayComparisonView(comparison: comparison, palette: palette)
+                            }
+                        }
+                        // **Bornée, et pas étirée.** Laissée libre, la colonne
+                        // poussait les durées jusqu'au bord droit de la carte :
+                        // on lisait « Mac » d'un côté et « 9h42 » de l'autre,
+                        // séparés par 500 points de vide. Une paire libellé /
+                        // valeur ne se lit que si les deux tiennent dans un même
+                        // regard.
+                        .frame(maxWidth: 340, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    narrowStack(lanes)
+                }
+
+                if !day.categories.isEmpty {
+                    Divider()
+                        .overlay(palette.hairline)
+                        .padding(.horizontal, PulseonSpace.tight)
+
+                    DayCategoryRings(categories: day.categories, palette: palette)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// La disposition d'origine, gardée telle quelle pour la colonne étroite :
+    /// à moins de 980 points, il n'y a pas de vide à combler.
+    @ViewBuilder
+    private func narrowStack(_ lanes: [Lane]) -> some View {
+        VStack(spacing: PulseonEditorial.blockGap) {
                 // L'anneau principal : les appareils, et le total de la journée
                 // en son centre.
                 //
@@ -271,19 +363,7 @@ private struct RingCard: View {
                 // chiffre en son centre alors que la somme des catégories n'est
                 // pas comparable au total de la journée. Les catégories sont
                 // désormais une rangée de petits ronds, en dessous.
-                ActivityRing(
-                    segments: lanes.map {
-                        .init(
-                            id: $0.device.rawValue,
-                            value: $0.total,
-                            tones: PulseonTheme.ringTones(for: $0.device, in: palette)
-                        )
-                    },
-                    total: day.isEmpty ? nil : day.digest.coveredTotal,
-                    caption: day.isEmpty ? "rien de branché" : "devant un écran",
-                    palette: palette,
-                    diameter: ringDiameter ?? ActivityRing.defaultDiameter
-                )
+                ring(lanes)
 
                 if !lanes.isEmpty {
                     DeviceLegend(lanes: lanes, palette: palette)
@@ -309,21 +389,27 @@ private struct RingCard: View {
 
                 // La comparaison se lit juste sous le total, parce que c'est
                 // là que la question se pose : « 9 h 39, c'est beaucoup ? ».
-                if let comparison = day.comparison {
-                    DayComparisonView(comparison: comparison, palette: palette)
-                }
-
-                if !day.categories.isEmpty {
-                    Divider()
-                        .overlay(palette.hairline)
-                        .padding(.horizontal, 8)
-
-                    DayCategoryRings(categories: day.categories, palette: palette)
-                }
-
+            if let comparison = day.comparison {
+                DayComparisonView(comparison: comparison, palette: palette)
             }
-            .frame(maxWidth: .infinity)
         }
+    }
+
+    @ViewBuilder
+    private func ring(_ lanes: [Lane]) -> some View {
+        ActivityRing(
+            segments: lanes.map {
+                .init(
+                    id: $0.device.rawValue,
+                    value: $0.total,
+                    tones: PulseonTheme.ringTones(for: $0.device, in: palette)
+                )
+            },
+            total: day.isEmpty ? nil : day.digest.coveredTotal,
+            caption: day.isEmpty ? "rien de branché" : "devant un écran",
+            palette: palette,
+            diameter: ringDiameter ?? ActivityRing.defaultDiameter
+        )
     }
 
     /// « deux écrans à la fois pendant 1h15 », ou rien.
