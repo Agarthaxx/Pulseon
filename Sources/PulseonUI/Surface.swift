@@ -38,8 +38,12 @@ public enum PulseonSpace {
 /// variation de lumière assez faible pour ne jamais se remarquer, et assez
 /// présente pour que la surface ait une épaisseur.
 ///
-/// Trois couches, et chacune répond à un défaut constaté :
+/// Quatre couches, et chacune répond à un défaut constaté :
 ///
+/// - **un dégradé vertical**, du plus clair en haut au plus profond en bas :
+///   c'est lui qui donne au fond un haut et un bas, donc une page. Sans lui, le
+///   clair se lisait « blanc blanc » (Arthur, 2026-08-24) et le sombre était un
+///   aplat que seuls les halos venaient troubler ;
 /// - **un halo haut**, centré là où vit l'anneau : le héros de l'écran se
 ///   détachait sur du noir plat, donc il flottait au lieu d'être posé ;
 /// - **une teinte d'or très diluée en bas**, qui rappelle l'accent du projet
@@ -79,7 +83,9 @@ public struct PulseonBackground: View {
 
     public var body: some View {
         ZStack {
-            palette.ground
+            // Le fond n'est pas une couleur mais une lumière : le dégradé
+            // porte la variation, les halos ne font que la troubler.
+            palette.groundGradient
 
             // Le halo derrière l'anneau. **Il bat**, très lentement et de très
             // peu : c'est le pouls de la marque, rendu au fond de l'écran. Un

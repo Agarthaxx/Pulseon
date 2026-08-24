@@ -82,6 +82,31 @@ public enum PulseonMotion {
     /// Le remplissage des jauges.
     public static let fill = Animation.easeOut(duration: 0.7)
 
+    // MARK: L'écran de lancement
+
+    /// La barre de chargement.
+    ///
+    /// **Elle ne mesure rien, et c'est précisément pour ça qu'elle dure peu.**
+    /// Une barre qui prétend suivre un travail alors qu'elle suit une horloge
+    /// serait un chiffre inventé, ce que ce projet s'interdit partout ailleurs.
+    /// Ici elle n'annonce aucune quantité : elle occupe le temps que la fenêtre
+    /// met à s'ouvrir et la journée à se lire, et rien de plus. `easeInOut`
+    /// plutôt qu'`easeOut` — une barre part et se pose, contrairement au tracé
+    /// de l'anneau, qui est un geste.
+    public static let launchBar = Animation.easeInOut(duration: 0.95)
+
+    /// L'arrivée de la marque : elle grandit d'un rien en apparaissant.
+    public static let launchMark = Animation.spring(response: 0.55, dampingFraction: 0.82)
+
+    /// Le fondu vers le dashboard.
+    public static let launchFade = Animation.easeOut(duration: 0.35)
+
+    /// Combien de temps l'écran de lancement reste avant de s'effacer.
+    ///
+    /// Un peu plus que la barre, pour qu'on la voie finir : une barre coupée
+    /// avant son terme se lit comme un écran qui a sauté.
+    public static let launchHold: TimeInterval = 1.1
+
     /// Le battement du halo de fond.
     ///
     /// **C'est l'identité de Pulseon rendue au fond de l'écran** : la marque

@@ -95,6 +95,16 @@ private struct DashboardWindow: View {
 
     @Environment(\.colorScheme) private var scheme
 
+    /// Vrai tant que l'écran de lancement couvre la fenêtre.
+    ///
+    /// Il se rejoue à **chaque ouverture de fenêtre**, et non une fois par
+    /// démarrage du processus : Pulseon est un agent qui vit des jours sans
+    /// fenêtre, donc « une fois par lancement » voudrait dire « presque
+    /// jamais ». Le lancement, pour qui s'en sert, c'est l'ouverture de la
+    /// fenêtre — et c'est aussi le moment où la journée se lit sur le disque,
+    /// donc le seul où il y a quelque chose à couvrir.
+    @State private var launching = true
+
     /// La journée en cours grandit pendant qu'on la regarde. Une minute suffit
     /// — un bloc d'une minute fait moins d'un point de large sur 24 h, donc
     /// rafraîchir plus vite ne changerait rien à ce qu'on voit. Ici, à la
@@ -105,69 +115,86 @@ private struct DashboardWindow: View {
     var body: some View {
         let palette = PulseonTheme.palette(for: scheme)
 
-        VStack(spacing: 0) {
-            ScreenPicker(selection: $screen, palette: palette)
-                .padding(.top, 12)
+        ZStack {
+            VStack(spacing: 0) {
+                ScreenPicker(selection: $screen, palette: palette)
+                    .padding(.top, 12)
 
-            switch screen {
-            case .day:
-                DayDashboard(
-                    load: browser.load,
-                    canGoForward: browser.canGoForward,
-                    onPrevious: { navigate(.backward, browser.goToPreviousDay) },
-                    onNext: { navigate(.forward, browser.goToNextDay) },
-                    onToday: { navigate(.forward, browser.goToToday) }
-                )
-                // L'identité change avec la journée : c'est ce qui fait que
-                // SwiftUI remplace la vue au lieu de la mettre à jour, donc ce
-                // qui rend une transition possible.
-                .id(browser.dayStart)
-                .transition(direction.transition)
-            case .week:
-                WeekDashboard(
-                    load: periods.load,
-                    canGoForward: periods.canGoForward,
-                    onPrevious: { navigate(.backward, periods.goToPreviousWeek) },
-                    onNext: { navigate(.forward, periods.goToNextWeek) },
-                    onCurrent: { navigate(.forward, periods.goToCurrentWeek) }
-                )
-                .id(periods.weekStart)
-                .transition(direction.transition)
-            case .timeline:
-                // La chronologie regarde **la même journée** que l'écran du
-                // jour, et partage donc son `DayBrowser` : deux navigations
-                // séparées feraient dériver les deux écrans l'un de l'autre,
-                // et basculer d'onglet changerait la date sans le dire.
-                DayTimeline(
-                    load: browser.load,
-                    canGoForward: browser.canGoForward,
-                    onPrevious: { navigate(.backward, browser.goToPreviousDay) },
-                    onNext: { navigate(.forward, browser.goToNextDay) },
-                    onToday: { navigate(.forward, browser.goToToday) }
-                )
-                .id(browser.dayStart)
-                .transition(direction.transition)
+                switch screen {
+                case .day:
+                    DayDashboard(
+                        load: browser.load,
+                        canGoForward: browser.canGoForward,
+                        onPrevious: { navigate(.backward, browser.goToPreviousDay) },
+                        onNext: { navigate(.forward, browser.goToNextDay) },
+                        onToday: { navigate(.forward, browser.goToToday) }
+                    )
+                    // L'identité change avec la journée : c'est ce qui fait que
+                    // SwiftUI remplace la vue au lieu de la mettre à jour, donc ce
+                    // qui rend une transition possible.
+                    .id(browser.dayStart)
+                    .transition(direction.transition)
+                case .week:
+                    WeekDashboard(
+                        load: periods.load,
+                        canGoForward: periods.canGoForward,
+                        onPrevious: { navigate(.backward, periods.goToPreviousWeek) },
+                        onNext: { navigate(.forward, periods.goToNextWeek) },
+                        onCurrent: { navigate(.forward, periods.goToCurrentWeek) }
+                    )
+                    .id(periods.weekStart)
+                    .transition(direction.transition)
+                case .timeline:
+                    // La chronologie regarde **la même journée** que l'écran du
+                    // jour, et partage donc son `DayBrowser` : deux navigations
+                    // séparées feraient dériver les deux écrans l'un de l'autre,
+                    // et basculer d'onglet changerait la date sans le dire.
+                    DayTimeline(
+                        load: browser.load,
+                        canGoForward: browser.canGoForward,
+                        onPrevious: { navigate(.backward, browser.goToPreviousDay) },
+                        onNext: { navigate(.forward, browser.goToNextDay) },
+                        onToday: { navigate(.forward, browser.goToToday) }
+                    )
+                    .id(browser.dayStart)
+                    .transition(direction.transition)
+                }
+            }
+            // Le même ton que le haut du dégradé des écrans : cette bande porte le
+            // sélecteur, au-dessus de leur fond, et un aplat plus clair ou plus
+            // sombre y ferait une couture nette en travers de la fenêtre.
+            .background(palette.groundTop)
+            .background(keyboard)
+            // Les icônes descendent par l'environnement : les lignes qui les
+            // affichent sont imbriquées loin sous le dashboard, et les traverser
+            // toutes avec un argument de plus rendrait chaque vue intermédiaire
+            // dépendante d'une chose qu'elle n'utilise pas.
+            .environment(\.appIcons, browser.appIcons)
+            .onAppear { reloadVisible() }
+            // **Seul l'écran visible est relu.** Relire les deux chaque minute
+            // doublerait les requêtes pour une vue que personne ne regarde ; celle
+            // qu'on découvre est rafraîchie au moment où on l'affiche.
+            .onChange(of: screen) { reloadVisible() }
+            .onReceive(refresh) { _ in reloadVisible() }
+            .onKeyPress(.leftArrow) { goBack(); return .handled }
+            .onKeyPress(.rightArrow) { goForward(); return .handled }
+
+            if launching {
+                // Au-dessus de tout, opaque : il couvre la lecture du disque,
+                // donc l'instant où le dashboard n'a encore rien à montrer.
+                LaunchSplash(palette: palette, scheme: scheme)
+                    .transition(.opacity)
             }
         }
-        .background(palette.ground)
         // **Le mouvement n'est allumé qu'ici.** Partout ailleurs — previews,
         // rendus hors écran — les vues se dessinent complètes. Voir
         // `PulseonMotion`.
         .environment(\.pulseonMotion, true)
-        .background(keyboard)
-        // Les icônes descendent par l'environnement : les lignes qui les
-        // affichent sont imbriquées loin sous le dashboard, et les traverser
-        // toutes avec un argument de plus rendrait chaque vue intermédiaire
-        // dépendante d'une chose qu'elle n'utilise pas.
-        .environment(\.appIcons, browser.appIcons)
-        .onAppear { reloadVisible() }
-        // **Seul l'écran visible est relu.** Relire les deux chaque minute
-        // doublerait les requêtes pour une vue que personne ne regarde ; celle
-        // qu'on découvre est rafraîchie au moment où on l'affiche.
-        .onChange(of: screen) { reloadVisible() }
-        .onReceive(refresh) { _ in reloadVisible() }
-        .onKeyPress(.leftArrow) { goBack(); return .handled }
-        .onKeyPress(.rightArrow) { goForward(); return .handled }
+        .task {
+            try? await Task.sleep(
+                nanoseconds: UInt64(PulseonMotion.launchHold * 1_000_000_000))
+            withAnimation(PulseonMotion.launchFade) { launching = false }
+        }
     }
 
     /// Navigue, en retenant le sens pour la transition.
