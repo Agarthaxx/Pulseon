@@ -754,6 +754,67 @@ Comme partout, le mouvement part **éteint** : hors de la fenêtre de l'app, la
 barre est dessinée pleine et la marque à l'échelle, sans quoi une preview
 sortirait un écran vide qu'on lirait comme un bug de dessin.
 
+#### Un cœur entier pour une décoration qu'on ne voit pas
+
+**Trouvé le 2026-08-24 en auditant le code, pas par un symptôme.** L'app
+installée consommait **46 à 48 % d'un cœur en continu** dès qu'une fenêtre était
+ouverte, personne n'y touchant. Sur un portable, c'est de la batterie et du
+ventilateur pour rien.
+
+Le profil (`sample`) ne montrait **aucune de nos fonctions** : tout le temps
+partait en cycle d'affichage AppKit, donc quelque chose redessinait la fenêtre
+sans arrêt. Le seul candidat permanent était le halo du fond, animé en
+`repeatForever` — le pouls de la marque rendu au fond de l'écran.
+
+**Le banc a répondu, et il a surtout disqualifié les fausses pistes** (mode
+`idle` de `Tools/Preview`, cible `Bench` : la vraie `DayDashboard` dans une
+fenêtre de 1512 × 949, CPU consommé sur 8 s de repos) :
+
+| Ce qu'on mesure | CPU |
+|---|---|
+| Mouvement allumé, comme l'app | **100 % d'un cœur** |
+| Mouvement éteint (témoin) | 2,3 % |
+| Halo isolé dans sa propre vue, rayon figé, `drawingGroup` | 100 % — **aucun effet** |
+| Un point de **8 px** animé, indépendant du dashboard | 100 % |
+| Ce même point **seul dans une fenêtre vide** | **111 %** |
+
+**Ce n'est donc ni ce dégradé, ni la taille de l'écran, ni notre arbre de
+vues** : c'est qu'une animation sans fin tient le cycle d'affichage éveillé pour
+toujours. Les trois optimisations tentées avant de comprendre ça (isoler la vue,
+figer le rayon, rasteriser en `drawingGroup`) n'ont rien changé du tout — c'est
+la leçon de méthode de la séance : **optimiser ce qu'on croit coûteux avant
+d'avoir isolé la cause ne coûte que du temps.**
+
+Le battement est retiré. Il était **invisible par construction** (« un halo
+qu'on remarque est un halo qui distrait ») : on ne perd rien de perceptible, et
+tout le mouvement réel de l'app — le tracé de l'anneau, le compteur qui monte,
+la cascade des blocs, le glissement des journées — se joue **une fois puis se
+tait**. Même jugement que le `lastSeen` en base : aucun risque, mais
+indéfendable.
+
+**Règle qui en sort, tenue dans `PulseonMotion` : aucune animation perpétuelle
+dans Pulseon.** Tout mouvement se joue à l'apparition, puis s'arrête.
+
+**Et une seconde cause, trouvée dans la foulée : l'agent seul, sans la moindre
+fenêtre, consommait 6,4 % d'un cœur en permanence.** La bisection a été
+immédiate — titre de la barre de menu gelé par une sonde temporaire : **0,38 %**.
+Presque tout venait donc de la réécriture du total chaque seconde.
+
+Sauf qu'une sonde minimale (un `MenuBarExtra` nu dont le libellé change à la
+seconde) ne coûte que **1,4 %** : on payait **quatre fois** le prix du compteur.
+La raison est exactement celle du halo — **ce qui change n'était pas isolé**. Le
+libellé était écrit dans le corps de `PulseonApp`, qui lisait donc
+`engine.menuBarTitle` ; à chaque seconde, SwiftUI réévaluait **tout le corps de
+l'app**, dont la scène `Window` du dashboard et ses deux `.modelContainer`, alors
+qu'aucune fenêtre n'était ouverte. `MenuBarLabel`, une vue de trois lignes, suffit
+à ce que le graphe de scènes cesse d'être reconstruit : **6,4 % → 1,60 %**, le
+compteur défilant toujours à la seconde.
+
+**La leçon vaut pour toute la suite : dans SwiftUI, le coût d'une valeur qui
+change se paie sur tout ce que la vue qui la lit contient.** La corriger ne
+consiste pas à changer la valeur moins souvent, mais à la lire depuis la plus
+petite vue possible.
+
 ### Le battement de la journée
 
 Le motif de l'icône, **fait de vraies données**. Pulseon portait un battement

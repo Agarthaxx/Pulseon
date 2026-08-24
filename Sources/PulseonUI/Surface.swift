@@ -69,11 +69,6 @@ public struct PulseonBackground: View {
     /// intensité de halo se lit comme une tache.
     private var isDark: Bool { scheme == .dark }
 
-    /// L'amplitude du battement du halo. **Vaut 1 au repos**, donc une preview
-    /// rend le fond à sa pleine intensité — le repli est « tout est dessiné ».
-    @State private var breath: Double = 1
-    @Environment(\.pulseonMotion) private var motion
-
     /// L'intensité du fond.
     ///
     /// L'éditoriale s'appuie sur le vide, donc son fond est plus discret que
@@ -87,18 +82,35 @@ public struct PulseonBackground: View {
             // porte la variation, les halos ne font que la troubler.
             palette.groundGradient
 
-            // Le halo derrière l'anneau. **Il bat**, très lentement et de très
-            // peu : c'est le pouls de la marque, rendu au fond de l'écran. Un
-            // halo qu'on remarque est un halo qui distrait, et cet écran sert à
-            // lire des chiffres.
+            // Le halo derrière l'anneau : le héros de l'écran se détachait
+            // sur un fond plat, donc il flottait au lieu d'être posé.
+            //
+            // **Il ne bat plus, et c'est une correction mesurée.** Il portait le
+            // pouls de la marque, animé en boucle sans fin — invisible par
+            // construction (« un halo qu'on remarque est un halo qui
+            // distrait »), et il coûtait **la moitié d'un cœur en permanence**
+            // dès qu'une fenêtre était ouverte : 47 % relevés sur l'app
+            // installée le 2026-08-24, contre 2 % une fois l'animation retirée.
+            //
+            // La cause n'est ni ce dégradé ni la taille de l'écran, et les deux
+            // ont été éliminés au banc (`Bench idle`) : isoler le halo dans sa
+            // propre vue, figer son rayon, le passer en `drawingGroup` — aucun
+            // effet. **Un point de 8 px animé seul dans une fenêtre vide coûte
+            // le même cœur entier.** Ce qui coûte, c'est qu'une animation sans
+            // fin tient le cycle d'affichage éveillé pour toujours.
+            //
+            // Même jugement que le `lastSeen` en base : aucun risque, mais
+            // indéfendable pour un agent censé tourner discrètement toute la
+            // journée. Une décoration qu'on ne voit pas ne vaut pas la moitié
+            // d'un cœur.
             RadialGradient(
                 colors: [
-                    palette.navy.opacity((isDark ? 0.20 : 0.07) * breath * depth),
+                    palette.navy.opacity((isDark ? 0.20 : 0.07) * depth),
                     palette.navy.opacity(0),
                 ],
                 center: UnitPoint(x: 0.5, y: 0.06),
                 startRadius: 0,
-                endRadius: 620 * (0.94 + 0.06 * breath)
+                endRadius: 620
             )
 
             // Le rappel d'or, en bas, très dilué.
@@ -125,10 +137,6 @@ public struct PulseonBackground: View {
             )
         }
         .ignoresSafeArea()
-        .onAppear {
-            guard motion else { return }
-            withAnimation(PulseonMotion.breath) { breath = 0.72 }
-        }
     }
 }
 

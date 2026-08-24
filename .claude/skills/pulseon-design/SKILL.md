@@ -40,6 +40,14 @@ un ocre, et l'encre passe de bleutée à **neutre** — une encre froide sur un
 papier chaud, ce sont deux températures qui se contredisent. **Ne pas
 reproposer** de fond froid ni de blanc pur.
 
+**Aucune animation perpétuelle**, jamais — c'est une règle de dessin autant que
+de performance. Le halo du fond battait en `repeatForever` : **46 à 48 % d'un
+cœur en continu** sur l'app installée, dès qu'une fenêtre était ouverte
+(2026-08-24). Le coût ne vient pas de ce qui est animé — un point de 8 px seul
+dans une fenêtre vide coûte le même cœur entier — mais du fait qu'une animation
+sans fin tient le cycle d'affichage éveillé. Tout mouvement de Pulseon se joue
+**une fois, à l'apparition, puis se tait**.
+
 **L'écran de lancement** (`LaunchSplash`) se joue à **l'ouverture de la
 fenêtre**, jamais au démarrage du processus — un agent de barre de menu vit des
 jours sans fenêtre, donc un écran de lancement au démarrage serait dessiné pour
