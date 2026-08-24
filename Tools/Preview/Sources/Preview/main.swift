@@ -678,3 +678,14 @@ for scheme in [ColorScheme.dark, .light] {
         named: "pulseon-jour-\(scheme == .dark ? "sombre" : "clair")"
     )
 }
+
+// MARK: - L'écran de lancement
+
+for scheme in [ColorScheme.dark, .light] {
+    shoot(
+        LaunchSplash(palette: PulseonTheme.palette(for: scheme), scheme: scheme)
+            .environment(\.colorScheme, scheme),
+        size: CGSize(width: 860, height: 560),
+        named: "pulseon-lancement-\(scheme == .dark ? "sombre" : "clair")"
+    )
+}

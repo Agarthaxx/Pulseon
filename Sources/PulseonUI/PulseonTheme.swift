@@ -11,6 +11,19 @@ import SwiftUI
 public struct PulseonPalette: Sendable {
     /// Le fond de la fenêtre.
     public let ground: Color
+    /// Les deux bouts de son dégradé.
+    ///
+    /// **Un fond n'est pas une couleur, c'est une lumière.** Arthur, le
+    /// 2026-08-24 : « je vois plus un truc du style gris cassé avec un dégradé
+    /// sympa plutôt que blanc blanc ». Un aplat clair se lit « page web par
+    /// défaut » ; une variation verticale, même faible, donne au fond une
+    /// direction — donc un haut et un bas, donc une page.
+    ///
+    /// Ils sont **écrits en clair et non dérivés du fond par opacité** : la
+    /// même leçon que les teintes de catégorie, où éclaircir par transparence
+    /// donnait un olive sali.
+    public let groundTop: Color
+    public let groundDeep: Color
     /// Une carte posée dessus.
     public let surface: Color
     /// Un creux : fond de jauge, piste vide de l'anneau.
@@ -51,6 +64,19 @@ public struct PulseonPalette: Sendable {
         )
     }
 
+    /// Le fond, du haut vers le bas.
+    ///
+    /// Vertical et non diagonal : un fond en diagonale a un sens de lecture,
+    /// donc il désigne un coin — et rien ici n'a à être désigné. La verticale
+    /// est la seule direction qu'une page a déjà.
+    public var groundGradient: LinearGradient {
+        LinearGradient(
+            colors: [groundTop, ground, groundDeep],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
     public var navyGradient: LinearGradient {
         LinearGradient(
             colors: [navyLight, navy, navyDeep],
@@ -82,6 +108,8 @@ public enum PulseonTheme {
     /// presque noir, jamais un gris neutre.
     public static let dark = PulseonPalette(
         ground: Color(red: 0.035, green: 0.045, blue: 0.075),
+        groundTop: Color(red: 0.055, green: 0.068, blue: 0.106),
+        groundDeep: Color(red: 0.020, green: 0.027, blue: 0.049),
         surface: Color(red: 0.075, green: 0.090, blue: 0.133),
         sunken: Color(red: 0.129, green: 0.153, blue: 0.204),
         hairline: Color(red: 0.180, green: 0.208, blue: 0.271),
@@ -98,22 +126,45 @@ public enum PulseonTheme {
         surfaceTop: Color(red: 0.098, green: 0.118, blue: 0.169)
     )
 
+    /// Le clair : **du papier, pas du blanc**.
+    ///
+    /// Arthur, le 2026-08-24 : « je vois plus un truc du style gris cassé avec
+    /// un dégradé sympa plutôt que blanc blanc ». Le fond valait #F1F2F5, un
+    /// gris très clair et **froid** : à côté d'une fenêtre du système il passait
+    /// pour du blanc, et l'éditoriale — qui se revendique *page* et non tableau
+    /// de bord — s'appuyait sur un fond de navigateur par défaut.
+    ///
+    /// **Choisi sur planche**, trois gris cassés rendus côte à côte sur sa
+    /// fenêtre : l'ivoire chaud (retenu), un greige neutre et une ardoise
+    /// froide. Les deux autres ont été supprimés le jour du choix — une option
+    /// qui survit à la décision qu'elle servait devient une dette, même leçon
+    /// que `PulseonSkin` et `RingScale`.
+    ///
+    /// L'ivoire est aussi le seul des trois qui **s'accorde à l'or**, lequel est
+    /// déjà un ocre : sur un fond froid, un titre à l'or tire vers le jaune
+    /// sale. Un fond chaud ne lui demande pas de se défendre.
+    ///
+    /// L'encre est **neutre et non bleutée**, contrairement à avant : une encre
+    /// froide sur un papier chaud se voit — c'est deux températures qui se
+    /// contredisent sur le même écran.
     public static let light = PulseonPalette(
-        ground: Color(red: 0.945, green: 0.949, blue: 0.961),
-        surface: .white,
-        sunken: Color(red: 0.898, green: 0.910, blue: 0.933),
-        hairline: Color(red: 0.859, green: 0.875, blue: 0.902),
-        ink: Color(red: 0.043, green: 0.063, blue: 0.114),
-        inkSoft: Color(red: 0.341, green: 0.384, blue: 0.451),
-        inkFaint: Color(red: 0.529, green: 0.569, blue: 0.635),
-        gold: Color(red: 0.694, green: 0.541, blue: 0.176),
+        ground: Color(red: 0.953, green: 0.933, blue: 0.894),
+        groundTop: Color(red: 0.980, green: 0.969, blue: 0.945),
+        groundDeep: Color(red: 0.906, green: 0.875, blue: 0.816),
+        surface: Color(red: 0.996, green: 0.992, blue: 0.984),
+        sunken: Color(red: 0.898, green: 0.878, blue: 0.839),
+        hairline: Color(red: 0.847, green: 0.820, blue: 0.769),
+        ink: Color(red: 0.075, green: 0.078, blue: 0.086),
+        inkSoft: Color(red: 0.361, green: 0.345, blue: 0.310),
+        inkFaint: Color(red: 0.549, green: 0.525, blue: 0.482),
+        gold: Color(red: 0.647, green: 0.494, blue: 0.141),
         navy: Color(red: 0.106, green: 0.204, blue: 0.435),
         goldLight: Color(red: 0.859, green: 0.729, blue: 0.365),
-        goldDeep: Color(red: 0.522, green: 0.384, blue: 0.098),
+        goldDeep: Color(red: 0.478, green: 0.345, blue: 0.078),
         navyLight: Color(red: 0.216, green: 0.353, blue: 0.620),
         navyDeep: Color(red: 0.059, green: 0.129, blue: 0.302),
-        shadow: Color(red: 0.055, green: 0.078, blue: 0.129).opacity(0.13),
-        surfaceTop: .white
+        shadow: Color(red: 0.055, green: 0.055, blue: 0.063).opacity(0.13),
+        surfaceTop: Color(red: 0.996, green: 0.992, blue: 0.984)
     )
 
     // MARK: Les appareils
