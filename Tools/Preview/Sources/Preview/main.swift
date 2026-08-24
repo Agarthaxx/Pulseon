@@ -656,3 +656,45 @@ MainActor.assumeIsolated {
         size: CGSize(width: 560, height: 340), named: "pulseon-timeline-narrow"
     )
 }
+
+// MARK: - Les trois peaux, sur la même journée
+
+/// Arthur, le 2026-08-24 : « qu'en est-il du design de l'app ? le front n'a pas
+/// bougé ? ». Il avait raison — les marges et la disposition avaient changé, le
+/// langage visuel non. Trois directions rendues sur **la même journée**, pour
+/// qu'il tranche sur des images et non sur des adjectifs.
+/// La même journée que l'écran du jour, reconstruite au niveau global : le
+/// `today` de plus haut vit dans la portée d'un bloc.
+let skinDay = DayPresentation(
+    digest: digest, dayStart: dayStart, dayLength: day,
+    now: dayStart.addingTimeInterval(23.4 * 3600),
+    categories: categories,
+    comparison: DayComparison(
+        subject: macTotal, average: macTotal - 4_800, referenceDays: 7, isPartial: true
+    ),
+    anatomy: DayAnatomyBuilder().build(from: digest)
+)
+
+@MainActor
+func skinned(_ skin: PulseonSkin, scheme: ColorScheme) -> some View {
+    dashboard(.loaded(skinDay), canGoForward: false, scheme: scheme)
+        .environment(\.pulseonSkin, skin)
+}
+
+for skin in PulseonSkin.allCases {
+    shoot(
+        skinned(skin, scheme: .dark),
+        size: CGSize(width: 1512, height: 949), named: "pulseon-skin-\(skin.rawValue)"
+    )
+}
+
+// L'éditorial et le verre en clair : c'est là qu'une direction se casse la
+// figure, un translucide sur fond lumineux virant au gris sale.
+shoot(
+    skinned(.glass, scheme: .light),
+    size: CGSize(width: 1512, height: 949), named: "pulseon-skin-glass-light"
+)
+shoot(
+    skinned(.editorial, scheme: .light),
+    size: CGSize(width: 1512, height: 949), named: "pulseon-skin-editorial-light"
+)

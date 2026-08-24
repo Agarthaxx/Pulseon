@@ -69,6 +69,13 @@ public struct PulseonBackground: View {
     /// rend le fond à sa pleine intensité — le repli est « tout est dessiné ».
     @State private var breath: Double = 1
     @Environment(\.pulseonMotion) private var motion
+    @Environment(\.pulseonSkin) private var skin
+
+    /// Le verre n'existe que s'il y a quelque chose derrière lui. Un fond plat
+    /// sous une surface translucide donne un gris sale, pas du verre — c'est le
+    /// même piège que l'accent unique décliné en opacités, qui donnait un olive
+    /// sali au lieu d'une nuance.
+    private var depth: Double { skin == .glass ? 1.9 : 1 }
 
     public var body: some View {
         ZStack {
@@ -80,7 +87,7 @@ public struct PulseonBackground: View {
             // lire des chiffres.
             RadialGradient(
                 colors: [
-                    palette.navy.opacity((isDark ? 0.20 : 0.07) * breath),
+                    palette.navy.opacity((isDark ? 0.20 : 0.07) * breath * depth),
                     palette.navy.opacity(0),
                 ],
                 center: UnitPoint(x: 0.5, y: 0.06),
@@ -91,7 +98,7 @@ public struct PulseonBackground: View {
             // Le rappel d'or, en bas, très dilué.
             RadialGradient(
                 colors: [
-                    palette.gold.opacity(isDark ? 0.07 : 0.05),
+                    palette.gold.opacity((isDark ? 0.07 : 0.05) * depth),
                     palette.gold.opacity(0),
                 ],
                 center: UnitPoint(x: 0.88, y: 1.0),
@@ -129,6 +136,8 @@ struct CardTitle: View {
     let text: String
     let palette: PulseonPalette
 
+    @Environment(\.pulseonSkin) private var skin
+
     init(_ text: String, palette: PulseonPalette) {
         self.text = text
         self.palette = palette
@@ -136,7 +145,9 @@ struct CardTitle: View {
 
     var body: some View {
         Text(text)
-            .font(PulseonTheme.cardTitle)
-            .foregroundStyle(palette.ink)
+            .font(skin.blockTitle)
+            // En éditorial, le titre porte l'or : sans cadre autour du bloc,
+            // c'est lui seul qui dit « nouvelle rubrique ».
+            .foregroundStyle(skin.titleIsAccented ? palette.gold : palette.ink)
     }
 }

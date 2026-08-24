@@ -36,9 +36,7 @@ struct DayAnatomyCard: View {
     var body: some View {
         Card(palette: palette) {
             VStack(alignment: .leading, spacing: 15) {
-                Text("Déroulé")
-                    .font(PulseonTheme.sectionTitle)
-                    .foregroundStyle(palette.inkSoft)
+                CardTitle("Déroulé", palette: palette)
 
                 // Une seule rangée tant qu'elle tient, deux ensuite — même
                 // stratégie que la rangée de ronds, qui rétrécit plutôt que de

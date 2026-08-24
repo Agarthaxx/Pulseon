@@ -170,19 +170,14 @@ struct Card<Content: View>: View {
     let palette: PulseonPalette
     @ViewBuilder let content: Content
 
+    @Environment(\.pulseonSkin) private var skin
+    @Environment(\.colorScheme) private var scheme
+
     var body: some View {
         content
-            .padding(PulseonSpace.card)
+            .padding(skin.inset)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: PulseonSpace.radius, style: .continuous)
-                    .fill(palette.surfaceGradient)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: PulseonSpace.radius, style: .continuous)
-                    .strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5)
-            )
-            .shadow(color: palette.shadow, radius: 16, y: 8)
+            .background(SkinSurface(skin: skin, palette: palette, scheme: scheme))
     }
 }
 
@@ -252,9 +247,7 @@ struct BreakdownCard: View {
 
         Card(palette: palette) {
             VStack(alignment: .leading, spacing: 15) {
-                Text("Répartition")
-                    .font(PulseonTheme.sectionTitle)
-                    .foregroundStyle(palette.inkSoft)
+                CardTitle("Répartition", palette: palette)
                     .padding(.bottom, 2)
 
                 ForEach(categories) { category in
@@ -290,9 +283,7 @@ struct DevicesCard: View {
     var body: some View {
         Card(palette: palette) {
             VStack(alignment: .leading, spacing: 15) {
-                Text("Appareils")
-                    .font(PulseonTheme.sectionTitle)
-                    .foregroundStyle(palette.inkSoft)
+                CardTitle("Appareils", palette: palette)
                     .padding(.bottom, 2)
 
                 ForEach(lanes, id: \.device) { lane in

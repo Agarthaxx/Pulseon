@@ -62,6 +62,7 @@ public struct ActivityRing: View {
     /// `PulseonMotion`.
     @State private var drawn: Double = 1
     @Environment(\.pulseonMotion) private var motion
+    @Environment(\.pulseonSkin) private var skin
 
     private var thickness: CGFloat { diameter * 0.125 }
 
@@ -102,7 +103,7 @@ public struct ActivityRing: View {
     /// Assez grand pour rester le premier élément lu, assez petit pour ne pas
     /// toucher l'anneau qui l'entoure — d'où un calcul sur la place libre et
     /// non sur le diamètre total.
-    private var readoutSize: CGFloat { coreDiameter * 0.30 }
+    private var readoutSize: CGFloat { coreDiameter * skin.readoutScale }
 
     @ViewBuilder
     private var center: some View {
@@ -169,11 +170,20 @@ public struct DurationReadout: View {
         Text(padded ? String(format: "%02d", value) : String(value))
             .font(PulseonTheme.readout(size))
             .foregroundStyle(palette.ink)
+            // **Rétrécir plutôt que passer à la ligne.** Le cœur de l'anneau
+            // est borné ; sans ça, « 11h41 » se coupait en « 1h41 » et « 1 »
+            // dès que la taille du chiffre montait. Trouvé en PNG le
+            // 2026-08-24, en essayant une peau au chiffre plus grand — et le
+            // défaut guettait déjà la peau actuelle sur un total à deux
+            // chiffres d'heures dans une fenêtre étroite.
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
     }
 
     private func unit(_ symbol: String) -> some View {
         Text(symbol)
             .font(PulseonTheme.unit(size * 0.42))
+            .lineLimit(1)
             .baselineOffset(size * 0.06)
             .foregroundStyle(palette.inkSoft)
             .padding(.trailing, 2)
