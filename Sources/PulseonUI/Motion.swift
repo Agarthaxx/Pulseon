@@ -107,14 +107,14 @@ public enum PulseonMotion {
     /// avant son terme se lit comme un écran qui a sauté.
     public static let launchHold: TimeInterval = 1.1
 
-    /// Le battement du halo de fond.
-    ///
-    /// **C'est l'identité de Pulseon rendue au fond de l'écran** : la marque
-    /// porte un pouls, le symbole de la barre de menu aussi, et rien n'en
-    /// bougeait. Très lent et de très faible amplitude — un halo qui se
-    /// remarque est un halo qui distrait, et cet écran sert à lire des
-    /// chiffres.
-    public static let breath = Animation.easeInOut(duration: 4.5).repeatForever(autoreverses: true)
+    // **Aucune animation perpétuelle ici, et c'est une règle, pas un oubli.**
+    // Le halo du fond battait en boucle (`repeatForever`) : ça coûtait la
+    // moitié d'un cœur en permanence dès qu'une fenêtre était ouverte — 47 %
+    // relevés sur l'app installée le 2026-08-24, 2 % une fois retiré. Le coût
+    // ne vient pas de ce qui est animé (un point de 8 px seul dans une fenêtre
+    // vide coûte autant) mais du fait qu'une animation sans fin tient le cycle
+    // d'affichage éveillé pour toujours. **Tout mouvement de Pulseon se joue
+    // une fois, à l'apparition, puis se tait.**
 }
 
 /// Un nombre qui monte jusqu'à sa valeur.

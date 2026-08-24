@@ -24,6 +24,18 @@ let mode = CommandLine.arguments.dropFirst().first ?? "immediate"
 let iterations = Int(CommandLine.arguments.dropFirst(2).first ?? "6") ?? 6
 let deferDelay = 0.25  // la même valeur que DockPresence.closeGrace
 
+struct ProbeDot: View {
+    @State private var on = false
+    var body: some View {
+        Circle().fill(.red).frame(width: 8, height: 8).opacity(on ? 0.2 : 1)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 4.5).repeatForever(autoreverses: true)) {
+                    on = true
+                }
+            }
+    }
+}
+
 // MARK: - Une journée de démonstration, la même que la preview
 
 let day: TimeInterval = 86_400
@@ -143,6 +155,95 @@ MainActor.assumeIsolated {
     var closeAt: [Double] = []
     var miniAt: [Double] = []
     var restoreGaps: [Double] = []
+
+    // MARK: Mode « repos » — ce que coûte une fenêtre simplement ouverte
+    //
+    // Ajouté le 2026-08-24 : l'app installée consommait ~47 % de CPU en
+    // continu, fenêtre ouverte, sans que personne ne touche à rien. Le profil
+    // ne montrait que du cycle d'affichage AppKit, donc quelque chose
+    // redessinait sans arrêt. Ce mode isole la seule chose qui tourne pour
+    // toujours : le halo qui bat (`PulseonMotion.breath`).
+    //
+    //   swift run Bench idle 8 motion   → mouvement allumé, comme l'app
+    //   swift run Bench idle 8 still    → mouvement éteint, le témoin
+    if mode == "idle" {
+        let seconds = Double(iterations)
+        let motion = (CommandLine.arguments.dropFirst(3).first ?? "motion") == "motion"
+
+        policy(.regular)
+        let window = NSWindow(
+            contentRect: NSRect(x: 120, y: 120, width: 1512, height: 949),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered, defer: false)
+        window.title = "Pulseon"
+
+        // Le point qui bat, SEUL dans la fenêtre : si l'animation coûte un cœur
+        // même sans dashboard, ce n'est pas la taille de l'arbre qui multiplie.
+        if ProcessInfo.processInfo.environment["PULSEON_ALONE"] != nil {
+            window.contentView = NSHostingView(
+                rootView: ZStack { Color.white; ProbeDot() }
+                    .frame(minWidth: 720, minHeight: 560))
+            window.makeKeyAndOrderFront(nil)
+            app.activate(ignoringOtherApps: true)
+            pump(3.0)
+            var u0 = rusage(); getrusage(RUSAGE_SELF, &u0)
+            let c0 = Double(u0.ru_utime.tv_sec) + Double(u0.ru_utime.tv_usec) / 1e6
+                + Double(u0.ru_stime.tv_sec) + Double(u0.ru_stime.tv_usec) / 1e6
+            pump(Double(iterations))
+            var u1 = rusage(); getrusage(RUSAGE_SELF, &u1)
+            let c1 = Double(u1.ru_utime.tv_sec) + Double(u1.ru_utime.tv_usec) / 1e6
+                + Double(u1.ru_stime.tv_sec) + Double(u1.ru_stime.tv_usec) / 1e6
+            print("POINT SEUL : \(String(format: "%.1f", (c1 - c0) / Double(iterations) * 100)) %% d'un cœur")
+            exit(0)
+        }
+
+        window.contentView = NSHostingView(
+            rootView: DayDashboard(
+                load: .loaded(presentation), canGoForward: false,
+                onPrevious: {}, onNext: {}, onToday: {}
+            )
+            .frame(minWidth: 720, minHeight: 560)
+            .environment(\.pulseonMotion, motion)
+            .overlay(alignment: .topTrailing) {
+                // Sonde : une animation perpétuelle *indépendante* du
+                // dashboard. Si elle coûte autant que le halo, ce n'est pas le
+                // halo qui est en cause — c'est le fait d'animer quoi que ce
+                // soit dans cette fenêtre.
+                if ProcessInfo.processInfo.environment["PULSEON_PROBE"] != nil {
+                    ProbeDot()
+                }
+            }
+        )
+        window.makeKeyAndOrderFront(nil)
+        app.activate(ignoringOtherApps: true)
+
+        // Les animations d'entrée doivent être finies : on mesure le repos,
+        // pas l'ouverture.
+        pump(3.0)
+
+        func cpuSeconds() -> Double {
+            var usage = rusage()
+            getrusage(RUSAGE_SELF, &usage)
+            return Double(usage.ru_utime.tv_sec) + Double(usage.ru_utime.tv_usec) / 1e6
+                + Double(usage.ru_stime.tv_sec) + Double(usage.ru_stime.tv_usec) / 1e6
+        }
+
+        let cpu0 = cpuSeconds()
+        let wall0 = CFAbsoluteTimeGetCurrent()
+        pump(seconds)
+        let used = cpuSeconds() - cpu0
+        let elapsed = CFAbsoluteTimeGetCurrent() - wall0
+
+        print(
+            """
+
+            MODE idle — fenêtre 1512 × 949 ouverte, personne n'y touche
+            mouvement : \(motion ? "allumé (comme l'app)" : "éteint (témoin)")
+            \(String(format: "%.1f", elapsed)) s de mur → \(String(format: "%.2f", used)) s de CPU
+            = \(String(format: "%.1f", used / elapsed * 100)) %% d'un cœur
+            """)
+        exit(0)
+    }
 
     if mode == "sticky" { policy(.regular); pump(0.5) }
 
