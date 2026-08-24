@@ -283,12 +283,22 @@ public enum PulseonTheme {
 
     public static let sectionTitle = Font.system(size: 12, weight: .semibold)
 
-    /// La tête d'une carte.
+    /// La tête d'un bloc.
     ///
-    /// Deux crans au-dessus du texte courant, et non un demi : une hiérarchie
-    /// qui hésite ne se lit pas comme une hiérarchie. C'est ce qui manquait aux
-    /// cartes, dont le titre pesait le même poids que leurs lignes.
-    public static let cardTitle = Font.system(size: 15, weight: .semibold)
+    /// **Franche, parce qu'elle remplace un cadre.** La direction éditoriale
+    /// n'entoure pas ses rubriques : c'est ce titre seul, gros et à l'or, qui
+    /// dit « nouvelle rubrique ». Une hiérarchie qui hésite ne se lit pas comme
+    /// une hiérarchie.
+    public static let blockTitle = Font.system(size: 21, weight: .bold)
+
+    /// Le libellé d'une ligne de liste.
+    ///
+    /// **Le second levier le plus visible après le grand nombre.** Des lignes à
+    /// 13 points se lisent « tableau de bord » ; à 16 elles se lisent « page ».
+    public static let rowLabel = Font.system(size: 16, weight: .semibold)
+
+    /// La durée d'une ligne de liste.
+    public static let rowValue = Font.system(size: 18, weight: .bold).monospacedDigit()
     public static let row = Font.system(size: 13, weight: .medium)
     public static let caption = Font.system(size: 11)
 }

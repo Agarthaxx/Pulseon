@@ -115,7 +115,13 @@ public struct WeekDashboardContent: View {
             }
         }
         .padding(22)
-        .frame(maxWidth: .infinity)
+        // **La hauteur aussi, et alignée en haut.** Sans `maxHeight`, le fond
+        // ne couvre que le contenu : sur la chronologie, dont la carte est
+        // courte, la fenêtre affichait une bande blanche au-dessus et en
+        // dessous. Invisible sur l'écran du jour, qui remplit sa hauteur —
+        // trouvé en PNG le 2026-08-24, sur le seul écran assez court pour le
+        // révéler.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseonBackground(palette: palette, scheme: scheme))
     }
 

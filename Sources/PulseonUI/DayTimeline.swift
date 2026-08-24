@@ -107,7 +107,13 @@ public struct DayTimelineContent: View {
         // jauges deviendraient illisibles étirées sur 1500 points. Une
         // chronologie, elle, n'a pas de jauge : elle a des heures.
         .frame(maxWidth: Self.maximumWidth)
-        .frame(maxWidth: .infinity)
+        // **La hauteur aussi, et alignée en haut.** Sans `maxHeight`, le fond
+        // ne couvre que le contenu : sur la chronologie, dont la carte est
+        // courte, la fenêtre affichait une bande blanche au-dessus et en
+        // dessous. Invisible sur l'écran du jour, qui remplit sa hauteur —
+        // trouvé en PNG le 2026-08-24, sur le seul écran assez court pour le
+        // révéler.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseonBackground(palette: palette, scheme: scheme))
     }
 
@@ -177,9 +183,7 @@ private struct RailCard: View {
     var body: some View {
         Card(palette: palette) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Quand")
-                    .font(PulseonTheme.sectionTitle)
-                    .foregroundStyle(palette.inkSoft)
+                CardTitle("Quand", palette: palette)
 
                 if segments.isEmpty, unplaced.isEmpty {
                     EmptyDay(day: day, palette: palette)

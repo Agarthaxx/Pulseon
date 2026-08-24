@@ -62,7 +62,6 @@ public struct ActivityRing: View {
     /// `PulseonMotion`.
     @State private var drawn: Double = 1
     @Environment(\.pulseonMotion) private var motion
-    @Environment(\.pulseonSkin) private var skin
 
     private var thickness: CGFloat { diameter * 0.125 }
 
@@ -103,7 +102,7 @@ public struct ActivityRing: View {
     /// Assez grand pour rester le premier élément lu, assez petit pour ne pas
     /// toucher l'anneau qui l'entoure — d'où un calcul sur la place libre et
     /// non sur le diamètre total.
-    private var readoutSize: CGFloat { coreDiameter * skin.readoutScale }
+    private var readoutSize: CGFloat { coreDiameter * PulseonEditorial.readoutScale }
 
     @ViewBuilder
     private var center: some View {

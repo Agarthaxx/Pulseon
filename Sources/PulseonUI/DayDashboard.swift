@@ -29,7 +29,6 @@ public struct DayDashboard: View {
     private let onToday: () -> Void
 
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.pulseonSkin) private var skin
 
     public init(
         load: Load,
@@ -72,7 +71,6 @@ public struct DayDashboardContent: View {
     let palette: PulseonPalette
     /// Sert au fond, dont le halo est plus discret en apparence claire.
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.pulseonSkin) private var skin
     let onPrevious: () -> Void
     let onNext: () -> Void
     let onToday: () -> Void
@@ -123,7 +121,13 @@ public struct DayDashboardContent: View {
             }
         }
         .padding(22)
-        .frame(maxWidth: .infinity)
+        // **La hauteur aussi, et alignée en haut.** Sans `maxHeight`, le fond
+        // ne couvre que le contenu : sur la chronologie, dont la carte est
+        // courte, la fenêtre affichait une bande blanche au-dessus et en
+        // dessous. Invisible sur l'écran du jour, qui remplit sa hauteur —
+        // trouvé en PNG le 2026-08-24, sur le seul écran assez court pour le
+        // révéler.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseonBackground(palette: palette, scheme: scheme))
     }
 
@@ -151,7 +155,7 @@ public struct DayDashboardContent: View {
     /// La colonne d'origine : tout à la suite, dans l'ordre de lecture.
     @ViewBuilder
     private func column(_ day: DayPresentation) -> some View {
-        VStack(alignment: .leading, spacing: skin.gap) {
+        VStack(alignment: .leading, spacing: PulseonEditorial.blockGap) {
             RingCard(day: day, palette: palette)
             if let anatomy = day.anatomy {
                 DayAnatomyCard(anatomy: anatomy, day: day, palette: palette)
@@ -177,9 +181,9 @@ public struct DayDashboardContent: View {
     @ViewBuilder
     private func grid(_ day: DayPresentation) -> some View {
         WeightedColumns(
-            weights: [Self.leadingWeight, Self.trailingWeight], spacing: skin.gap
+            weights: [Self.leadingWeight, Self.trailingWeight], spacing: PulseonEditorial.blockGap
         ) {
-            VStack(alignment: .leading, spacing: skin.gap) {
+            VStack(alignment: .leading, spacing: PulseonEditorial.blockGap) {
                 RingCard(
                     day: day, palette: palette,
                     ringDiameter: Self.gridRingDiameter, isWide: true
@@ -198,7 +202,7 @@ public struct DayDashboardContent: View {
                     .entrance(rank: 4)
             }
 
-            VStack(alignment: .leading, spacing: skin.gap) {
+            VStack(alignment: .leading, spacing: PulseonEditorial.blockGap) {
                 if !day.categories.isEmpty {
                     BreakdownCard(categories: day.categories, palette: palette)
                         .entrance(rank: 1)
@@ -290,13 +294,12 @@ private struct RingCard: View {
     /// à côté.
     var isWide: Bool = false
 
-    @Environment(\.pulseonSkin) private var skin
 
     var body: some View {
         let lanes = day.digest.lanes.filter { $0.total > 0 }
 
         Card(palette: palette) {
-            VStack(spacing: skin.gap) {
+            VStack(spacing: PulseonEditorial.blockGap) {
                 if isWide {
                     HStack(alignment: .center, spacing: PulseonSpace.page) {
                         // Centré dans sa part plutôt que collé au bord : posé à
@@ -349,7 +352,7 @@ private struct RingCard: View {
     /// à moins de 980 points, il n'y a pas de vide à combler.
     @ViewBuilder
     private func narrowStack(_ lanes: [Lane]) -> some View {
-        VStack(spacing: skin.gap) {
+        VStack(spacing: PulseonEditorial.blockGap) {
                 // L'anneau principal : les appareils, et le total de la journée
                 // en son centre.
                 //

@@ -25,7 +25,6 @@ struct MeterRow: View {
     let share: Double
     let palette: PulseonPalette
 
-    @Environment(\.pulseonSkin) private var skin
 
     /// Trois minutes dans une journée font 0,4 % : tronqué à l'entier, ça
     /// s'affichait « 0 % » juste à côté d'une durée non nulle. Zéro est une
@@ -43,11 +42,11 @@ struct MeterRow: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(label)
-                        .font(skin.rowLabel)
+                        .font(PulseonTheme.rowLabel)
                         .foregroundStyle(palette.ink)
                     Spacer(minLength: 6)
                     Text(DurationFormat.compact(total))
-                        .font(skin.rowValue)
+                        .font(PulseonTheme.rowValue)
                         .foregroundStyle(palette.ink)
                     Text(Self.percentage(share))
                         .font(PulseonTheme.caption.monospacedDigit())
@@ -77,7 +76,6 @@ struct Meter: View {
     let fill: LinearGradient
     let palette: PulseonPalette
 
-    @Environment(\.pulseonSkin) private var skin
 
     /// La part effectivement dessinée. **Part à sa valeur finale**, donc une
     /// preview rend la jauge pleine : le repli est « tout est dessiné ». Voir
@@ -101,7 +99,7 @@ struct Meter: View {
                     )
             }
         }
-        .frame(height: skin.meterHeight)
+        .frame(height: PulseonEditorial.meterHeight)
         .onAppear {
             guard motion else { return }
             drawn = 0
@@ -120,10 +118,9 @@ struct Chip: View {
     let tint: Color
     let palette: PulseonPalette
 
-    @Environment(\.pulseonSkin) private var skin
 
     var body: some View {
-        let side = skin.chipSide
+        let side = PulseonEditorial.chipSide
         RoundedRectangle(cornerRadius: side * 0.29, style: .continuous)
             .fill(tint.opacity(0.18))
             .frame(width: side, height: side)
@@ -177,14 +174,13 @@ struct Card<Content: View>: View {
     let palette: PulseonPalette
     @ViewBuilder let content: Content
 
-    @Environment(\.pulseonSkin) private var skin
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         content
-            .padding(skin.insets)
+            .padding(PulseonEditorial.blockInsets)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(SkinSurface(skin: skin, palette: palette, scheme: scheme))
+            .background(BlockRule(palette: palette))
     }
 }
 
@@ -244,7 +240,6 @@ struct BreakdownCard: View {
     let categories: [CategoryTotal]
     let palette: PulseonPalette
 
-    @Environment(\.pulseonSkin) private var skin
 
     var body: some View {
         // Les parts se calculent sur la somme des catégories, pas sur le total
@@ -255,7 +250,7 @@ struct BreakdownCard: View {
         let sum = categories.reduce(0) { $0 + $1.total }
 
         Card(palette: palette) {
-            VStack(alignment: .leading, spacing: skin.rowGap) {
+            VStack(alignment: .leading, spacing: PulseonEditorial.rowGap) {
                 CardTitle("Répartition", palette: palette)
                     .padding(.bottom, 2)
 
@@ -289,11 +284,10 @@ struct DevicesCard: View {
     let summedTotal: TimeInterval
     let palette: PulseonPalette
 
-    @Environment(\.pulseonSkin) private var skin
 
     var body: some View {
         Card(palette: palette) {
-            VStack(alignment: .leading, spacing: skin.rowGap) {
+            VStack(alignment: .leading, spacing: PulseonEditorial.rowGap) {
                 CardTitle("Appareils", palette: palette)
                     .padding(.bottom, 2)
 

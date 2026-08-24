@@ -69,13 +69,13 @@ public struct PulseonBackground: View {
     /// rend le fond à sa pleine intensité — le repli est « tout est dessiné ».
     @State private var breath: Double = 1
     @Environment(\.pulseonMotion) private var motion
-    @Environment(\.pulseonSkin) private var skin
 
-    /// Le verre n'existe que s'il y a quelque chose derrière lui. Un fond plat
-    /// sous une surface translucide donne un gris sale, pas du verre — c'est le
-    /// même piège que l'accent unique décliné en opacités, qui donnait un olive
-    /// sali au lieu d'une nuance.
-    private var depth: Double { skin.backgroundDepth }
+    /// L'intensité du fond.
+    ///
+    /// L'éditoriale s'appuie sur le vide, donc son fond est plus discret que
+    /// celui des directions à cartes : sans cadre pour retenir le regard, un
+    /// halo trop présent devient l'élément le plus visible de la page.
+    private let depth: Double = 0.75
 
     public var body: some View {
         ZStack {
@@ -106,30 +106,6 @@ public struct PulseonBackground: View {
                 endRadius: 560
             )
 
-            // Le verre a besoin de matière à réfracter : deux champs de
-            // couleur larges et très diffus, l'un froid, l'autre chaud. Sans
-            // eux, une surface translucide sur un fond presque uni ne donne
-            // qu'un gris sale.
-            if skin.hasColorFields {
-                RadialGradient(
-                    colors: [
-                        PulseonTheme.markViolet.opacity(isDark ? 0.30 : 0.13),
-                        PulseonTheme.markViolet.opacity(0),
-                    ],
-                    center: UnitPoint(x: 0.13, y: 0.72),
-                    startRadius: 0,
-                    endRadius: 700
-                )
-                RadialGradient(
-                    colors: [
-                        PulseonTheme.markBlue.opacity(isDark ? 0.22 : 0.10),
-                        PulseonTheme.markBlue.opacity(0),
-                    ],
-                    center: UnitPoint(x: 0.92, y: 0.22),
-                    startRadius: 0,
-                    endRadius: 640
-                )
-            }
 
             // La vignette : les bords se referment.
             RadialGradient(
@@ -161,7 +137,6 @@ struct CardTitle: View {
     let text: String
     let palette: PulseonPalette
 
-    @Environment(\.pulseonSkin) private var skin
 
     init(_ text: String, palette: PulseonPalette) {
         self.text = text
@@ -170,10 +145,13 @@ struct CardTitle: View {
 
     var body: some View {
         Text(text)
-            .font(skin.blockTitle)
-            .tracking(skin.blockTitleTracking)
-            // En éditorial, le titre porte l'or : sans cadre autour du bloc,
-            // c'est lui seul qui dit « nouvelle rubrique ».
-            .foregroundStyle(skin.titleIsAccented ? palette.gold : palette.ink)
+            .font(PulseonTheme.blockTitle)
+            // Un titre gras et large se resserre : sans quoi il paraît étalé,
+            // ce qui est exactement ce qui fait « gabarit » plutôt que « composé ».
+            .tracking(-0.4)
+            // Le titre porte l'or : sans cadre autour du bloc, c'est lui seul
+            // qui dit « nouvelle rubrique ». L'or cesse d'être décoratif, il
+            // structure.
+            .foregroundStyle(palette.gold)
     }
 }

@@ -7,7 +7,39 @@ description: Les règles de dessin non négociables de Pulseon et l'état de sa 
 
 À charger **avant** de toucher à une vue.
 
-## La direction est arrêtée : la maquette d'Arthur, 2026-08-17
+## La direction artistique : éditoriale, arrêtée le 2026-08-24
+
+**Choisie par Arthur sur planche**, trois directions rendues côte à côte sur la
+même journée : « j'adore la editorial sombre/light ». Elle **remplace le
+traitement en cartes** de la maquette du 2026-08-17, dont tout le reste tient.
+
+- **Pas de cartes.** Un filet fin en tête de bloc, le bord gauche aligné sur la
+  marge de la page. L'écran est une page, pas une grille de boîtes.
+- **Les titres portent l'or**, 21 pt, tracking −0,4. Sans cadre, c'est le titre
+  seul qui dit « nouvelle rubrique » : l'or structure au lieu de décorer.
+- **Libellés de ligne à 16 pt, durées à 18.** À 13 pt une liste se lit « tableau
+  de bord » ; à 16 elle se lit « page ».
+- **Jauges à 3 pt.** Sans cadre autour, une jauge épaisse vole la vedette au
+  chiffre.
+- **Le total au centre de l'anneau à 38 % du cœur**, contre 30 avant.
+
+Les valeurs vivent dans `PulseonEditorial` et `PulseonTheme` — **ne jamais les
+écrire en dur dans une vue.**
+
+**Deux directions écartées le même jour, à ne pas reproposer** : la **pleine**
+(cartes, filet, ombre — jugée « trop simple »), et le **verre** (translucide,
+champs de couleur, reflet — séduisant mais daté, « une mode datée se voit plus
+vite qu'une composition sobre »). Le type `PulseonSkin` qui permettait de les
+comparer a été supprimé : une option qui survit à la décision qu'elle servait
+devient une dette.
+
+**Leçon de méthode de cette séance** : régler des marges, des titres et une
+disposition **n'est pas une direction artistique**. Arthur l'a dit sans détour —
+« qu'en est-il du design de l'app ? le front n'a pas bougé ? ». Une DA change ce
+qu'on voit *avant* de lire. Et elle se choisit **sur planche**, pas sur des
+adjectifs.
+
+## Ce qui tient de la maquette d'Arthur, 2026-08-17
 
 **Elle fait foi.** Fournie après trois propositions écartées, en version desktop
 d'abord, iPhone ensuite. Ce qu'elle porte, dans l'ordre d'importance :

@@ -657,15 +657,11 @@ MainActor.assumeIsolated {
     )
 }
 
-// MARK: - Les trois peaux, sur la même journée
+// MARK: - L'écran du jour à la taille de la fenêtre d'Arthur
 
-/// Arthur, le 2026-08-24 : « qu'en est-il du design de l'app ? le front n'a pas
-/// bougé ? ». Il avait raison — les marges et la disposition avaient changé, le
-/// langage visuel non. Trois directions rendues sur **la même journée**, pour
-/// qu'il tranche sur des images et non sur des adjectifs.
-/// La même journée que l'écran du jour, reconstruite au niveau global : le
-/// `today` de plus haut vit dans la portée d'un bloc.
-let skinDay = DayPresentation(
+/// La direction éditoriale, arrêtée le 2026-08-24, sur sa fenêtre de
+/// 1512 × 949. C'est ce rendu qui a servi à la choisir parmi trois.
+let editorialDay = DayPresentation(
     digest: digest, dayStart: dayStart, dayLength: day,
     now: dayStart.addingTimeInterval(23.4 * 3600),
     categories: categories,
@@ -675,26 +671,10 @@ let skinDay = DayPresentation(
     anatomy: DayAnatomyBuilder().build(from: digest)
 )
 
-@MainActor
-func skinned(_ skin: PulseonSkin, scheme: ColorScheme) -> some View {
-    dashboard(.loaded(skinDay), canGoForward: false, scheme: scheme)
-        .environment(\.pulseonSkin, skin)
-}
-
-for skin in PulseonSkin.allCases {
+for scheme in [ColorScheme.dark, .light] {
     shoot(
-        skinned(skin, scheme: .dark),
-        size: CGSize(width: 1512, height: 949), named: "pulseon-skin-\(skin.rawValue)"
+        dashboard(.loaded(editorialDay), canGoForward: false, scheme: scheme),
+        size: CGSize(width: 1512, height: 949),
+        named: "pulseon-jour-\(scheme == .dark ? "sombre" : "clair")"
     )
 }
-
-// L'éditorial et le verre en clair : c'est là qu'une direction se casse la
-// figure, un translucide sur fond lumineux virant au gris sale.
-shoot(
-    skinned(.glass, scheme: .light),
-    size: CGSize(width: 1512, height: 949), named: "pulseon-skin-glass-light"
-)
-shoot(
-    skinned(.editorial, scheme: .light),
-    size: CGSize(width: 1512, height: 949), named: "pulseon-skin-editorial-light"
-)
