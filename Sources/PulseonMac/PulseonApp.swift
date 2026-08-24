@@ -49,18 +49,7 @@ struct PulseonApp: App {
         MenuBarExtra {
             MenuContent(engine: engine)
         } label: {
-            // Icône *et* texte : le total du jour est visible en permanence,
-            // sans avoir à ouvrir le menu. Il avance d'une minute par minute
-            // tant qu'on est devant l'écran — et s'arrête quand on ne l'est
-            // plus, ce qui n'est pas une panne mais le comportement voulu.
-            //
-            // `Label(_:systemImage:)` ne convient pas ici, et ça a été vu à
-            // l'exécution : le libellé d'un `MenuBarExtra` est traité comme une
-            // icône de barre de menu, donc le texte est silencieusement jeté et
-            // le total n'apparaissait qu'en ouvrant le menu. Un `Text` qui
-            // *interpole* l'image garde les deux, parce que tout est alors un
-            // seul texte aux yeux du système.
-            Text("\(Image(systemName: engine.menuBarSymbol)) \(engine.menuBarTitle)")
+            MenuBarLabel(engine: engine)
         }
         .menuBarExtraStyle(.menu)
         .modelContainer(engine.container)
@@ -72,6 +61,35 @@ struct PulseonApp: App {
         }
         .defaultSize(width: 860, height: 560)
         .modelContainer(engine.container)
+    }
+}
+
+/// Le libellé de la barre de menu : l'icône et le total du jour.
+///
+/// **Une vue à part, et c'est une correction de performance mesurée.** Le
+/// libellé était écrit directement dans le corps de `PulseonApp`, qui lisait
+/// donc `engine.menuBarTitle` — une valeur qui change **chaque seconde**. À
+/// chaque changement, SwiftUI réévaluait tout le corps de l'app :
+/// `MenuBarExtra`, mais aussi la scène `Window` du dashboard et ses deux
+/// `.modelContainer`, alors même qu'aucune fenêtre n'est ouverte.
+///
+/// Coût relevé sur l'app installée, agent seul, aucune fenêtre : **6,4 % d'un
+/// cœur en continu**, contre 0,38 % le titre gelé — et 1,4 % pour ce même geste
+/// dans une sonde minimale. On payait donc quatre fois le prix du compteur.
+///
+/// Ici, seule cette vue-ci dépend du titre : le graphe de scènes n'est plus
+/// reconstruit. **Même leçon que le halo du fond : isoler ce qui change.**
+///
+/// `Label(_:systemImage:)` ne convient pas, et ça a été vu à l'exécution : le
+/// libellé d'un `MenuBarExtra` est traité comme une icône de barre de menu,
+/// donc le texte est silencieusement jeté et le total n'apparaît qu'en ouvrant
+/// le menu. Un `Text` qui *interpole* l'image garde les deux, parce que tout
+/// est alors un seul texte aux yeux du système.
+private struct MenuBarLabel: View {
+    let engine: CollectionEngine
+
+    var body: some View {
+        Text("\(Image(systemName: engine.menuBarSymbol)) \(engine.menuBarTitle)")
     }
 }
 

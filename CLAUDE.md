@@ -795,6 +795,26 @@ indéfendable.
 **Règle qui en sort, tenue dans `PulseonMotion` : aucune animation perpétuelle
 dans Pulseon.** Tout mouvement se joue à l'apparition, puis s'arrête.
 
+**Et une seconde cause, trouvée dans la foulée : l'agent seul, sans la moindre
+fenêtre, consommait 6,4 % d'un cœur en permanence.** La bisection a été
+immédiate — titre de la barre de menu gelé par une sonde temporaire : **0,38 %**.
+Presque tout venait donc de la réécriture du total chaque seconde.
+
+Sauf qu'une sonde minimale (un `MenuBarExtra` nu dont le libellé change à la
+seconde) ne coûte que **1,4 %** : on payait **quatre fois** le prix du compteur.
+La raison est exactement celle du halo — **ce qui change n'était pas isolé**. Le
+libellé était écrit dans le corps de `PulseonApp`, qui lisait donc
+`engine.menuBarTitle` ; à chaque seconde, SwiftUI réévaluait **tout le corps de
+l'app**, dont la scène `Window` du dashboard et ses deux `.modelContainer`, alors
+qu'aucune fenêtre n'était ouverte. `MenuBarLabel`, une vue de trois lignes, suffit
+à ce que le graphe de scènes cesse d'être reconstruit : **6,4 % → 1,60 %**, le
+compteur défilant toujours à la seconde.
+
+**La leçon vaut pour toute la suite : dans SwiftUI, le coût d'une valeur qui
+change se paie sur tout ce que la vue qui la lit contient.** La corriger ne
+consiste pas à changer la valeur moins souvent, mais à la lire depuis la plus
+petite vue possible.
+
 ### Le battement de la journée
 
 Le motif de l'icône, **fait de vraies données**. Pulseon portait un battement
