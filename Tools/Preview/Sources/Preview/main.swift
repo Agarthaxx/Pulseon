@@ -679,61 +679,6 @@ for scheme in [ColorScheme.dark, .light] {
     )
 }
 
-// MARK: - La planche des fonds clairs (2026-08-24)
-
-/// Trois gris cassés rendus côte à côte, à la demande d'Arthur : « je vois plus
-/// un truc du style gris cassé avec un dégradé sympa plutôt que blanc blanc ».
-///
-/// **Seul le fond change d'un candidat à l'autre** — l'encre, l'or et le bleu
-/// nuit sont identiques. Mélanger deux variables sur une planche empêche de
-/// savoir laquelle a emporté le choix.
-@MainActor
-func dashboard(
-    _ load: DayDashboard.Load, canGoForward: Bool, palette: PulseonPalette, scheme: ColorScheme
-) -> some View {
-    DayDashboardContent(load: load, canGoForward: canGoForward, palette: palette)
-        .environment(\.colorScheme, scheme)
-        .environment(\.appIcons, demoIcons)
-}
-
-let grounds: [(String, PulseonPalette)] = [
-    ("papier", PulseonTheme.paper),
-    ("greige", PulseonTheme.greige),
-    ("ardoise", PulseonTheme.slate),
-]
-
-for (name, palette) in grounds {
-    shoot(
-        dashboard(.loaded(editorialDay), canGoForward: false, palette: palette, scheme: .light),
-        size: CGSize(width: 1512, height: 949),
-        named: "pulseon-fond-\(name)"
-    )
-}
-
-// Et les trois dans la même image : un fond ne se juge pas seul, il se juge
-// contre un autre. C'est ce qui a permis de trancher entre les trois directions
-// artistiques du matin.
-shoot(
-    HStack(spacing: 0) {
-        ForEach(grounds, id: \.0) { name, palette in
-            VStack(spacing: 0) {
-                dashboard(
-                    .loaded(editorialDay), canGoForward: false, palette: palette, scheme: .light
-                )
-                .frame(width: 640, height: 900)
-                .clipped()
-                Text(name)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 640, height: 40)
-                    .background(.black)
-            }
-        }
-    },
-    size: CGSize(width: 1920, height: 940),
-    named: "pulseon-planche-fonds"
-)
-
 // MARK: - L'écran de lancement
 
 for scheme in [ColorScheme.dark, .light] {

@@ -712,19 +712,24 @@ Le fond porte maintenant un **dégradé vertical** (`groundTop` → `ground` →
   au-dessus du fond des écrans, donc un aplat plus clair ou plus sombre y ferait
   une couture nette en travers de la fenêtre.
 
-**Trois candidats sont rendus côte à côte**, en attente du choix d'Arthur — même
-méthode que les trois directions du matin, et **seul le fond change de l'un à
-l'autre** : mélanger deux variables sur une planche empêche de savoir laquelle a
-emporté le choix.
+**Le papier a été choisi sur planche**, trois gris cassés rendus côte à côte sur
+sa fenêtre — même méthode que les trois directions du matin, et **seul le fond
+changeait de l'un à l'autre** : mélanger deux variables sur une planche empêche
+de savoir laquelle a emporté le choix.
 
-| Candidat | Ce que c'est |
-|---|---|
-| **papier** | l'ivoire d'un livre, le plus chaud et le plus loin du blanc ; c'est aussi celui qui s'accorde le mieux à l'or, qui est déjà un ocre |
-| **greige** | le gris cassé neutre, ni jauni ni bleuté — retenu par défaut en attendant |
-| **ardoise** | le gris cassé froid, dans le prolongement du bleu nuit de la marque, le plus proche de ce qui existait |
+| Candidat | Ce que c'était | Sort |
+|---|---|---|
+| **papier** | l'ivoire d'un livre, le plus chaud et le plus loin du blanc | **retenu** |
+| **greige** | le gris cassé neutre, ni jauni ni bleuté | supprimé le jour même |
+| **ardoise** | le gris cassé froid, le plus proche de ce qui existait | supprimé le jour même |
 
-**Les deux perdants partiront une fois le choix fait**, comme `PulseonSkin` :
-une option qui survit à la décision qu'elle servait devient une dette.
+L'ivoire est aussi le seul des trois qui **s'accorde à l'or**, lequel est déjà un
+ocre : sur un fond froid, un titre à l'or tire vers le jaune sale. Et **l'encre
+devient neutre** au lieu d'être bleutée — une encre froide sur un papier chaud,
+ce sont deux températures qui se contredisent sur le même écran.
+
+**Les deux perdants sont partis le jour du choix**, comme `PulseonSkin` : une
+option qui survit à la décision qu'elle servait devient une dette.
 
 **L'écran de lancement** (`LaunchSplash`) : la marque, son nom, une barre qui se
 remplit. Trois décisions qui ne se devinent pas :

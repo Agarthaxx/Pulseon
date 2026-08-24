@@ -126,99 +126,46 @@ public enum PulseonTheme {
         surfaceTop: Color(red: 0.098, green: 0.118, blue: 0.169)
     )
 
-    /// Le clair.
+    /// Le clair : **du papier, pas du blanc**.
     ///
-    /// **Ce n'est plus du blanc.** Arthur, le 2026-08-24 : « je vois plus un
-    /// truc du style gris cassé avec un dégradé sympa plutôt que blanc blanc ».
-    /// Le fond valait #F1F2F5, un gris très clair et **froid** : à côté d'une
-    /// fenêtre blanche il passait pour du blanc, et l'éditoriale — qui se
-    /// revendique *page* et non tableau de bord — s'appuyait sur un fond de
-    /// navigateur par défaut.
+    /// Arthur, le 2026-08-24 : « je vois plus un truc du style gris cassé avec
+    /// un dégradé sympa plutôt que blanc blanc ». Le fond valait #F1F2F5, un
+    /// gris très clair et **froid** : à côté d'une fenêtre du système il passait
+    /// pour du blanc, et l'éditoriale — qui se revendique *page* et non tableau
+    /// de bord — s'appuyait sur un fond de navigateur par défaut.
     ///
-    /// Les trois candidats de la planche du 2026-08-24 sont juste en dessous.
-    public static let light = greige
-
-    /// Les trois fonds clairs rendus côte à côte pour qu'Arthur choisisse.
+    /// **Choisi sur planche**, trois gris cassés rendus côte à côte sur sa
+    /// fenêtre : l'ivoire chaud (retenu), un greige neutre et une ardoise
+    /// froide. Les deux autres ont été supprimés le jour du choix — une option
+    /// qui survit à la décision qu'elle servait devient une dette, même leçon
+    /// que `PulseonSkin` et `RingScale`.
     ///
-    /// **Une DA se choisit sur planche, pas sur des adjectifs** — c'est la
-    /// leçon de la séance qui a donné l'éditoriale. Les deux perdants partiront
-    /// une fois le choix fait, comme `PulseonSkin` : une option qui survit à la
-    /// décision qu'elle servait devient une dette.
-
-    /// **Papier** — l'ivoire d'un livre. Le plus chaud des trois, le plus loin
-    /// du blanc, et celui qui s'accorde le mieux à l'or, qui est déjà un ocre.
-    public static let paper = lightPalette(
-        groundTop: Color(red: 0.980, green: 0.969, blue: 0.945),
+    /// L'ivoire est aussi le seul des trois qui **s'accorde à l'or**, lequel est
+    /// déjà un ocre : sur un fond froid, un titre à l'or tire vers le jaune
+    /// sale. Un fond chaud ne lui demande pas de se défendre.
+    ///
+    /// L'encre est **neutre et non bleutée**, contrairement à avant : une encre
+    /// froide sur un papier chaud se voit — c'est deux températures qui se
+    /// contredisent sur le même écran.
+    public static let light = PulseonPalette(
         ground: Color(red: 0.953, green: 0.933, blue: 0.894),
+        groundTop: Color(red: 0.980, green: 0.969, blue: 0.945),
         groundDeep: Color(red: 0.906, green: 0.875, blue: 0.816),
         surface: Color(red: 0.996, green: 0.992, blue: 0.984),
         sunken: Color(red: 0.898, green: 0.878, blue: 0.839),
         hairline: Color(red: 0.847, green: 0.820, blue: 0.769),
+        ink: Color(red: 0.075, green: 0.078, blue: 0.086),
         inkSoft: Color(red: 0.361, green: 0.345, blue: 0.310),
-        inkFaint: Color(red: 0.549, green: 0.525, blue: 0.482)
+        inkFaint: Color(red: 0.549, green: 0.525, blue: 0.482),
+        gold: Color(red: 0.647, green: 0.494, blue: 0.141),
+        navy: Color(red: 0.106, green: 0.204, blue: 0.435),
+        goldLight: Color(red: 0.859, green: 0.729, blue: 0.365),
+        goldDeep: Color(red: 0.478, green: 0.345, blue: 0.078),
+        navyLight: Color(red: 0.216, green: 0.353, blue: 0.620),
+        navyDeep: Color(red: 0.059, green: 0.129, blue: 0.302),
+        shadow: Color(red: 0.055, green: 0.055, blue: 0.063).opacity(0.13),
+        surfaceTop: Color(red: 0.996, green: 0.992, blue: 0.984)
     )
-
-    /// **Greige** — le gris cassé, entre les deux : ni jauni ni bleuté. Un fond
-    /// neutre chaud laisse les couleurs d'appareil dire ce qu'elles ont à dire,
-    /// ce qu'un fond teinté leur dispute toujours un peu.
-    public static let greige = lightPalette(
-        groundTop: Color(red: 0.965, green: 0.961, blue: 0.949),
-        ground: Color(red: 0.933, green: 0.925, blue: 0.906),
-        groundDeep: Color(red: 0.882, green: 0.871, blue: 0.847),
-        surface: Color(red: 0.996, green: 0.996, blue: 0.992),
-        sunken: Color(red: 0.882, green: 0.875, blue: 0.859),
-        hairline: Color(red: 0.831, green: 0.824, blue: 0.804),
-        inkSoft: Color(red: 0.345, green: 0.341, blue: 0.325),
-        inkFaint: Color(red: 0.533, green: 0.529, blue: 0.510)
-    )
-
-    /// **Ardoise** — le gris cassé froid, dans le prolongement du bleu nuit de
-    /// la marque. Le plus proche de ce qui existait, mais franchement gris.
-    public static let slate = lightPalette(
-        groundTop: Color(red: 0.957, green: 0.965, blue: 0.973),
-        ground: Color(red: 0.910, green: 0.922, blue: 0.941),
-        groundDeep: Color(red: 0.851, green: 0.871, blue: 0.902),
-        surface: Color(red: 0.992, green: 0.996, blue: 1.000),
-        sunken: Color(red: 0.867, green: 0.882, blue: 0.906),
-        hairline: Color(red: 0.812, green: 0.831, blue: 0.863),
-        inkSoft: Color(red: 0.318, green: 0.353, blue: 0.412),
-        inkFaint: Color(red: 0.505, green: 0.541, blue: 0.600)
-    )
-
-    /// Ce que les trois fonds clairs partagent : l'encre, l'or et le bleu nuit
-    /// ne changent pas d'un candidat à l'autre. **Seule la lumière du fond est
-    /// en jeu** — mélanger deux variables sur une planche empêche de savoir
-    /// laquelle a emporté le choix.
-    private static func lightPalette(
-        groundTop: Color,
-        ground: Color,
-        groundDeep: Color,
-        surface: Color,
-        sunken: Color,
-        hairline: Color,
-        inkSoft: Color,
-        inkFaint: Color
-    ) -> PulseonPalette {
-        PulseonPalette(
-            ground: ground,
-            groundTop: groundTop,
-            groundDeep: groundDeep,
-            surface: surface,
-            sunken: sunken,
-            hairline: hairline,
-            ink: Color(red: 0.075, green: 0.078, blue: 0.086),
-            inkSoft: inkSoft,
-            inkFaint: inkFaint,
-            gold: Color(red: 0.647, green: 0.494, blue: 0.141),
-            navy: Color(red: 0.106, green: 0.204, blue: 0.435),
-            goldLight: Color(red: 0.859, green: 0.729, blue: 0.365),
-            goldDeep: Color(red: 0.478, green: 0.345, blue: 0.078),
-            navyLight: Color(red: 0.216, green: 0.353, blue: 0.620),
-            navyDeep: Color(red: 0.059, green: 0.129, blue: 0.302),
-            shadow: Color(red: 0.055, green: 0.055, blue: 0.063).opacity(0.13),
-            surfaceTop: surface
-        )
-    }
 
     // MARK: Les appareils
 

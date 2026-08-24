@@ -31,10 +31,14 @@ du style gris cassé avec un dégradé sympa plutôt que blanc blanc ». Le fond
 porte un **dégradé vertical** (`groundTop` → `ground` → `groundDeep`), écrit en
 clair et jamais dérivé par opacité, et **vertical et non diagonal** — une
 diagonale a un sens de lecture, donc elle désigne un coin, or rien ici n'a à
-être désigné. Trois gris cassés sont rendus côte à côte (**papier**, **greige**,
-**ardoise**) en attente du choix d'Arthur ; les deux perdants partiront, comme
-`PulseonSkin`. **Seul le fond change de l'un à l'autre** : mélanger deux
-variables sur une planche empêche de savoir laquelle a emporté le choix.
+être désigné. **Choisi sur planche** parmi trois gris cassés rendus côte à côte : le
+**papier** (ivoire chaud) l'emporte, le greige neutre et l'ardoise froide ont été
+supprimés le jour même — comme `PulseonSkin`. Seul le fond changeait de l'un à
+l'autre : mélanger deux variables sur une planche empêche de savoir laquelle a
+emporté le choix. L'ivoire est le seul des trois qui **s'accorde à l'or**, déjà
+un ocre, et l'encre passe de bleutée à **neutre** — une encre froide sur un
+papier chaud, ce sont deux températures qui se contredisent. **Ne pas
+reproposer** de fond froid ni de blanc pur.
 
 **L'écran de lancement** (`LaunchSplash`) se joue à **l'ouverture de la
 fenêtre**, jamais au démarrage du processus — un agent de barre de menu vit des
