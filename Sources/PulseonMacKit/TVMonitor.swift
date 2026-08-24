@@ -162,7 +162,10 @@ public final class NetworkWitness: @unchecked Sendable {
 /// Où l'on dit à Pulseon quelle télé regarder.
 ///
 /// Un nom d'hôte n'est pas un secret : il vit dans les réglages de l'app, pas
-/// dans le Trousseau. À déposer une fois :
+/// dans le Trousseau. Depuis le 2026-08-24, il se dépose **depuis l'app** —
+/// « Relier un appareil… » dans le menu, qui cherche la télé sur le réseau au
+/// lieu de demander à Arthur de connaître son nom mDNS (voir
+/// `DeviceDiscovery`). La ligne de commande reste équivalente :
 ///
 /// ```
 /// defaults write com.arthurlanllier.pulseon TVHost "Samsung.local"
@@ -175,7 +178,28 @@ public enum TVSettings {
 
     public static var host: String? {
         guard let value = UserDefaults.standard.string(forKey: hostKey) else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return normalized(value)
+    }
+
+    /// Relie une télé, ou délie celle qui l'était (`nil`).
+    ///
+    /// Écrire une chaîne vide **retire** le réglage plutôt que d'enregistrer un
+    /// hôte vide : `startTV` ne teste que la présence, donc un hôte vide
+    /// lancerait un collecteur qui échouerait toutes les trente secondes.
+    public static func setHost(_ value: String?) {
+        guard let value, let host = normalized(value) else {
+            UserDefaults.standard.removeObject(forKey: hostKey)
+            return
+        }
+        UserDefaults.standard.set(host, forKey: hostKey)
+    }
+
+    static func normalized(_ value: String) -> String? {
+        var trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Le point final d'un nom pleinement qualifié, tel que le rend
+        // `NetService`. Inoffensif pour `URLSession`, mais il se retrouverait
+        // sous les yeux d'Arthur dans le menu.
+        if trimmed.hasSuffix(".") { trimmed.removeLast() }
         return trimmed.isEmpty ? nil : trimmed
     }
 }

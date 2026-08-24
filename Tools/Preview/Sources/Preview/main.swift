@@ -656,3 +656,59 @@ MainActor.assumeIsolated {
         size: CGSize(width: 560, height: 340), named: "pulseon-timeline-narrow"
     )
 }
+
+// MARK: - Relier un appareil
+
+/// Les cinq états de la découverte réseau, rendus côte à côte.
+///
+/// **C'est l'écran vide qui compte**, pas celui qui trouve : une télé en veille
+/// profonde refuse le port 8001, donc « rien trouvé » est un résultat courant
+/// et normal. S'il se lit « ça ne marche pas », le dessin a raté.
+@MainActor
+func deviceSetup(
+    _ state: DeviceSetup.State, boundHost: String?, scheme: ColorScheme
+) -> some View {
+    DeviceSetupView(
+        state: state,
+        boundHost: boundHost,
+        palette: PulseonTheme.palette(for: scheme),
+        onScan: {}, onBind: { _ in }, onUnbind: {}
+    )
+    .environment(\.colorScheme, scheme)
+}
+
+let samsung = DiscoveredDisplay(
+    host: "Samsung.local", name: "[TV] Samsung S90C", model: "QE55S90C")
+
+let setupSize = CGSize(width: 520, height: 330)
+
+// Le cas qui marche : la télé est allumée, elle a répondu, elle se nomme.
+shoot(
+    deviceSetup(.found([samsung]), boundHost: nil, scheme: .dark),
+    size: setupSize, named: "pulseon-setup-found"
+)
+
+// Le cas courant, et le plus délicat : rien trouvé. Doit dire **pourquoi**.
+shoot(
+    deviceSetup(.nothingFound, boundHost: nil, scheme: .dark),
+    size: setupSize, named: "pulseon-setup-empty"
+)
+
+// Une télé déjà reliée, et une recherche en cours par-dessus.
+shoot(
+    deviceSetup(.scanning, boundHost: "Samsung.local", scheme: .dark),
+    size: setupSize, named: "pulseon-setup-bound"
+)
+
+// Le balayage lui-même a échoué : autorisation « réseau local » refusée.
+shoot(
+    deviceSetup(
+        .failed("NWError: Operation not permitted"), boundHost: nil, scheme: .dark),
+    size: setupSize, named: "pulseon-setup-failed"
+)
+
+// En clair, parce que la maquette existe dans les deux apparences.
+shoot(
+    deviceSetup(.found([samsung]), boundHost: nil, scheme: .light),
+    size: setupSize, named: "pulseon-setup-light"
+)

@@ -1424,34 +1424,92 @@ ne veulent pas dire la même chose. `summedTotal` additionne les appareils et
 double-compte les écrans simultanés ; `coveredTotal` fusionne les
 intervalles qui se chevauchent. À l'UI de choisir lequel elle met en avant.
 
-### Idée captée, non scopée : découverte réseau et partage
+### Le partage est fermé : Pulseon reste une app perso
 
-Idée d'Arthur, 2026-08-17, née de la contrainte TV ci-dessus (« dommage d'être
-limité », puis « le partage me branche beaucoup ») : au lieu de relier un
-appareil à la main (`defaults write`), scanner le réseau local en Bonjour/mDNS
-à l'ouverture de l'app et proposer une liste — « voici ce qu'on a trouvé, clique
-pour relier ». Techniquement à la portée d'une session : chaque type d'appareil
-s'annonce différemment (`_airplay._tcp`, SSDP, etc.), déjà vérifié à la main
-avec `dns-sd` en cherchant la télé.
+**Tranché par Arthur le 2026-08-24** : « le projet dépasse un peu les standards,
+c'est quelque chose que je vais garder pour moi sur mon PC ». C'est une décision
+de périmètre, pas une humeur, et elle **referme** l'ambition de mise en ligne
+qui montait depuis le 2026-08-17 (« le partage me branche beaucoup »).
 
-**Ce que ça implique si le partage devient réel, à ne pas perdre :**
+Ce que ça retire de la roadmap, définitivement jusqu'à avis contraire :
 
-- **CloudKit donne déjà le multi-utilisateur, sans backend à construire.**
-  Chaque installation a sa propre base privée liée à l'iCloud de la personne —
-  le partage n'est donc pas un problème de serveur à héberger, mais de
-  **distribution** : signature Developer ID + notarisation, même mur que
-  CloudKit (voir [[project-pulseon-blockers]] côté mémoire long-terme).
-- **PlayStation et TV restent le besoin personnel d'Arthur**, pas celui d'un
-  public — voir « Parti pris produit » ci-dessus. Le cœur partageable, c'est le
-  Mac (et l'onboarding réseau lui-même).
-- **La collecte iPhone reste bloquée** (voir contrainte plus haut) — un public
-  qui découvre une app « temps d'écran » attend l'iPhone en premier, donc c'est
-  le principal risque de positionnement si ça se concrétise.
+- **La signature Developer ID et la notarisation.** Elles n'existaient que pour
+  installer l'app sur la machine de quelqu'un d'autre. La signature ad-hoc suffit
+  sur le Mac d'Arthur, et l'avertissement Gatekeeper n'a plus d'objet.
+- **Le positionnement produit.** Plus de risque « un public attend l'iPhone en
+  premier », plus de « le cœur partageable c'est le Mac » : la PlayStation et la
+  télé ne sont plus des sources hors sujet, ce sont **les** sources.
+- **L'onboarding pour un inconnu.** Personne d'autre n'installera Pulseon, donc
+  aucune fonctionnalité ne se justifie plus par « il faudra bien expliquer ça à
+  quelqu'un qui découvre ».
 
-Non scopé à ce jour : pas de ticket, pas de branche. Ni le front (en pause,
-maquette d'Arthur attendue) ni les fronts ouverts (PSN, extraction post-#22) ne
-sont bloqués par ça — c'est une direction à garder en tête, pas une tâche en
-cours.
+Ce que ça **ne** retire pas :
+
+- **Le compte Apple payant reste nécessaire** pour CloudKit, l'app iOS et le
+  widget — même pour un usage strictement personnel. C'est le seul mur qui
+  survit à cette décision, et c'est celui qui compte.
+- **La découverte réseau garde une raison d'être, mais ce n'est plus la même.**
+  Voir ci-dessous.
+
+### Découverte réseau : écartée, et ce qu'elle a quand même appris
+
+**Écartée par Arthur le 2026-08-24**, dans la foulée de la décision ci-dessus :
+« j'en ai pas besoin non ? c'est pour mon usage perso à la maison ». Il a raison,
+et l'argument qui la défendait ne tenait pas. À ne pas reproposer.
+
+L'idée était née le 2026-08-17 comme un confort d'installation — remplacer le
+`defaults write ... TVHost` par une liste sur laquelle cliquer. **Cet argument
+meurt avec le partage** : la télé d'Arthur est reliée depuis le 2026-08-18, une
+fois pour toutes, et personne d'autre n'installera Pulseon.
+
+**Le repli tenté ne valait pas mieux, et c'est la vraie leçon.** L'idée était d'en
+faire un diagnostic : sur les dix jours mesurés au 2026-08-24, la télé n'a de
+temps que **quatre jours** (18, 19, 22, 23), et les six autres sont des « on ne
+sait pas ». Sauf que ces six jours-là, la télé n'était pas injoignable à cause
+d'un mauvais réglage — **Arthur n'était pas chez lui**. Un écran qui affiche
+« injoignable » les jours où il est au bureau lui apprend qu'il est au bureau.
+Le chiffre était juste, la conclusion qu'on en tirait ne l'était pas.
+
+**Ce qui a quand même été mesuré, et qui resservira** le jour où un appareil
+devra être trouvé sur le réseau (2026-08-24, réseau du bureau d'Arthur) :
+
+- **Une annonce mDNS ne prouve rien.** Le seul appareil annonçant
+  `_airplay._tcp` était **le MacBook d'Arthur lui-même**. Une découverte qui
+  ferait confiance au type de service lui aurait proposé son Mac comme télé.
+  C'est mot pour mot la leçon du ping ICMP du 2026-08-16 : un signal qui existe,
+  qu'on croit lire, et qui ne dit pas ce qu'on croit.
+- **D'où deux étapes, dont seule la seconde conclut** : mDNS trouve des
+  *candidats*, `GET :8001/api/v2/` tranche. Un appareil qui répond à ce point
+  d'entrée avec un champ `PowerState` n'est pas « probablement une télé » : c'est
+  un appareil que **Pulseon sait mesurer**, ce qui est la seule question posée.
+  Exiger `PowerState` et pas seulement un nom est délibéré — sans lui,
+  `TVMonitor` n'aurait rien à lire et l'app promettrait un suivi impossible.
+- **`NWBrowser` ne rend pas de nom d'hôte**, seulement le nom d'instance du
+  service (« MacBook Pro de Arthur »), qui n'est pas joignable. Seul
+  `NetService.resolve` rend `…​.local.` — point final à retirer. On garde ce nom
+  plutôt que l'IP, règle déjà vérifiée le 2026-08-16 : il résout même télé en
+  veille, là où une IP est figée jusqu'au prochain bail DHCP.
+- **Une liste vide ne veut pas dire « tu n'as pas de télé ».** Une télé en veille
+  profonde refuse le port 8001 : elle est **introuvable par construction**. Un
+  écran qui afficherait « aucun appareil » sans dire pourquoi se lirait « ça ne
+  marche pas » — c'est la faute « pas encore branchée ≠ journée à zéro »,
+  transposée à un écran de réglages.
+
+
+Le code écrit ce jour-là (`DeviceDiscovery`, `DeviceSetupView`, la vérification
+en deux temps, `TVSettings.setHost`) vit sur la branche `feat/device-discovery`,
+non mergée. Comme `RailLayout` dans la PR #22 fermée : ce n'est pas du code mort,
+c'est du raisonnement mesuré qu'il vaut mieux relire que réécrire.
+
+**Un défaut trouvé en PNG, et qui n'est pas un défaut** : `ImageRenderer` ne rend
+pas un `TextField` — il sort en rectangle **jaune barré d'un rond rouge**. Dans
+une app qui s'interdit le rouge et réserve l'or au temps mesuré, ça ressemble à
+une faute grave. Ce n'en est pas une, mais il faut le savoir avant de « corriger »
+un dessin qui va bien. Contrairement au `Picker(.segmented)` remplacé par un
+dessin maison, **on ne peut pas écrire un champ de saisie en SwiftUI pur** : le
+coût est assumé, et repoussé aux seuls états où la découverte a échoué — les
+écrans les plus regardés (trouvée, reliée, recherche) restent entièrement
+rendables.
 
 ## Conventions de développement
 
