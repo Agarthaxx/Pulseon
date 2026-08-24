@@ -75,7 +75,7 @@ public struct PulseonBackground: View {
     /// sous une surface translucide donne un gris sale, pas du verre — c'est le
     /// même piège que l'accent unique décliné en opacités, qui donnait un olive
     /// sali au lieu d'une nuance.
-    private var depth: Double { skin == .glass ? 1.9 : 1 }
+    private var depth: Double { skin.backgroundDepth }
 
     public var body: some View {
         ZStack {
@@ -105,6 +105,31 @@ public struct PulseonBackground: View {
                 startRadius: 0,
                 endRadius: 560
             )
+
+            // Le verre a besoin de matière à réfracter : deux champs de
+            // couleur larges et très diffus, l'un froid, l'autre chaud. Sans
+            // eux, une surface translucide sur un fond presque uni ne donne
+            // qu'un gris sale.
+            if skin.hasColorFields {
+                RadialGradient(
+                    colors: [
+                        PulseonTheme.markViolet.opacity(isDark ? 0.30 : 0.13),
+                        PulseonTheme.markViolet.opacity(0),
+                    ],
+                    center: UnitPoint(x: 0.13, y: 0.72),
+                    startRadius: 0,
+                    endRadius: 700
+                )
+                RadialGradient(
+                    colors: [
+                        PulseonTheme.markBlue.opacity(isDark ? 0.22 : 0.10),
+                        PulseonTheme.markBlue.opacity(0),
+                    ],
+                    center: UnitPoint(x: 0.92, y: 0.22),
+                    startRadius: 0,
+                    endRadius: 640
+                )
+            }
 
             // La vignette : les bords se referment.
             RadialGradient(
@@ -146,6 +171,7 @@ struct CardTitle: View {
     var body: some View {
         Text(text)
             .font(skin.blockTitle)
+            .tracking(skin.blockTitleTracking)
             // En éditorial, le titre porte l'or : sans cadre autour du bloc,
             // c'est lui seul qui dit « nouvelle rubrique ».
             .foregroundStyle(skin.titleIsAccented ? palette.gold : palette.ink)

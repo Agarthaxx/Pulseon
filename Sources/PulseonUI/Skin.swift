@@ -45,17 +45,27 @@ public enum PulseonSkin: String, Sendable, CaseIterable {
         }
     }
 
-    /// Le retrait intérieur.
+    /// Le retrait intérieur, côté par côté.
     ///
-    /// L'éditorial n'a pas de carte à remplir : son air vient de l'espace entre
-    /// les blocs, pas d'un cadre autour.
-    var inset: CGFloat {
+    /// **L'éditorial n'a pas de cadre à remplir** : son air vient de l'espace
+    /// *entre* les blocs, et son bord gauche s'aligne sur la marge de la page,
+    /// pas sur un retrait de carte. Il garde du haut pour dégager le filet qui
+    /// annonce le bloc.
+    var insets: EdgeInsets {
         switch self {
-        case .solid: PulseonSpace.card
-        case .editorial: 0
-        case .glass: PulseonSpace.card + 4
+        case .solid:
+            EdgeInsets(
+                top: PulseonSpace.card, leading: PulseonSpace.card,
+                bottom: PulseonSpace.card, trailing: PulseonSpace.card)
+        case .editorial:
+            EdgeInsets(top: PulseonSpace.card, leading: 0, bottom: 0, trailing: 0)
+        case .glass:
+            EdgeInsets(top: 28, leading: 28, bottom: 28, trailing: 28)
         }
     }
+
+    /// L'éditorial annonce chaque bloc par un filet, faute de cadre.
+    var hasTopRule: Bool { self == .editorial }
 
     /// L'espace entre deux blocs.
     var gap: CGFloat {
@@ -85,12 +95,94 @@ public enum PulseonSkin: String, Sendable, CaseIterable {
     var blockTitle: Font {
         switch self {
         case .solid: .system(size: 15, weight: .semibold)
-        case .editorial: .system(size: 20, weight: .bold)
-        case .glass: .system(size: 16, weight: .semibold)
+        case .editorial: .system(size: 21, weight: .bold)
+        case .glass: .system(size: 17, weight: .semibold)
+        }
+    }
+
+    /// L'espacement des lettres du titre.
+    ///
+    /// Un titre gras et large se resserre : sans quoi il paraît étalé, ce qui
+    /// est exactement ce qui fait « gabarit » plutôt que « composé ».
+    var blockTitleTracking: CGFloat {
+        switch self {
+        case .solid: 0
+        case .editorial: -0.4
+        case .glass: -0.2
         }
     }
 
     var titleIsAccented: Bool { self == .editorial }
+
+    /// Le libellé d'une ligne de liste.
+    ///
+    /// **C'est le second levier le plus visible après le grand nombre.** Des
+    /// lignes à 13 points se lisent « tableau de bord » ; à 16 elles se lisent
+    /// « page ».
+    var rowLabel: Font {
+        switch self {
+        case .solid: .system(size: 13, weight: .medium)
+        case .editorial: .system(size: 16, weight: .semibold)
+        case .glass: .system(size: 14, weight: .medium)
+        }
+    }
+
+    /// La durée d'une ligne de liste.
+    var rowValue: Font {
+        switch self {
+        case .solid: .system(size: 15, weight: .semibold).monospacedDigit()
+        case .editorial: .system(size: 18, weight: .bold).monospacedDigit()
+        case .glass: .system(size: 16, weight: .semibold).monospacedDigit()
+        }
+    }
+
+    /// L'air entre deux lignes d'une liste.
+    var rowGap: CGFloat {
+        switch self {
+        case .solid: 15
+        case .editorial: 22
+        case .glass: 18
+        }
+    }
+
+    /// L'épaisseur d'une jauge.
+    ///
+    /// L'éditorial l'affine : sans cadre autour, une jauge épaisse redevient
+    /// l'élément le plus lourd de la page et vole la vedette au chiffre.
+    var meterHeight: CGFloat {
+        switch self {
+        case .solid: 6
+        case .editorial: 3
+        case .glass: 7
+        }
+    }
+
+    /// Le côté d'une pastille de catégorie.
+    var chipSide: CGFloat {
+        switch self {
+        case .solid: 34
+        case .editorial: 38
+        case .glass: 36
+        }
+    }
+
+    /// Ce que le fond doit porter derrière les surfaces.
+    ///
+    /// **Le verre n'existe que s'il y a quelque chose derrière lui.** Un fond
+    /// plat sous une surface translucide donne un gris sale, pas du verre —
+    /// même piège que l'accent unique décliné en opacités, qui donnait un olive
+    /// sali plutôt qu'une nuance.
+    var backgroundDepth: Double {
+        switch self {
+        case .solid: 1
+        case .editorial: 0.75
+        case .glass: 2.1
+        }
+    }
+
+    /// Le verre pose en plus deux champs de couleur, sans quoi il n'a rien à
+    /// réfracter.
+    var hasColorFields: Bool { self == .glass }
 }
 
 private struct SkinKey: EnvironmentKey {
@@ -127,47 +219,79 @@ struct SkinSurface: View {
                 .shadow(color: palette.shadow, radius: 16, y: 8)
 
         case .editorial:
-            // Rien. C'est le fond de la fenêtre qu'on voit, et l'air autour du
-            // bloc qui le sépare du suivant.
-            Color.clear
+            // Pas de cadre : un filet en tête, et le fond de la fenêtre pour
+            // tout le reste. C'est le filet qui dit « nouveau bloc », là où les
+            // autres peaux le disent par un rectangle.
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(palette.hairline.opacity(0.55))
+                    .frame(height: 1)
+                Spacer(minLength: 0)
+            }
 
         case .glass:
             // **Pas de `Material`.** `ImageRenderer` ne le rend pas — la carte
             // sortirait en aplat opaque et la preview mentirait sur la
             // direction qu'on est en train de juger. Un translucide explicite
             // dit la même chose et se rend partout, iOS compris.
-            RoundedRectangle(cornerRadius: skin.radius, style: .continuous)
+            //
+            // Trois couches, et **aucune n'est facultative** : au premier jet
+            // le verre ressemblait tellement à la peau pleine qu'Arthur ne
+            // l'aurait pas distingué. Ce qui manquait n'était pas la
+            // transparence, c'était le **bord** et le **reflet** — un verre se
+            // reconnaît à ses arêtes, pas à son fond.
+            let shape = RoundedRectangle(cornerRadius: skin.radius, style: .continuous)
+
+            shape
                 .fill(
                     LinearGradient(
                         colors: scheme == .dark
-                            ? [Color.white.opacity(0.075), Color.white.opacity(0.028)]
-                            : [Color.white.opacity(0.72), Color.white.opacity(0.45)],
+                            ? [Color.white.opacity(0.11), Color.white.opacity(0.035)]
+                            : [Color.white.opacity(0.80), Color.white.opacity(0.42)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
-                    // Le bord clair en haut à gauche : c'est lui qui fait
-                    // « verre » plutôt que « rectangle gris translucide ».
-                    RoundedRectangle(cornerRadius: skin.radius, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: scheme == .dark
-                                    ? [
-                                        Color.white.opacity(0.30),
-                                        Color.white.opacity(0.05),
-                                    ]
-                                    : [
-                                        Color.white.opacity(0.95),
-                                        Color.white.opacity(0.35),
-                                    ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
+                    // Le reflet : une bande claire qui court sur le haut de la
+                    // surface, comme la lumière sur une vitre inclinée.
+                    shape.fill(
+                        LinearGradient(
+                            stops: [
+                                .init(
+                                    color: Color.white.opacity(scheme == .dark ? 0.10 : 0.5),
+                                    location: 0),
+                                .init(color: Color.white.opacity(0), location: 0.42),
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
+                    )
                 )
-                .shadow(color: palette.shadow.opacity(0.8), radius: 28, y: 14)
+                .overlay(
+                    // L'arête. Vive en haut à gauche, éteinte en bas à droite :
+                    // c'est cette asymétrie qui donne une épaisseur au bord, là
+                    // où un contour uniforme donne un simple cadre.
+                    shape.strokeBorder(
+                        LinearGradient(
+                            stops: scheme == .dark
+                                ? [
+                                    .init(color: Color.white.opacity(0.55), location: 0),
+                                    .init(color: Color.white.opacity(0.14), location: 0.35),
+                                    .init(color: Color.white.opacity(0.05), location: 1),
+                                ]
+                                : [
+                                    .init(color: Color.white.opacity(1), location: 0),
+                                    .init(color: Color.white.opacity(0.55), location: 0.35),
+                                    .init(color: Color.white.opacity(0.25), location: 1),
+                                ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+                )
+                .shadow(color: palette.shadow.opacity(0.9), radius: 34, y: 18)
         }
     }
 }

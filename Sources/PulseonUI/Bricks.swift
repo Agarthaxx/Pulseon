@@ -25,6 +25,8 @@ struct MeterRow: View {
     let share: Double
     let palette: PulseonPalette
 
+    @Environment(\.pulseonSkin) private var skin
+
     /// Trois minutes dans une journée font 0,4 % : tronqué à l'entier, ça
     /// s'affichait « 0 % » juste à côté d'une durée non nulle. Zéro est une
     /// affirmation, et celle-ci était fausse.
@@ -41,11 +43,11 @@ struct MeterRow: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(label)
-                        .font(PulseonTheme.row)
+                        .font(skin.rowLabel)
                         .foregroundStyle(palette.ink)
                     Spacer(minLength: 6)
                     Text(DurationFormat.compact(total))
-                        .font(.system(size: 15, weight: .semibold).monospacedDigit())
+                        .font(skin.rowValue)
                         .foregroundStyle(palette.ink)
                     Text(Self.percentage(share))
                         .font(PulseonTheme.caption.monospacedDigit())
@@ -75,6 +77,8 @@ struct Meter: View {
     let fill: LinearGradient
     let palette: PulseonPalette
 
+    @Environment(\.pulseonSkin) private var skin
+
     /// La part effectivement dessinée. **Part à sa valeur finale**, donc une
     /// preview rend la jauge pleine : le repli est « tout est dessiné ». Voir
     /// `PulseonMotion`.
@@ -97,7 +101,7 @@ struct Meter: View {
                     )
             }
         }
-        .frame(height: 6)
+        .frame(height: skin.meterHeight)
         .onAppear {
             guard motion else { return }
             drawn = 0
@@ -116,17 +120,20 @@ struct Chip: View {
     let tint: Color
     let palette: PulseonPalette
 
+    @Environment(\.pulseonSkin) private var skin
+
     var body: some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
+        let side = skin.chipSide
+        RoundedRectangle(cornerRadius: side * 0.29, style: .continuous)
             .fill(tint.opacity(0.18))
-            .frame(width: 34, height: 34)
+            .frame(width: side, height: side)
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: side * 0.29, style: .continuous)
                     .strokeBorder(tint.opacity(0.28), lineWidth: 0.5)
             )
             .overlay(
                 Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: side * 0.41, weight: .semibold))
                     .foregroundStyle(tint)
             )
     }
@@ -175,7 +182,7 @@ struct Card<Content: View>: View {
 
     var body: some View {
         content
-            .padding(skin.inset)
+            .padding(skin.insets)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(SkinSurface(skin: skin, palette: palette, scheme: scheme))
     }
@@ -237,6 +244,8 @@ struct BreakdownCard: View {
     let categories: [CategoryTotal]
     let palette: PulseonPalette
 
+    @Environment(\.pulseonSkin) private var skin
+
     var body: some View {
         // Les parts se calculent sur la somme des catégories, pas sur le total
         // de la période : deux catégories simultanées comptent chacune leur
@@ -246,7 +255,7 @@ struct BreakdownCard: View {
         let sum = categories.reduce(0) { $0 + $1.total }
 
         Card(palette: palette) {
-            VStack(alignment: .leading, spacing: 15) {
+            VStack(alignment: .leading, spacing: skin.rowGap) {
                 CardTitle("Répartition", palette: palette)
                     .padding(.bottom, 2)
 
@@ -280,9 +289,11 @@ struct DevicesCard: View {
     let summedTotal: TimeInterval
     let palette: PulseonPalette
 
+    @Environment(\.pulseonSkin) private var skin
+
     var body: some View {
         Card(palette: palette) {
-            VStack(alignment: .leading, spacing: 15) {
+            VStack(alignment: .leading, spacing: skin.rowGap) {
                 CardTitle("Appareils", palette: palette)
                     .padding(.bottom, 2)
 
