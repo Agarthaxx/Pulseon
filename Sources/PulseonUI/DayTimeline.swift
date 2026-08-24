@@ -60,6 +60,8 @@ public struct DayTimelineContent: View {
     let load: DayDashboard.Load
     let canGoForward: Bool
     let palette: PulseonPalette
+    /// Sert au fond, dont le halo est plus discret en apparence claire.
+    @Environment(\.colorScheme) private var scheme
     let onPrevious: () -> Void
     let onNext: () -> Void
     let onToday: () -> Void
@@ -106,7 +108,7 @@ public struct DayTimelineContent: View {
         // chronologie, elle, n'a pas de jauge : elle a des heures.
         .frame(maxWidth: Self.maximumWidth)
         .frame(maxWidth: .infinity)
-        .background(palette.ground)
+        .background(PulseonBackground(palette: palette, scheme: scheme))
     }
 
     /// Une chronologie profite de la largeur, mais pas à l'infini : au-delà,

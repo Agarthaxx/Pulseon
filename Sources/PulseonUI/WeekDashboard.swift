@@ -71,6 +71,8 @@ public struct WeekDashboardContent: View {
     let load: WeekDashboard.Load
     let canGoForward: Bool
     let palette: PulseonPalette
+    /// Sert au fond, dont le halo est plus discret en apparence claire.
+    @Environment(\.colorScheme) private var scheme
     let onPrevious: () -> Void
     let onNext: () -> Void
     let onCurrent: () -> Void
@@ -114,7 +116,7 @@ public struct WeekDashboardContent: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity)
-        .background(palette.ground)
+        .background(PulseonBackground(palette: palette, scheme: scheme))
     }
 
     @ViewBuilder

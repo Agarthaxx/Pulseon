@@ -151,14 +151,14 @@ struct Card<Content: View>: View {
 
     var body: some View {
         content
-            .padding(18)
+            .padding(PulseonSpace.card)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: PulseonSpace.radius, style: .continuous)
                     .fill(palette.surfaceGradient)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: PulseonSpace.radius, style: .continuous)
                     .strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5)
             )
             .shadow(color: palette.shadow, radius: 16, y: 8)
@@ -309,6 +309,36 @@ struct DevicesCard: View {
 /// couleur — et c'est précisément la couleur qu'on est censé lire d'un coup
 /// d'œil. Ne montre que les appareils qui ont du temps : légender une source
 /// absente ajouterait du bruit sans rien dire.
+/// La légende des couleurs d'appareil, **en colonne**.
+///
+/// Sert la case principale en fenêtre large, où l'anneau laissait ~420 points
+/// de vide de chaque côté. Les mêmes faits, rangés à sa droite : la durée y est
+/// alignée à droite, donc les trois chiffres se comparent d'un coup d'œil, ce
+/// qu'une légende horizontale ne permet pas.
+struct DeviceLegendColumn: View {
+    let lanes: [Lane]
+    let palette: PulseonPalette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PulseonSpace.tight) {
+            ForEach(lanes, id: \.device) { lane in
+                HStack(spacing: PulseonSpace.tight) {
+                    Circle()
+                        .fill(PulseonTheme.gradient(for: lane.device, in: palette))
+                        .frame(width: 9, height: 9)
+                    Text(lane.device.label)
+                        .font(PulseonTheme.row)
+                        .foregroundStyle(palette.inkSoft)
+                    Spacer(minLength: PulseonSpace.base)
+                    Text(DurationFormat.compact(lane.total))
+                        .font(.system(size: 14, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(palette.ink)
+                }
+            }
+        }
+    }
+}
+
 struct DeviceLegend: View {
     let lanes: [Lane]
     let palette: PulseonPalette

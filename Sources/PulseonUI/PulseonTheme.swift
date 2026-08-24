@@ -282,6 +282,13 @@ public enum PulseonTheme {
     }
 
     public static let sectionTitle = Font.system(size: 12, weight: .semibold)
+
+    /// La tête d'une carte.
+    ///
+    /// Deux crans au-dessus du texte courant, et non un demi : une hiérarchie
+    /// qui hésite ne se lit pas comme une hiérarchie. C'est ce qui manquait aux
+    /// cartes, dont le titre pesait le même poids que leurs lignes.
+    public static let cardTitle = Font.system(size: 15, weight: .semibold)
     public static let row = Font.system(size: 13, weight: .medium)
     public static let caption = Font.system(size: 11)
 }
