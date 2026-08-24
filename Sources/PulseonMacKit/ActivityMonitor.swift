@@ -86,7 +86,15 @@ public final class ActivityMonitor {
                     // Seulement la session du Mac : la télé peut être restée
                     // allumée pendant que le Mac dort.
                     MainActor.assumeIsolated {
-                        self?.store.closeOpenSession(device: .mac, at: Date())
+                        // Au dernier instant **observé**, jamais à l'heure
+                        // courante : une mise en veille qui suit vingt minutes
+                        // d'inactivité écrirait sinon ces vingt minutes comme
+                        // du temps d'écran. Le cas est rare — le tick a déjà
+                        // fermé la session au bout de deux minutes — mais la
+                        // règle ne souffre pas d'exception locale.
+                        guard let self else { return }
+                        self.store.closeOpenSession(
+                            device: .mac, at: self.observedActivityEnd())
                     }
                 }
             )
@@ -126,7 +134,7 @@ public final class ActivityMonitor {
         let center = NSWorkspace.shared.notificationCenter
         observers.forEach(center.removeObserver)
         observers.removeAll()
-        store.closeOpenSession(device: .mac, at: Date())
+        store.closeOpenSession(device: .mac, at: observedActivityEnd())
     }
 
     /// Secondes depuis la dernière interaction clavier ou souris.

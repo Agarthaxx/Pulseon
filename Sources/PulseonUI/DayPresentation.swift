@@ -73,11 +73,6 @@ public struct DayPresentation: Sendable {
         return offset
     }
 
-    public var nowLabel: String {
-        guard let now else { return "" }
-        return Self.clock.string(from: now)
-    }
-
     public var title: String {
         Self.title.string(from: dayStart)
     }

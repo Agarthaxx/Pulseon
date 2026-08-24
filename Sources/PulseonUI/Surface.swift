@@ -13,8 +13,6 @@ import SwiftUI
 /// ne la mesure pas, et deux marges voisines qui diffèrent d'un point passent
 /// pour une erreur plutôt que pour une intention.
 public enum PulseonSpace {
-    /// Entre deux éléments collés — un chiffre et son unité.
-    public static let hair: CGFloat = 4
     /// Entre deux lignes d'un même bloc.
     public static let tight: CGFloat = 8
     /// Entre deux blocs d'une même carte.

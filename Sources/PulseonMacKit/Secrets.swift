@@ -84,30 +84,4 @@ public enum Secrets {
         let add = SecItemAdd(creation as CFDictionary, nil)
         guard add == errSecSuccess else { throw Failure.keychain(add) }
     }
-
-    public static func delete(service: String, account: String) throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw Failure.keychain(status)
-        }
-    }
-
-    /// Vrai si un secret est rangé — sans le lire, donc sans déclencher la
-    /// demande d'autorisation. De quoi afficher un état dans le menu sans
-    /// harceler l'utilisateur à chaque ouverture.
-    public static func exists(service: String, account: String) -> Bool {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: false,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        return SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
-    }
 }
