@@ -146,6 +146,45 @@ import Testing
         func read() async -> TVReading { .unknown }
     }
 
+    @Test("Arrêter le collecteur ferme la session de la télé, au dernier instant vu")
+    @MainActor
+    func stoppingClosesTheTVSession() throws {
+        let base = try TVBase()
+        let start = now
+        let lastSeen = now.addingTimeInterval(120)
+
+        base.monitor.apply(.on, at: start)
+        base.monitor.apply(.on, at: lastSeen)
+
+        // Quitter Pulseon la télé allumée. Sans fermeture ici, la session
+        // restait ouverte jusqu'au démarrage suivant, où elle était refermée à
+        // la date du battement de cœur — celui du *Mac*, donc juste par
+        // accident. Le Mac fermait bien la sienne : l'asymétrie ne se voyait
+        // que sur une soirée de télé.
+        base.monitor.stop()
+
+        let sessions = try base.sessions(.tv, around: start)
+        let session = try #require(sessions.first)
+        // Au dernier instant **observé** allumé, jamais à l'heure courante.
+        #expect(session.end == lastSeen)
+    }
+
+    @Test("Redémarrer le collecteur ne coupe pas la soirée en cours")
+    @MainActor
+    func restartingDoesNotCloseTheSession() throws {
+        let base = try TVBase()
+        base.monitor.apply(.on, at: now)
+
+        // `start()` remet son timer en place et **ne doit pas** passer par
+        // `stop()`, qui ferme désormais la session : sinon chaque redémarrage
+        // du collecteur couperait la soirée en deux.
+        base.monitor.start()
+        base.monitor.stop()
+
+        let sessions = try base.sessions(.tv, around: now)
+        #expect(sessions.count == 1)
+    }
+
     @Test("Une télé allumée puis éteinte laisse une session bornée")
     @MainActor
     func onThenOffWritesABoundedSession() throws {

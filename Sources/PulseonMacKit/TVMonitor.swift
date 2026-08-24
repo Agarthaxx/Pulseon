@@ -282,7 +282,10 @@ public final class TVMonitor {
     }
 
     public func start() {
-        stop()
+        // Le timer seul, jamais `stop()` : celui-ci ferme désormais la session
+        // en cours, ce qui couperait une soirée en deux à chaque redémarrage
+        // du collecteur.
+        timer?.invalidate()
         let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) {
             [weak self] _ in
             MainActor.assumeIsolated { self?.pollNow() }
@@ -295,9 +298,25 @@ public final class TVMonitor {
         pollNow()
     }
 
+    /// Arrête le collecteur **et ferme la session en cours**.
+    ///
+    /// **Elle ne l'était pas, et personne ne le voyait.** Quitter Pulseon la
+    /// télé allumée laissait sa session ouverte : elle n'était refermée qu'au
+    /// démarrage suivant par `closeDanglingSessions`, à la date du dernier
+    /// battement de cœur — qui est celui du *Mac*, donc juste par accident.
+    /// Le Mac, lui, fermait bien la sienne : l'asymétrie ne se voyait que sur
+    /// une soirée de télé, et jamais dans un test.
+    ///
+    /// La fin retenue est le dernier instant où l'écran a été **observé**
+    /// allumé, jamais l'heure courante — la règle de tout le projet.
     public func stop() {
         timer?.invalidate()
         timer = nil
+        if let end = lastSeenOn, store.hasOpenSession(for: .tv) {
+            store.closeOpenSession(device: .tv, at: end)
+        }
+        lastSeenOn = nil
+        currentApp = nil
     }
 
     public func pollNow() {

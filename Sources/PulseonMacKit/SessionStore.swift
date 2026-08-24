@@ -242,19 +242,6 @@ public final class SessionStore {
         openSession(for: device) != nil
     }
 
-    /// Ferme les sessions en cours de **tous** les appareils.
-    ///
-    /// Réservé à l'extinction de l'agent : chaque collecteur ne doit fermer que
-    /// la sienne. Voir `closeOpenSession(device:at:)`.
-    public func closeAllOpenSessions(at date: Date) {
-        for device in Device.allCases {
-            if let current = openSession(for: device) {
-                close(current, at: date)
-            }
-        }
-        save()
-    }
-
     /// Les sessions qui chevauchent la fenêtre `[from, to)`.
     ///
     /// Les **deux** bornes sont dans le prédicat, donc dans SQLite. La version

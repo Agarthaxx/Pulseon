@@ -815,6 +815,43 @@ change se paie sur tout ce que la vue qui la lit contient.** La corriger ne
 consiste pas à changer la valeur moins souvent, mais à la lire depuis la plus
 petite vue possible.
 
+#### Le ménage du 2026-08-24 : ce qui n'avait pas d'appelant
+
+Audit demandé par Arthur (« une refacto est-elle nécessaire ? »). Réponse : pas
+de refacto de structure — le calcul est déjà gratuit (0,55 ms pour reconstruire
+une vraie journée de 454 sessions, 0,12 ms pour lire l'assertion vidéo, aucun
+`Calendar` dans une boucle chaude). Mais le balayage des déclarations publiques
+sans appelant a trouvé **un vrai défaut** et huit vestiges.
+
+**Le défaut : `TVMonitor.stop()` ne fermait pas sa session.** Quitter Pulseon la
+télé allumée la laissait ouverte ; elle n'était refermée qu'au démarrage suivant
+par `closeDanglingSessions`, **à la date du battement de cœur du Mac** — donc
+juste par accident. Le Mac, lui, fermait bien la sienne : l'asymétrie ne pouvait
+se voir que sur une soirée de télé, et aucun test ne la couvrait. Deux tests
+l'attrapent désormais.
+
+**Le piège du correctif, qui vaut d'être noté** : `start()` appelait `stop()`
+pour remettre son timer en place. Faire fermer la session par `stop()` aurait
+donc coupé la soirée en deux à chaque redémarrage du collecteur. `start()`
+invalide maintenant le timer directement, et un second test le vérifie.
+
+**`SessionStore.closeAllOpenSessions` est supprimée.** Sa documentation la
+disait « réservée à l'extinction de l'agent » — et personne ne l'appelait, ce qui
+est exactement le symptôme que ce projet traque : *une API publique sans appelant
+ressemble à une feature livrée*. Chaque collecteur fermant désormais la sienne,
+elle est redondante.
+
+**Le Mac ferme au dernier instant observé, plus à l'heure courante.** La mise en
+veille et l'arrêt du collecteur passaient par `Date()`. Le cas est rare — le tick
+a déjà fermé la session au bout de deux minutes d'inactivité — mais la règle du
+projet ne souffre pas d'exception locale.
+
+**Huit vestiges supprimés** : `Secrets.delete` et `exists`,
+`DayPresentation.nowLabel`, `PulseonTheme.goldGradient`, `navyGradient`,
+`surfaceGradient`, `sectionTitle`, `PulseonSpace.hair` — et `surfaceTop` avec
+eux, qui ne servait qu'au dégradé de carte, lui-même orphelin depuis que
+l'éditoriale a retiré les cartes.
+
 ### Le battement de la journée
 
 Le motif de l'icône, **fait de vraies données**. Pulseon portait un battement

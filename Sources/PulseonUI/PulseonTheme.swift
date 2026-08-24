@@ -56,14 +56,6 @@ public struct PulseonPalette: Sendable {
     /// gris seul ne faisait pas assez sur un fond aussi sombre.
     public let shadow: Color
 
-    public var goldGradient: LinearGradient {
-        LinearGradient(
-            colors: [goldLight, gold, goldDeep],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
     /// Le fond, du haut vers le bas.
     ///
     /// Vertical et non diagonal : un fond en diagonale a un sens de lecture,
@@ -77,26 +69,6 @@ public struct PulseonPalette: Sendable {
         )
     }
 
-    public var navyGradient: LinearGradient {
-        LinearGradient(
-            colors: [navyLight, navy, navyDeep],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    /// Le léger éclaircissement du haut d'une carte. Une carte parfaitement
-    /// uniforme paraît imprimée ; un dégradé d'un pour cent lui donne une
-    /// surface.
-    public var surfaceGradient: LinearGradient {
-        LinearGradient(
-            colors: [surfaceTop, surface],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
-    public let surfaceTop: Color
 }
 
 public enum PulseonTheme {
@@ -122,8 +94,7 @@ public enum PulseonTheme {
         goldDeep: Color(red: 0.639, green: 0.478, blue: 0.180),
         navyLight: Color(red: 0.482, green: 0.588, blue: 0.851),
         navyDeep: Color(red: 0.157, green: 0.243, blue: 0.510),
-        shadow: Color.black.opacity(0.55),
-        surfaceTop: Color(red: 0.098, green: 0.118, blue: 0.169)
+        shadow: Color.black.opacity(0.55)
     )
 
     /// Le clair : **du papier, pas du blanc**.
@@ -163,8 +134,7 @@ public enum PulseonTheme {
         goldDeep: Color(red: 0.478, green: 0.345, blue: 0.078),
         navyLight: Color(red: 0.216, green: 0.353, blue: 0.620),
         navyDeep: Color(red: 0.059, green: 0.129, blue: 0.302),
-        shadow: Color(red: 0.055, green: 0.055, blue: 0.063).opacity(0.13),
-        surfaceTop: Color(red: 0.996, green: 0.992, blue: 0.984)
+        shadow: Color(red: 0.055, green: 0.055, blue: 0.063).opacity(0.13)
     )
 
     // MARK: Les appareils
@@ -331,8 +301,6 @@ public enum PulseonTheme {
     public static func unit(_ size: CGFloat) -> Font {
         .system(size: size, weight: .medium)
     }
-
-    public static let sectionTitle = Font.system(size: 12, weight: .semibold)
 
     /// La tête d'un bloc.
     ///
