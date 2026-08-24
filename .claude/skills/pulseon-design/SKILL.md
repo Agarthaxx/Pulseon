@@ -26,6 +26,24 @@ traitement en cartes** de la maquette du 2026-08-17, dont tout le reste tient.
 Les valeurs vivent dans `PulseonEditorial` et `PulseonTheme` — **ne jamais les
 écrire en dur dans une vue.**
 
+**Le fond n'est plus blanc** (2026-08-24, même soirée) : « je vois plus un truc
+du style gris cassé avec un dégradé sympa plutôt que blanc blanc ». Le fond
+porte un **dégradé vertical** (`groundTop` → `ground` → `groundDeep`), écrit en
+clair et jamais dérivé par opacité, et **vertical et non diagonal** — une
+diagonale a un sens de lecture, donc elle désigne un coin, or rien ici n'a à
+être désigné. Trois gris cassés sont rendus côte à côte (**papier**, **greige**,
+**ardoise**) en attente du choix d'Arthur ; les deux perdants partiront, comme
+`PulseonSkin`. **Seul le fond change de l'un à l'autre** : mélanger deux
+variables sur une planche empêche de savoir laquelle a emporté le choix.
+
+**L'écran de lancement** (`LaunchSplash`) se joue à **l'ouverture de la
+fenêtre**, jamais au démarrage du processus — un agent de barre de menu vit des
+jours sans fenêtre, donc un écran de lancement au démarrage serait dessiné pour
+personne. Sa barre **ne mesure rien** : d'où aucun pourcentage affiché (ce serait
+un chiffre inventé), une durée courte, et **les couleurs de la marque et jamais
+l'or** — l'or désigne du temps mesuré, et une barre de chargement n'en mesure
+pas.
+
 **Deux directions écartées le même jour, à ne pas reproposer** : la **pleine**
 (cartes, filet, ombre — jugée « trop simple »), et le **verre** (translucide,
 champs de couleur, reflet — séduisant mais daté, « une mode datée se voit plus

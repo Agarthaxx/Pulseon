@@ -690,6 +690,65 @@ affichait une bande blanche au-dessus et en dessous — invisible sur l'écran d
 jour, qui remplit sa hauteur. Les trois écrans bornent maintenant leur hauteur et
 s'alignent en haut.
 
+#### Le fond n'est plus blanc, et l'app a un écran de lancement
+
+Deux demandes d'Arthur le 2026-08-24, le soir de la DA éditoriale.
+
+**« Je vois plus un truc du style gris cassé avec un dégradé sympa plutôt que
+blanc blanc. »** Le fond clair valait `#F1F2F5` — un gris très clair et
+**froid**, qui passait pour du blanc à côté d'une fenêtre du système. Une
+direction qui se revendique *page* s'appuyait donc sur un fond de navigateur par
+défaut.
+
+Le fond porte maintenant un **dégradé vertical** (`groundTop` → `ground` →
+`groundDeep`), et trois choses s'y jouent :
+
+- **écrit en clair, jamais dérivé du fond par opacité** — la leçon des teintes
+  de catégorie, où éclaircir par transparence donnait un olive sali ;
+- **vertical et non diagonal** : un fond en diagonale a un sens de lecture, donc
+  il désigne un coin, et rien ici n'a à être désigné. La verticale est la seule
+  direction qu'une page a déjà ;
+- **la bande du sélecteur d'écran prend `groundTop`** et non `ground` : elle vit
+  au-dessus du fond des écrans, donc un aplat plus clair ou plus sombre y ferait
+  une couture nette en travers de la fenêtre.
+
+**Trois candidats sont rendus côte à côte**, en attente du choix d'Arthur — même
+méthode que les trois directions du matin, et **seul le fond change de l'un à
+l'autre** : mélanger deux variables sur une planche empêche de savoir laquelle a
+emporté le choix.
+
+| Candidat | Ce que c'est |
+|---|---|
+| **papier** | l'ivoire d'un livre, le plus chaud et le plus loin du blanc ; c'est aussi celui qui s'accorde le mieux à l'or, qui est déjà un ocre |
+| **greige** | le gris cassé neutre, ni jauni ni bleuté — retenu par défaut en attendant |
+| **ardoise** | le gris cassé froid, dans le prolongement du bleu nuit de la marque, le plus proche de ce qui existait |
+
+**Les deux perdants partiront une fois le choix fait**, comme `PulseonSkin` :
+une option qui survit à la décision qu'elle servait devient une dette.
+
+**L'écran de lancement** (`LaunchSplash`) : la marque, son nom, une barre qui se
+remplit. Trois décisions qui ne se devinent pas :
+
+- **Il se joue à l'ouverture de la fenêtre, pas au démarrage du processus**, et
+  c'est la seule place possible : Pulseon est un agent de barre de menu qui
+  démarre à l'ouverture de session et vit des jours sans fenêtre. Un écran de
+  lancement au démarrage serait dessiné pour personne. Le vrai lancement, pour
+  qui s'en sert, c'est l'instant où la fenêtre s'ouvre — et c'est aussi le moment
+  où la journée se lit sur le disque, donc le seul où il y a quelque chose à
+  couvrir. Conséquence assumée : ⌘W puis ⌘J le rejouent.
+- **La barre ne mesure rien** : elle suit une horloge, pas un travail. C'est la
+  seule chose de l'app qui bouge sans rien mesurer, d'où deux garde-fous — elle
+  ne porte **aucun pourcentage** (ce serait un chiffre inventé, ce que le projet
+  s'interdit partout) et elle est **courte** (0,95 s de barre, 1,1 s d'écran).
+- **Elle porte les couleurs de la marque et jamais l'or.** L'or désigne du temps
+  mesuré ; une barre de chargement ne mesure justement pas de temps. Même
+  raisonnement que pour le battement du jour, où c'est la *forme* de la marque
+  qui autorise ses couleurs — ici, c'est la marque elle-même qui se montre.
+
+Comme partout, le mouvement part **éteint** : hors de la fenêtre de l'app, la
+barre est dessinée pleine et la marque à l'échelle, sans quoi une preview
+sortirait un écran vide qu'on lirait comme un bug de dessin.
+
 ### Le battement de la journée
 
 Le motif de l'icône, **fait de vraies données**. Pulseon portait un battement
