@@ -1424,34 +1424,56 @@ ne veulent pas dire la même chose. `summedTotal` additionne les appareils et
 double-compte les écrans simultanés ; `coveredTotal` fusionne les
 intervalles qui se chevauchent. À l'UI de choisir lequel elle met en avant.
 
-### Idée captée, non scopée : découverte réseau et partage
+### Le partage est fermé : Pulseon reste une app perso
 
-Idée d'Arthur, 2026-08-17, née de la contrainte TV ci-dessus (« dommage d'être
-limité », puis « le partage me branche beaucoup ») : au lieu de relier un
-appareil à la main (`defaults write`), scanner le réseau local en Bonjour/mDNS
-à l'ouverture de l'app et proposer une liste — « voici ce qu'on a trouvé, clique
-pour relier ». Techniquement à la portée d'une session : chaque type d'appareil
-s'annonce différemment (`_airplay._tcp`, SSDP, etc.), déjà vérifié à la main
-avec `dns-sd` en cherchant la télé.
+**Tranché par Arthur le 2026-08-24** : « le projet dépasse un peu les standards,
+c'est quelque chose que je vais garder pour moi sur mon PC », puis, sans qu'on le
+lui redemande, « **je ne veux plus la commercialiser** ». C'est une décision de
+périmètre, pas une humeur, et elle **referme** l'ambition de mise en ligne qui
+montait depuis le 2026-08-17 (« le partage me branche beaucoup »). Dit deux fois
+dans la même conversation : à ne pas reproposer.
 
-**Ce que ça implique si le partage devient réel, à ne pas perdre :**
+Ce que ça retire de la roadmap, définitivement jusqu'à avis contraire :
 
-- **CloudKit donne déjà le multi-utilisateur, sans backend à construire.**
-  Chaque installation a sa propre base privée liée à l'iCloud de la personne —
-  le partage n'est donc pas un problème de serveur à héberger, mais de
-  **distribution** : signature Developer ID + notarisation, même mur que
-  CloudKit (voir [[project-pulseon-blockers]] côté mémoire long-terme).
-- **PlayStation et TV restent le besoin personnel d'Arthur**, pas celui d'un
-  public — voir « Parti pris produit » ci-dessus. Le cœur partageable, c'est le
-  Mac (et l'onboarding réseau lui-même).
-- **La collecte iPhone reste bloquée** (voir contrainte plus haut) — un public
-  qui découvre une app « temps d'écran » attend l'iPhone en premier, donc c'est
-  le principal risque de positionnement si ça se concrétise.
+- **La signature Developer ID et la notarisation.** Elles n'existaient que pour
+  installer l'app sur la machine de quelqu'un d'autre. La signature ad-hoc suffit
+  sur le Mac d'Arthur, et l'avertissement Gatekeeper n'a plus d'objet.
+- **Le positionnement produit.** Plus de risque « un public attend l'iPhone en
+  premier », plus de « le cœur partageable c'est le Mac » : la PlayStation et la
+  télé ne sont plus des sources hors sujet, ce sont **les** sources.
+- **L'onboarding pour un inconnu.** Personne d'autre n'installera Pulseon, donc
+  aucune fonctionnalité ne se justifie plus par « il faudra bien expliquer ça à
+  quelqu'un qui découvre ».
 
-Non scopé à ce jour : pas de ticket, pas de branche. Ni le front (en pause,
-maquette d'Arthur attendue) ni les fronts ouverts (PSN, extraction post-#22) ne
-sont bloqués par ça — c'est une direction à garder en tête, pas une tâche en
-cours.
+Ce que ça **ne** retire pas :
+
+- **Le compte Apple payant reste nécessaire** pour CloudKit, l'app iOS et le
+  widget — même pour un usage strictement personnel. C'est le seul mur qui
+  survit à cette décision, et c'est celui qui compte.
+**Première conséquence, tirée le jour même : la découverte réseau est écartée.**
+Elle était née en 2026-08-17 comme un confort d'installation — remplacer le
+`defaults write ... TVHost` par une liste sur laquelle cliquer. Arthur l'a
+écartée d'une question : « j'en ai pas besoin non ? c'est pour mon usage perso à
+la maison ». Sa télé est reliée depuis le 18/08, une fois pour toutes.
+
+**Le repli tenté ne valait pas mieux, et c'est la vraie leçon.** L'idée de
+seconde main était d'en faire un diagnostic : sur les dix jours mesurés au
+2026-08-24, la télé n'a de temps que **quatre jours**, et les six autres sont des
+« on ne sait pas ». Sauf que ces six jours-là, la télé n'était pas injoignable à
+cause d'un mauvais réglage — **Arthur n'était pas chez lui**. Un écran qui
+affiche « injoignable » les jours où il est au bureau lui apprend qu'il est au
+bureau. Le chiffre était juste, la conclusion qu'on en tirait ne l'était pas.
+
+Le code écrit ce jour-là vit sur la branche **`feat/device-discovery`**, non
+mergée, avec le détail de ce qui y a été mesuré (une annonce mDNS ne prouve rien,
+`NWBrowser` ne rend pas de nom d'hôte, seul `:8001/api/v2/` tranche). Comme
+`RailLayout` dans la PR #22 fermée : ce n'est pas du code mort, c'est du
+raisonnement mesuré qu'il vaut mieux relire que réécrire.
+
+**Le test à faire passer à toute idée, désormais** : « qu'est-ce que ça change
+pour Arthur, chez lui, sur sa machine ? ». Si la réponse suppose un autre
+utilisateur, un autre réseau ou une autre installation, l'idée est hors sujet.
+
 
 ## Conventions de développement
 
