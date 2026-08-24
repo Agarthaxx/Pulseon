@@ -55,6 +55,14 @@ public struct ActivityRing: View {
         self.diameter = diameter
     }
 
+    /// Où en est l'enroulement, de 0 (rien) à 1 (le tour entier).
+    ///
+    /// Part à 1 et non à 0 : sans mouvement — une preview, un rendu hors écran
+    /// — l'anneau doit être **entièrement dessiné**, jamais vide. Voir
+    /// `PulseonMotion`.
+    @State private var drawn: Double = 1
+    @Environment(\.pulseonMotion) private var motion
+
     private var thickness: CGFloat { diameter * 0.125 }
 
     /// Ce qu'il reste au centre pour écrire.
@@ -69,15 +77,26 @@ public struct ActivityRing: View {
                 segments: segments,
                 thickness: thickness,
                 track: palette.sunken,
-                palette: palette
+                palette: palette,
+                drawn: drawn
             )
 
             center
         }
         .frame(width: diameter, height: diameter)
+        .onAppear(perform: unroll)
         // L'ombre ne décore pas : elle décolle l'anneau de la carte, sans quoi
         // les deux se lisent comme un seul aplat.
         .shadow(color: palette.shadow.opacity(0.5), radius: 18, y: 6)
+    }
+
+    /// L'anneau se trace à l'ouverture. **Une seule fois** : il ne se rejoue pas
+    /// à chaque relecture minute, sans quoi l'écran clignoterait tout seul
+    /// pendant qu'on le regarde.
+    private func unroll() {
+        guard motion else { return }
+        drawn = 0
+        withAnimation(PulseonMotion.draw) { drawn = 1 }
     }
 
     /// Assez grand pour rester le premier élément lu, assez petit pour ne pas
@@ -89,7 +108,13 @@ public struct ActivityRing: View {
     private var center: some View {
         VStack(spacing: 3) {
             if let total {
-                DurationReadout(total: total, size: readoutSize, palette: palette)
+                // Le chiffre monte avec l'anneau. Il affiche donc, un instant,
+                // des valeurs qui n'ont pas été mesurées — toléré le temps d'un
+                // geste (0,5 s), et jamais dans la barre de menu, qui est le
+                // seul endroit où le total est lu en continu.
+                AnimatedReadout(
+                    total: total * drawn, size: readoutSize, palette: palette
+                )
             } else {
                 Text("—")
                     .font(PulseonTheme.readout(readoutSize))
@@ -168,6 +193,9 @@ struct Ring: View {
     /// vide qu'on prendrait pour un bug d'affichage.
     let track: Color?
     let palette: PulseonPalette
+    /// Jusqu'où le tour est tracé, de 0 à 1. Vaut 1 par défaut : un anneau sans
+    /// animation est un anneau complet, jamais un anneau vide.
+    var drawn: Double = 1
 
     var body: some View {
         ZStack {
@@ -182,9 +210,14 @@ struct Ring: View {
             // dans l'ordre, les capuchons se chevaucheraient à l'endroit et
             // chaque jointure porterait une bosse.
             ForEach(Array(zip(segments, arcs)).reversed(), id: \.0.id) { segment, arc in
-                if let arc {
+                // L'arc n'est tracé que jusqu'où la tête d'enroulement est
+                // passée. Les arcs déjà dépassés sont entiers, celui en cours
+                // est coupé, ceux d'après ne sont pas encore là — ce qui donne
+                // un unique trait qui fait le tour, et non cinq arcs qui
+                // grandissent chacun de leur côté.
+                if let arc, arc.start < drawn {
                     Circle()
-                        .trim(from: arc.start, to: arc.end)
+                        .trim(from: arc.start, to: min(arc.end, drawn))
                         .stroke(
                             // Le dégradé est calé sur le tour entier, pas sur
                             // l'arc : deux arcs voisins de la même couleur se
