@@ -553,6 +553,83 @@ d'activation. Ça ne distingue pas `.regular` de `.accessory` — le relevé
 automatique n'a rien prouvé, c'est l'œil d'Arthur qui a validé. À retenir avant
 de bâtir une sonde : vérifier qu'elle mesure bien ce qu'on croit.
 
+### Le mouvement, et le sens dans lequel il a le droit d'échouer
+
+Arthur, le 2026-08-24, sur l'app installée : elle « fait figé, pas fini ». Le
+diagnostic n'était pas une impression — **zéro animation dans tout `PulseonUI`**,
+et deux raccourcis clavier en tout (⌘J, ⌘Q). Un anneau apparaissait d'un bloc,
+une journée en remplaçait une autre par saut.
+
+Ce qui bouge désormais : l'anneau **se trace en s'enroulant** à l'ouverture, le
+total monte avec lui, et les journées **glissent dans le sens de la navigation**
+— sans direction, reculer et avancer produisent la même transition et
+l'animation ne dit plus rien. Au clavier : ←/→ pour la journée, ⌘1/⌘2/⌘3 pour
+les onglets, ⌘T pour revenir à aujourd'hui.
+
+**La décision qui compte est la valeur par défaut : le mouvement est éteint.**
+`\.pulseonMotion` vaut `false`, et seule la fenêtre de l'app l'allume. Une
+animation d'apparition part d'un état vide — anneau à zéro, chiffre à zéro — or
+`ImageRenderer` rend une image **synchrone**, sans faire avancer une seule
+image : une preview aurait capturé cet état et sorti un **anneau vide**. On
+aurait cru à un bug de dessin, et surtout on aurait perdu l'outil qui trouve la
+plupart des vrais défauts de ce projet. En partant de `false`, le repli est
+« tout est dessiné », jamais « rien n'est dessiné » — même discipline que
+partout : un doute se résout du côté qui montre ce qui a été mesuré.
+
+Trois détails qui ne se devinent pas :
+
+- **`Text` ne s'interpole pas.** SwiftUI ne sait pas animer entre deux chaînes ;
+  c'est `Animatable` qui fait le travail, en interpolant `animatableData` et en
+  redemandant le corps à chaque image. Et en Swift 6 la conformance doit être
+  `nonisolated` — `View` porte l'isolation au fil principal, or le moteur
+  d'animation interpole depuis chez lui.
+- **L'anneau ne se rejoue pas à chaque relecture.** La journée est relue chaque
+  minute ; rejouer le tracé ferait clignoter l'écran tout seul pendant qu'on le
+  regarde.
+- **Les flèches ne sont pas des `keyboardShortcut`.** Une flèche seule n'est pas
+  un raccourci de menu, et l'affecter à un bouton invisible la volerait à tout
+  champ de saisie. `onKeyPress` la rend au premier répondant qui en veut. Les
+  raccourcis à modificateur, eux, passent par des boutons cachés plutôt que par
+  `.commands` : la barre de menus de cet agent n'existe que le temps d'une
+  fenêtre ouverte (voir `DockPresence`), donc un raccourci porté par la vue vit
+  exactement aussi longtemps que la fenêtre qu'il pilote.
+
+**Une entorse assumée, et bornée.** Le compteur qui monte affiche pendant une
+demi-seconde des valeurs qui n'ont pas été mesurées — contraire à la règle
+« ne jamais afficher un chiffre non mesuré ». Elle est tolérée le temps d'un
+geste d'ouverture, et **la barre de menu ne compte jamais** : c'est le seul
+endroit où le total est lu en continu, donc le seul où un chiffre faux aurait le
+temps d'être cru.
+
+### Ce qu'Arthur reproche à l'app, et ce qui reste à faire
+
+Le 2026-08-24, questionné sur ce que « bof à utiliser » voulait dire, Arthur a
+retenu **deux** raisons sur quatre : « ça fait figé, pas fini » et « je n'ai pas
+de raison de l'ouvrir ». Elles ne se réparent pas de la même façon.
+
+La première est traitée ci-dessus, et elle se referme complètement. **La seconde
+est le vrai sujet, et aucune animation ne la règle** : l'app est un miroir qu'on
+a déjà vu. Ce qui donne une raison de revenir, c'est quelque chose qui **change**
+ou quelque chose à **explorer**. Les trois chantiers retenus avec lui, dans
+l'ordre :
+
+1. ~~**Le mouvement et le glissement**~~ — livré (PR #51).
+2. **L'année en anneaux** — 365 petits ronds en damier, un par jour.
+   `buildPeriod` est déjà générique, c'est surtout du dessin. C'est l'objet qu'on
+   ouvre pour le plaisir, et celui où la signature visuelle du projet paye le
+   plus.
+3. **La fiche d'une app** — cliquer sur « Xcode » n'importe où mène à son écran :
+   total, évolution semaine par semaine, et à quelles heures elle sert. C'est ce
+   qui fait passer l'app de « papier peint » à « chose qu'on interroge » — **rien
+   n'est cliquable aujourd'hui**, les onze boutons de `PulseonUI` sont tous de la
+   navigation.
+
+Deux autres idées gardées de côté, présentées et non retenues en priorité : le
+**menu de la barre redessiné** (mini-anneau, apps du moment avec leurs icônes —
+c'est l'écran le plus vu et le seul jamais dessiné) et **la grille heure × jour**
+(« tu es sur ton Mac entre 14 h et 18 h, la télé après 21 h ») — le seul de la
+liste qui apprendrait à Arthur quelque chose qu'il ne sait pas déjà.
+
 ### Ce que la barre de menu affiche
 
 Le libellé porte **l'icône et le total du jour, qui défile à la seconde**
