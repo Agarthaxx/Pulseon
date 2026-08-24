@@ -852,6 +852,41 @@ projet ne souffre pas d'exception locale.
 eux, qui ne servait qu'au dégradé de carte, lui-même orphelin depuis que
 l'éditoriale a retiré les cartes.
 
+#### `CollectionEngine` sort de l'exécutable
+
+Dernier volet de l'audit du 2026-08-24. Le moteur — 250 lignes qui portent le
+cache de la journée, le tick d'affichage, le passage de minuit et le total de la
+barre — vivait dans `PulseonMac`, la cible exécutable. **C'est exactement ce que
+la règle « tout le code macOS vit dans une bibliothèque » existe pour empêcher** :
+le `@main` d'un exécutable démarre SwiftUI dans le processus de test, donc rien
+de ce qu'il contient ne se teste. La cible passe de 608 à 367 lignes.
+
+**Le déplacement seul n'aurait rien débloqué**, et c'est le vrai sujet : `init()`
+ouvrait la base de l'app et démarrait les moniteurs. Un test l'aurait fait écrire
+dans la vraie base d'Arthur. D'où deux paramètres, tous deux avec une valeur par
+défaut pour que l'app n'ait rien à dire :
+
+- **`container`** — la base à lire, `nil` ouvrant celle de l'app ;
+- **`collecting`** — faux pour un moteur qui **lit sans mesurer**.
+
+**Ce second paramètre a révélé un défaut au lieu de le contourner.** L'horizon
+d'affichage venait du moniteur, seul à se souvenir du dernier instant d'activité
+*observée* — c'est ce qui empêche le compteur de reculer. Mais un moteur qui ne
+collecte pas n'a pas de moniteur qui tourne : lui demander cet horizon donnait
+« il y a vingt minutes » ou « maintenant » selon que quelqu'un venait de toucher
+le clavier. Le moteur silencieux s'arrête donc à l'instant présent — vrai *et*
+reproductible.
+
+**Un test a d'ailleurs échoué pour la bonne raison** : il posait une session à
+20 h, et le moteur ne compte que jusqu'à maintenant. Une heure fixe rendait le
+test vert le soir et rouge le matin. Les fenêtres partent maintenant de minuit
+et s'arrêtent à la moitié de ce qui s'est écoulé.
+
+Cinq tests, sur ce qui n'en avait aucun : une journée vide vaut zéro et non un
+tiret, le total suit les sessions du jour, deux écrans simultanés ne comptent
+qu'une fois dans la barre, une relecture ne réécrit pas un titre identique, et
+hier n'entre pas dans le total du jour. **227 → 232 tests.**
+
 ### Le battement de la journée
 
 Le motif de l'icône, **fait de vraies données**. Pulseon portait un battement
