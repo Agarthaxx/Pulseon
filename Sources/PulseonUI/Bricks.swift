@@ -75,6 +75,12 @@ struct Meter: View {
     let fill: LinearGradient
     let palette: PulseonPalette
 
+    /// La part effectivement dessinée. **Part à sa valeur finale**, donc une
+    /// preview rend la jauge pleine : le repli est « tout est dessiné ». Voir
+    /// `PulseonMotion`.
+    @State private var drawn: Double?
+    @Environment(\.pulseonMotion) private var motion
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -83,10 +89,25 @@ struct Meter: View {
                     .fill(fill)
                     // Une part minuscule doit rester visible : à 0,5 % la jauge
                     // ferait 0,3 point de large et se lirait « rien ».
-                    .frame(width: max(3, geometry.size.width * min(1, max(0, share))))
+                    .frame(
+                        width: max(
+                            3,
+                            geometry.size.width * min(1, max(0, drawn ?? share))
+                        )
+                    )
             }
         }
         .frame(height: 6)
+        .onAppear {
+            guard motion else { return }
+            drawn = 0
+            withAnimation(PulseonMotion.fill) { drawn = share }
+        }
+        // La jauge suit sa donnée quand la journée change sous elle, au lieu de
+        // rester figée sur la valeur qu'elle avait à son apparition.
+        .onChange(of: share) { _, new in
+            withAnimation(motion ? PulseonMotion.fill : nil) { drawn = new }
+        }
     }
 }
 

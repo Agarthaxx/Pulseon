@@ -356,4 +356,9 @@ extension PulseonTheme {
     /// Les repères du cadran, plus clairs que l'anneau : ils sont petits, et
     /// une teinte identique les ferait disparaître.
     public static let markTick = Color(red: 0.514, green: 0.702, blue: 1.000)
+
+    /// Les deux bouts du battement, isolés pour que l'aire sous la courbe du
+    /// « battement du jour » puisse s'y référer sans redéfinir la teinte.
+    public static let markViolet = Color(red: 0.529, green: 0.396, blue: 0.945)
+    public static let markBlue = Color(red: 0.361, green: 0.686, blue: 1.000)
 }

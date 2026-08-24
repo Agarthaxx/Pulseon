@@ -149,11 +149,12 @@ public struct DayDashboardContent: View {
     /// La colonne d'origine : tout à la suite, dans l'ordre de lecture.
     @ViewBuilder
     private func column(_ day: DayPresentation) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: PulseonSpace.base) {
             RingCard(day: day, palette: palette)
             if let anatomy = day.anatomy {
                 DayAnatomyCard(anatomy: anatomy, day: day, palette: palette)
             }
+            DayPulseCard(pulse: day.pulse, day: day, palette: palette)
             if !day.categories.isEmpty {
                 BreakdownCard(categories: day.categories, palette: palette)
             }
@@ -173,22 +174,35 @@ public struct DayDashboardContent: View {
     /// le cas normal d'une journée vide ou du premier jour d'utilisation.
     @ViewBuilder
     private func grid(_ day: DayPresentation) -> some View {
-        WeightedColumns(weights: [Self.leadingWeight, Self.trailingWeight], spacing: 14) {
-            VStack(alignment: .leading, spacing: 14) {
+        WeightedColumns(
+            weights: [Self.leadingWeight, Self.trailingWeight], spacing: PulseonSpace.base
+        ) {
+            VStack(alignment: .leading, spacing: PulseonSpace.base) {
                 RingCard(
                     day: day, palette: palette,
                     ringDiameter: Self.gridRingDiameter, isWide: true
                 )
+                .entrance(rank: 0)
                 if let anatomy = day.anatomy {
                     DayAnatomyCard(anatomy: anatomy, day: day, palette: palette)
+                        .entrance(rank: 2)
                 }
+                // **Ce qui comblait le vide, et pas avec du remplissage.** La
+                // colonne gauche s'arrêtait ~290 points au-dessus de la droite,
+                // sur la fenêtre d'Arthur. Un `Spacer` aurait aligné les bas
+                // sans rien dire de plus ; le battement occupe la place en
+                // répondant à la question du projet — *quand*.
+                DayPulseCard(pulse: day.pulse, day: day, palette: palette)
+                    .entrance(rank: 4)
             }
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: PulseonSpace.base) {
                 if !day.categories.isEmpty {
                     BreakdownCard(categories: day.categories, palette: palette)
+                        .entrance(rank: 1)
                 }
                 devicesCard(day)
+                    .entrance(rank: 3)
             }
         }
     }

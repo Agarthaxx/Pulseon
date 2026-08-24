@@ -47,6 +47,12 @@ public enum PulseonMotion {
     /// Le passage d'une journée à l'autre.
     public static let slide = Animation.easeInOut(duration: 0.28)
 
+    /// Le tracé du battement, de la gauche vers la droite.
+    ///
+    /// Plus long que l'anneau, et c'est voulu : une courbe qui se révèle est
+    /// une journée qui se rejoue, donc elle a le droit de prendre son temps.
+    public static let trace = Animation.easeInOut(duration: 0.9)
+
     /// Le décompte des chiffres.
     ///
     /// **Plus court que le tracé, et volontairement.** Un compteur qui monte
@@ -55,6 +61,35 @@ public enum PulseonMotion {
     /// chiffre faux. Il n'est joué qu'à l'apparition, jamais sur les
     /// relectures : la barre de menu, elle, ne compte jamais.
     public static let count = Animation.easeOut(duration: 0.5)
+
+    /// L'entrée en cascade des cartes.
+    ///
+    /// Chaque carte arrive légèrement après la précédente, en montant de
+    /// quelques points. **C'est ce décalage qui se lit « haut de gamme »** : des
+    /// cartes qui apparaissent toutes ensemble se lisent comme un écran qui se
+    /// charge, des cartes qui arrivent l'une après l'autre se lisent comme un
+    /// écran qui se compose.
+    public static let entrance = Animation.spring(response: 0.5, dampingFraction: 0.85)
+
+    /// Le retard ajouté par rang de carte.
+    ///
+    /// 60 ms : en dessous la cascade ne se perçoit plus, au-dessus la dernière
+    /// carte se fait attendre. Bornée à six rangs — au-delà, l'écran met plus
+    /// d'une demi-seconde à finir de se poser, et on attend l'app au lieu de la
+    /// lire.
+    public static func entranceDelay(rank: Int) -> Double { Double(min(rank, 6)) * 0.06 }
+
+    /// Le remplissage des jauges.
+    public static let fill = Animation.easeOut(duration: 0.7)
+
+    /// Le battement du halo de fond.
+    ///
+    /// **C'est l'identité de Pulseon rendue au fond de l'écran** : la marque
+    /// porte un pouls, le symbole de la barre de menu aussi, et rien n'en
+    /// bougeait. Très lent et de très faible amplitude — un halo qui se
+    /// remarque est un halo qui distrait, et cet écran sert à lire des
+    /// chiffres.
+    public static let breath = Animation.easeInOut(duration: 4.5).repeatForever(autoreverses: true)
 }
 
 /// Un nombre qui monte jusqu'à sa valeur.
@@ -77,6 +112,41 @@ struct AnimatedReadout: View, Animatable {
 
     var body: some View {
         DurationReadout(total: total, size: size, palette: palette)
+    }
+}
+
+/// L'entrée en cascade d'une carte.
+///
+/// Un modificateur plutôt qu'un état dans chaque vue : les cartes n'ont pas à
+/// savoir qu'elles sont animées, ni à quel rang elles arrivent — c'est l'écran
+/// qui compose, donc c'est lui qui numérote.
+struct Entrance: ViewModifier {
+    let rank: Int
+    @State private var shown = false
+    @Environment(\.pulseonMotion) private var motion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 14)
+            .onAppear {
+                // Sans mouvement, la carte est là dès la première image : le
+                // repli est « tout est dessiné ». Voir `PulseonMotion`.
+                guard motion else {
+                    shown = true
+                    return
+                }
+                withAnimation(PulseonMotion.entrance.delay(PulseonMotion.entranceDelay(rank: rank))) {
+                    shown = true
+                }
+            }
+    }
+}
+
+extension View {
+    /// Fait entrer la vue en cascade, à son rang dans l'écran.
+    public func entrance(rank: Int) -> some View {
+        modifier(Entrance(rank: rank))
     }
 }
 

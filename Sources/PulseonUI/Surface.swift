@@ -65,19 +65,27 @@ public struct PulseonBackground: View {
     /// intensité de halo se lit comme une tache.
     private var isDark: Bool { scheme == .dark }
 
+    /// L'amplitude du battement du halo. **Vaut 1 au repos**, donc une preview
+    /// rend le fond à sa pleine intensité — le repli est « tout est dessiné ».
+    @State private var breath: Double = 1
+    @Environment(\.pulseonMotion) private var motion
+
     public var body: some View {
         ZStack {
             palette.ground
 
-            // Le halo derrière l'anneau.
+            // Le halo derrière l'anneau. **Il bat**, très lentement et de très
+            // peu : c'est le pouls de la marque, rendu au fond de l'écran. Un
+            // halo qu'on remarque est un halo qui distrait, et cet écran sert à
+            // lire des chiffres.
             RadialGradient(
                 colors: [
-                    palette.navy.opacity(isDark ? 0.20 : 0.07),
+                    palette.navy.opacity((isDark ? 0.20 : 0.07) * breath),
                     palette.navy.opacity(0),
                 ],
                 center: UnitPoint(x: 0.5, y: 0.06),
                 startRadius: 0,
-                endRadius: 620
+                endRadius: 620 * (0.94 + 0.06 * breath)
             )
 
             // Le rappel d'or, en bas, très dilué.
@@ -103,6 +111,10 @@ public struct PulseonBackground: View {
             )
         }
         .ignoresSafeArea()
+        .onAppear {
+            guard motion else { return }
+            withAnimation(PulseonMotion.breath) { breath = 0.72 }
+        }
     }
 }
 
