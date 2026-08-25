@@ -274,8 +274,9 @@ swift build && swift test          # 240 tests, 20 suites, tous verts
 
 ## Si tu veux l'essayer
 
-Je ne la commercialise pas, mais le dépôt suffit : tout y est, et rien n'est codé en dur à
-mon nom.
+Pulseon est une app unique et perso : je l'ai taillée pour moi, pour mes appareils et pour
+ma façon de m'en servir. Ce n'est pas un produit, et je ne la commercialise pas. Mais le
+dépôt suffit à la faire tourner, et rien n'est codé en dur à mon nom.
 
 ```bash
 git clone https://github.com/Agarthaxx/Pulseon.git && cd Pulseon
@@ -295,9 +296,10 @@ Deux choses à savoir avant de te lancer :
 - **Xcode complet est obligatoire.** Les Command Line Tools seuls ne suffisent pas : les
   macros SwiftData ne s'expansent pas, et le build casse sur une cascade d'erreurs qui
   accusent le code alors que le coupable est la toolchain.
-- **Seul le Mac marche tout seul.** Pour la télé, il faut une Samsung Tizen et lui donner son
-  nom : `defaults write com.arthurlanllier.pulseon TVHost "Samsung.local"`. La PlayStation,
-  elle, attend un jeton qu'on ne peut extraire qu'à la main d'un navigateur.
+- **Seul le Mac marche tout seul.** Le reste est branché sur mon salon à moi. Si tu veux
+  aller plus loin, commence par ta télé : le collecteur interroge son API locale, il n'y a
+  qu'un réglage à lui donner, et c'est de loin la source la plus simple à adapter. La
+  PlayStation, elle, attend un jeton qu'on ne peut extraire qu'à la main d'un navigateur.
 
 Tes données restent chez toi : la base vit dans `~/Library/Application Support/Pulseon/`, et
 tu peux tout ressortir en CSV ou en JSON depuis le menu de l'app.
