@@ -94,7 +94,7 @@ fois pendant 1h15 »*.
 
 Autant le dire clairement : **le code est écrit par Claude. La direction, les arbitrages et
 la revue sont de moi.** Je fonctionne avec lui comme un tech lead avec son dev — il livre, il
-me signale ce qui est discutable, et il ne merge jamais à ma place. 147 commits, 45 pull
+me signale ce qui est discutable, et il ne merge jamais à ma place. 148 commits, 49 pull
 requests que j'ai relues et mergées, une branche par feature.
 
 Ce que ça veut dire concrètement, c'est que mon travail est ailleurs que dans la syntaxe :
@@ -267,5 +267,37 @@ swift build && swift test          # 240 tests, 20 suites, tous verts
 |---|---|
 | Code | 9 610 lignes de Swift, 4 paquets |
 | Tests | 3 999 lignes, **240 tests**, 20 suites |
-| Historique | 147 commits, 45 PR relues et mergées, 11 jours |
+| Historique | 148 commits, 49 PR relues et mergées, 11 jours |
 | Données réelles | 3 572 sessions mesurées sur ma machine |
+
+---
+
+## Si tu veux l'essayer
+
+Je ne la commercialise pas, mais le dépôt suffit : tout y est, et rien n'est codé en dur à
+mon nom.
+
+```bash
+git clone https://github.com/Agarthaxx/Pulseon.git && cd Pulseon
+./Scripts/build-app.sh
+cp -R .build/release/Pulseon.app /Applications/
+open /Applications/Pulseon.app
+```
+
+Le script compile, assemble le bundle, pose l'icône et signe en ad-hoc. Pulseon se loge dans
+la barre de menu — pas dans le Dock — et se met à compter ton Mac immédiatement, sans aucune
+permission à accorder. Le démarrage à l'ouverture de session s'active depuis son menu, et
+**seulement** depuis là : l'ajouter en plus dans Réglages Système lance deux collecteurs en
+parallèle, je l'ai payé une fois.
+
+Deux choses à savoir avant de te lancer :
+
+- **Xcode complet est obligatoire.** Les Command Line Tools seuls ne suffisent pas : les
+  macros SwiftData ne s'expansent pas, et le build casse sur une cascade d'erreurs qui
+  accusent le code alors que le coupable est la toolchain.
+- **Seul le Mac marche tout seul.** Pour la télé, il faut une Samsung Tizen et lui donner son
+  nom : `defaults write com.arthurlanllier.pulseon TVHost "Samsung.local"`. La PlayStation,
+  elle, attend un jeton qu'on ne peut extraire qu'à la main d'un navigateur.
+
+Tes données restent chez toi : la base vit dans `~/Library/Application Support/Pulseon/`, et
+tu peux tout ressortir en CSV ou en JSON depuis le menu de l'app.
