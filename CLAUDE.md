@@ -1297,6 +1297,56 @@ ailleurs).
 - **La chronologie flottait** : une carte de 720 au milieu de 1512, à côté de
   deux onglets passés en pleine largeur. C'est ce rendu qui a posé la question.
 
+#### Ce que l'en-tête annonce : la date, et rien à sa place
+
+**Trouvé par Arthur devant l'app, le 2026-08-25** : « tu peux me mettre les
+bonnes dates au bon endroit ? c'est marqué aujourd'hui partout ». Aucun calcul
+n'était faux — `DayBrowser` passait déjà `now: isToday ? now : nil`, et une
+journée passée n'a jamais eu de tête de lecture. **C'était de la composition.**
+
+Les trois écrans écrivaient la même chose : un mot générique en 27 points
+(« Journée », « Semaine », « Chronologie »), la vraie date en 12 points dessous,
+et le retour à aujourd'hui **en or, à droite, sans cadre ni symbole**. Sur une
+journée passée, l'élément le plus voyant de l'en-tête était donc le mot
+« Aujourd'hui » — qui se lit comme une étiquette, pas comme un bouton — pendant
+que la date, elle, était l'élément le plus discret. L'écran affirmait le
+contraire de ce qu'il montrait.
+
+Deux corrections, et il fallait les deux :
+
+- **La date est le titre.** « Vendredi 21 août » en 27 points, et la distance
+  dessous : « Aujourd'hui », « Hier », « il y a 4 jours » — « Cette semaine »,
+  « La semaine dernière », « il y a 3 semaines » pour la semaine. C'est la même
+  règle que partout ailleurs : le fait mesuré passe devant, le mot ne le
+  remplace pas. La date **rétrécit au lieu de se couper** (`minimumScaleFactor`),
+  comme les chiffres du total depuis l'éditoriale : « Vendredi 21 août » est deux
+  fois plus long que « Journée ».
+- **`ReturnButton` remplace le mot en or.** Même hauteur, même fond creusé et
+  même encre que les chevrons voisins, plus une flèche de retour : il appartient
+  au geste « se déplacer dans le temps », il n'annonce rien. **L'or restait
+  d'ailleurs mal employé** — il désigne du temps mesuré, or ce bouton n'en
+  désigne aucun.
+
+Trois choses à ne pas défaire :
+
+- **Le repère vient du navigateur, pas de la vue.** `DayPresentation.today` et
+  `PeriodPresentation.today` sont fournis par `DayBrowser` et `PeriodBrowser`,
+  seuls à tenir l'horloge — donc seuls injectables dans un test. `now` ne
+  suffisait pas : il est nil sur une journée passée par construction, et une
+  journée qui ne sait pas quel jour on est ne peut pas dire « Hier ».
+- **Nil plutôt qu'une invention.** Sans repère, l'écran s'en tient à la date, qui
+  reste vraie. Même famille que « pas encore branchée ≠ zéro ».
+- **Le calendrier, jamais une division par 86 400.** « Hier » n'est pas « il y a
+  86 400 secondes » : la nuit du changement d'heure en fait 90 000. Un test le
+  tient.
+
+**Le défaut ne se voyait dans aucune preview, et pas par hasard** : l'écran du
+jour n'était rendu qu'avec `canGoForward: false`, c'est-à-dire précisément le
+seul cas où le bouton fautif n'existe pas. Trois rendus l'ont rejoint — une
+journée passée, la veille, et la même en fenêtre étroite, seul endroit où une
+date longue, un bouton et deux chevrons se disputent une ligne. **Un état qu'on
+ne rend pas est un état qu'on ne regarde jamais.**
+
 ### Lire l'historique
 
 `DayDigestBuilder.buildPeriod(from:through:...)` agrège une plage de journées.

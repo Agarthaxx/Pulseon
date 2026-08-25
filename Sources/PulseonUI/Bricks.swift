@@ -206,6 +206,42 @@ struct NavButton: View {
     }
 }
 
+/// Le retour à la journée — ou à la semaine — en cours.
+///
+/// **Un vrai bouton, et plus un mot en or.** Il s'écrivait « Aujourd'hui » en
+/// texte nu à droite de l'en-tête, sans cadre ni symbole : sur une journée
+/// passée, l'écran semblait donc *annoncer* qu'on regardait aujourd'hui, juste
+/// à côté d'un titre qui, lui, ne portait pas la date. Arthur, le 2026-08-25 :
+/// « c'est marqué aujourd'hui partout ».
+///
+/// Il prend la forme des chevrons voisins — même hauteur, même fond creusé,
+/// même encre — parce qu'il fait partie du même geste : se déplacer dans le
+/// temps. La flèche de retour dit qu'il ramène, là où le mot seul décrivait.
+struct ReturnButton: View {
+    let label: String
+    let palette: PulseonPalette
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.system(size: 10, weight: .semibold))
+                Text(label)
+                    .font(PulseonTheme.caption)
+            }
+            .foregroundStyle(palette.inkSoft)
+            .padding(.horizontal, 9)
+            .frame(height: 26)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(palette.sunken)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 struct FailureCard: View {
     let reason: String
     let palette: PulseonPalette
