@@ -130,7 +130,12 @@ public final class DayBrowser {
                     // Du calcul pur sur un agrégat déjà en mémoire : rien à
                     // relire, donc rien à mettre en cache. Contrairement à la
                     // comparaison, qui coûte quatorze requêtes.
-                    anatomy: DayAnatomyBuilder().build(from: digest)
+                    anatomy: DayAnatomyBuilder().build(from: digest),
+                    // Le repère qui permet à l'écran d'écrire « Hier » plutôt
+                    // que la seule date. Il vient d'ici et non de la vue :
+                    // c'est ce navigateur qui tient l'horloge, et lui seul est
+                    // injectable dans un test.
+                    today: now
                 )
             )
         } catch {

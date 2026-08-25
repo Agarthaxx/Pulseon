@@ -86,10 +86,10 @@ public struct DayTimelineContent: View {
         VStack(alignment: .leading, spacing: 14) {
             switch load {
             case .loaded(let day):
-                header(title: day.title, isLive: day.now != nil)
+                header(headline: day.headline, situation: day.situation())
                 RailCard(day: day, palette: palette)
             case .failed(let reason):
-                header(title: "Chronologie", isLive: false)
+                header(headline: "Chronologie", situation: nil)
                 FailureCard(reason: reason, palette: palette)
             }
         }
@@ -122,26 +122,41 @@ public struct DayTimelineContent: View {
     /// coup d'œil, ce qui est tout ce qu'on lui demande.
     static let maximumWidth: CGFloat = 1400
 
+    /// Le nom de l'écran est déjà porté par le sélecteur d'onglets : le
+    /// titre sert donc la même chose qu'ailleurs, la date regardée.
+    ///
+    /// **La date d'abord, le repère ensuite.** Le grand titre portait un mot
+    /// générique (« Journée », « Semaine ») et reléguait la date en 12 points
+    /// dessous, pendant que le retour à aujourd'hui s'écrivait en or à droite :
+    /// une journée passée montrait donc « Aujourd'hui » plus visiblement que sa
+    /// propre date. Corrigé le 2026-08-25, sur le constat d'Arthur — « c'est
+    /// marqué aujourd'hui partout ».
     @ViewBuilder
-    private func header(title: String, isLive: Bool) -> some View {
+    private func header(headline: String, situation: String?) -> some View {
         HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Chronologie")
+                Text(headline)
+                    // Grand et resserré : la hiérarchie de la maquette est
+                    // franche, sans taille intermédiaire qui aplatirait tout.
                     .font(.system(size: 27, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(palette.ink)
-                Text(isLive ? "Aujourd'hui · \(title)" : title)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(palette.inkSoft)
+                    // Une date se rétrécit, elle ne se coupe pas : « Dimanche
+                    // 24 août » est plus long que « Journée », et une fenêtre
+                    // étroite ne doit pas le renvoyer à la ligne.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let situation {
+                    Text(situation)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(palette.inkSoft)
+                }
             }
 
             Spacer()
 
             if canGoForward {
-                Button("Aujourd'hui", action: onToday)
-                    .buttonStyle(.plain)
-                    .font(PulseonTheme.caption)
-                    .foregroundStyle(palette.gold)
+                ReturnButton(label: "Aujourd'hui", palette: palette, action: onToday)
             }
 
             HStack(spacing: 2) {

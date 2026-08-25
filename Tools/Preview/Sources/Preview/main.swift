@@ -633,7 +633,7 @@ MainActor.assumeIsolated {
     // Une journée passée : aucune tête de lecture, elle est entièrement jouée.
     let pastDay = DayPresentation(
         digest: digest, dayStart: dayStart.addingTimeInterval(-2 * day),
-        dayLength: day, now: nil
+        dayLength: day, now: nil, today: dayStart
     )
     shoot(
         timeline(.loaded(pastDay), canGoForward: true, scheme: .dark),
@@ -643,7 +643,7 @@ MainActor.assumeIsolated {
     // Rien de mesuré : ça ne doit pas se lire « journée à zéro ».
     let emptyDay = DayPresentation(
         digest: emptyDigest, dayStart: dayStart.addingTimeInterval(-3 * day),
-        dayLength: day, now: nil
+        dayLength: day, now: nil, today: dayStart
     )
     shoot(
         timeline(.loaded(emptyDay), canGoForward: true, scheme: .dark),
@@ -678,6 +678,49 @@ for scheme in [ColorScheme.dark, .light] {
         named: "pulseon-jour-\(scheme == .dark ? "sombre" : "clair")"
     )
 }
+
+// MARK: - L'en-tête d'une journée passée
+
+/// **Le cas signalé par Arthur le 2026-08-25** — « c'est marqué aujourd'hui
+/// partout ». Une journée passée porte un bouton de retour à aujourd'hui, et
+/// c'est lui qu'il lisait comme une étiquette : il s'écrivait en or, sans
+/// cadre, à côté d'un titre qui ne portait que le mot « Journée ».
+///
+/// Le rendu vérifie les deux moitiés du correctif : la date est le titre, et le
+/// retour a la forme d'un bouton. Sans ce cas, l'écran ne se regardait qu'avec
+/// `canGoForward: false` — donc jamais avec le bouton qui posait problème.
+let pastDay = DayPresentation(
+    digest: digest, dayStart: dayStart.addingTimeInterval(-4 * day), dayLength: day,
+    now: nil,
+    categories: categories,
+    anatomy: DayAnatomyBuilder().build(from: digest),
+    today: dayStart
+)
+
+/// Et la veille, qui doit se dire « Hier » plutôt que se compter en jours.
+let yesterday = DayPresentation(
+    digest: digest, dayStart: dayStart.addingTimeInterval(-day), dayLength: day,
+    now: nil,
+    categories: categories,
+    anatomy: DayAnatomyBuilder().build(from: digest),
+    today: dayStart
+)
+
+for (name, presented) in [("passee", pastDay), ("hier", yesterday)] {
+    shoot(
+        dashboard(.loaded(presented), canGoForward: true, scheme: .dark),
+        size: CGSize(width: 1512, height: 949),
+        named: "pulseon-journee-\(name)"
+    )
+}
+
+/// Le même en fenêtre étroite : une date en 27 points, un bouton de retour et
+/// deux chevrons sur une seule ligne, c'est là que ça casse s'il y a lieu.
+/// « Journée » tenait toujours ; « Vendredi 21 août » est deux fois plus long.
+shoot(
+    dashboard(.loaded(pastDay), canGoForward: true, scheme: .dark),
+    size: CGSize(width: 560, height: 2200), named: "pulseon-journee-passee-etroite"
+)
 
 // MARK: - L'écran de lancement
 

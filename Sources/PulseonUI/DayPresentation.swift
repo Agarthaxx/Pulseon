@@ -27,6 +27,14 @@ public struct DayPresentation: Sendable {
     /// moindre horaire ce jour-là : une journée sans horaire connu n'a pas
     /// d'anatomie, et surtout pas une anatomie à zéro.
     public let anatomy: DayAnatomy?
+    /// Minuit de la journée en cours, pour situer celle qu'on regarde.
+    ///
+    /// **Distinct de `now`, qui ne vaut que sur la journée du jour.** Une
+    /// journée passée a `now` nil par construction — c'est ce qui retire la
+    /// tête de lecture — donc elle ne peut pas savoir seule si elle est celle
+    /// d'hier ou celle d'il y a huit jours. Nil ici veut dire « aucun repère
+    /// fourni » : l'écran s'en tient alors à la date, qui reste vraie.
+    public let today: Date?
 
     public init(
         digest: DayDigest,
@@ -35,7 +43,8 @@ public struct DayPresentation: Sendable {
         now: Date?,
         categories: [CategoryTotal] = [],
         comparison: DayComparison? = nil,
-        anatomy: DayAnatomy? = nil
+        anatomy: DayAnatomy? = nil,
+        today: Date? = nil
     ) {
         self.digest = digest
         self.dayStart = dayStart
@@ -44,6 +53,7 @@ public struct DayPresentation: Sendable {
         self.categories = categories
         self.comparison = comparison
         self.anatomy = anatomy
+        self.today = today
     }
 
     /// Le battement de la journée, tranche par tranche.
@@ -75,6 +85,45 @@ public struct DayPresentation: Sendable {
 
     public var title: String {
         Self.title.string(from: dayStart)
+    }
+
+    /// La date, telle qu'elle s'écrit en tête d'écran : « Lundi 25 août ».
+    ///
+    /// **C'est elle le titre, et plus un mot générique.** L'en-tête annonçait
+    /// « Journée » en 27 points avec la date en 12 dessous, et poussait le
+    /// retour à aujourd'hui à droite sous forme de mot en or — de sorte qu'une
+    /// journée passée affichait « Aujourd'hui » en gros plan visuel et sa vraie
+    /// date en petit. Arthur, le 2026-08-25 : « c'est marqué aujourd'hui
+    /// partout ». La date est un fait mesuré, le mot ne l'était pas.
+    ///
+    /// La capitale est posée à la main : `DateFormatter` rend « lundi 25 août »
+    /// en français, et un titre d'écran ne commence pas en minuscule.
+    public var headline: String {
+        let name = title
+        guard let first = name.first else { return name }
+        return first.uppercased() + name.dropFirst()
+    }
+
+    /// À quelle distance d'aujourd'hui : « Aujourd'hui », « Hier », « il y a
+    /// 4 jours ». Nil sans repère, ou pour une journée à venir.
+    ///
+    /// **Le calendrier, jamais une division par 86 400** : les jours de
+    /// changement d'heure ne font pas 24 h, et « hier » n'est pas « il y a
+    /// 86 400 secondes ».
+    public func situation(calendar: Calendar = .current) -> String? {
+        // La journée en cours se reconnaît à sa tête de lecture, sans repère à
+        // fournir : `now` n'est non-nil que là.
+        if now != nil { return "Aujourd'hui" }
+        guard let today else { return nil }
+        guard
+            let days = calendar.dateComponents(
+                [.day],
+                from: dayStart,
+                to: calendar.startOfDay(for: today)
+            ).day,
+            days > 0
+        else { return nil }
+        return days == 1 ? "Hier" : "il y a \(days) jours"
     }
 
     /// Vrai quand rien n'a été enregistré : ni activité, ni source branchée.

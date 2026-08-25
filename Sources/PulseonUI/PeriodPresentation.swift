@@ -73,10 +73,21 @@ public struct PeriodPresentation: Sendable {
     /// n'est classable — le classement se décide côté macOS.
     public let categories: [CategoryTotal]
 
-    public init(digest: PeriodDigest, days: [Day], categories: [CategoryTotal] = []) {
+    /// Minuit de la journée en cours, pour situer la semaine qu'on regarde.
+    /// Même rôle que `DayPresentation.today`, et même repli : sans repère, on
+    /// s'en tient à la plage de dates, qui reste vraie.
+    public let today: Date?
+
+    public init(
+        digest: PeriodDigest,
+        days: [Day],
+        categories: [CategoryTotal] = [],
+        today: Date? = nil
+    ) {
         self.digest = digest
         self.days = days
         self.categories = categories
+        self.today = today
     }
 
     /// Vrai quand la période contient aujourd'hui : elle grandit encore.
@@ -110,10 +121,29 @@ public struct PeriodPresentation: Sendable {
         days.allSatisfy { !$0.isMeasured }
     }
 
-    /// « 17 – 23 août », ou « 28 juil. – 3 août » à cheval sur deux mois.
+    /// « 24–30 août 2026 », ou « 28 juil. – 3 août 2026 » à cheval sur deux
+    /// mois. L'année y figure : c'est le titre d'un écran où l'on peut reculer
+    /// indéfiniment, et une plage sans année finit par mentir.
     public var title: String {
         guard let first = days.first?.start, let last = days.last?.start else { return "" }
         return Self.range.string(from: first, to: last)
+    }
+
+    /// À quelle distance de la semaine en cours : « Cette semaine », « La
+    /// semaine dernière », « il y a 3 semaines ». Nil sans repère.
+    ///
+    /// Comme pour une journée, le calendrier tranche : compter en multiples de
+    /// sept jours ferait dériver la réponse deux fois par an.
+    public func situation(calendar: Calendar = .current) -> String? {
+        if isCurrent { return "Cette semaine" }
+        guard let today, let start = days.first?.start else { return nil }
+        let current = calendar.dateInterval(of: .weekOfYear, for: today)?.start
+        guard
+            let current,
+            let weeks = calendar.dateComponents([.weekOfYear], from: start, to: current).weekOfYear,
+            weeks > 0
+        else { return nil }
+        return weeks == 1 ? "La semaine dernière" : "il y a \(weeks) semaines"
     }
 
     private static let range: DateIntervalFormatter = {

@@ -112,7 +112,11 @@ public final class PeriodBrowser {
                 PeriodPresentation(
                     digest: digest,
                     days: days,
-                    categories: categories(of: digest.days)
+                    categories: categories(of: digest.days),
+                    // Même repère que pour la journée : il permet d'écrire
+                    // « La semaine dernière » au lieu d'une plage de dates
+                    // seule.
+                    today: now
                 )
             )
         } catch {
