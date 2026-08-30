@@ -346,6 +346,22 @@ import Testing
         }
     }
 
+    /// **Deux pannes qui se ressemblaient et ne se réparent pas pareil.** Un
+    /// jeton absent se dépose ; un jeton refusé se débloque en cliquant sur la
+    /// fenêtre que macOS a fait surgir. Les afficher tous les deux comme « pas
+    /// branchée » envoyait chercher au mauvais endroit — constaté à la première
+    /// installation, le 2026-08-30 : le jeton était bien là.
+    @Test("Un accès refusé ne se dit pas comme un jeton absent")
+    func deniedIsNotMissing() throws {
+        #expect(PSNSource.failure(reading: Secrets.Failure.denied) == .accessDenied)
+        #expect(PSNSource.failure(reading: Secrets.Failure.keychain(-25308)) == .accessDenied)
+        #expect(PSNSource.failure(reading: Secrets.Failure.notFound) == .missingToken)
+
+        let messages = [PSNSource.Failure.missingToken, .accessDenied]
+            .compactMap(\.errorDescription)
+        #expect(Set(messages).count == 2)
+    }
+
     @Test("Sans jeton au Trousseau, la source se dit débranchée")
     func missingTokenIsNamed() async throws {
         let psn = PSNSource(

@@ -1598,6 +1598,33 @@ pour un titre ; le menu d'accueil et les réglages n'en sont pas. Ce temps-là n
 pas perdu pour autant : la télé le voit, avec de vrais horaires, et l'affiche en
 « Télé » — ce qui est exactement ce qu'on sait de cet écran.
 
+#### Le Trousseau redemande son autorisation à chaque réinstallation
+
+**Constaté à la première installation, le 2026-08-30** : le collecteur n'a rien
+écrit, et le journal de Pulseon était vide. La cause n'était pas dans le code —
+`pgrep SecurityAgent` montrait une **fenêtre d'autorisation du Trousseau en
+attente à l'écran**.
+
+C'est le comportement normal, et il faut le savoir : le jeton est déposé par
+`/usr/bin/security`, donc l'autorisation d'y accéder ne couvre pas Pulseon.
+macOS demande confirmation à la première lecture — et **il la redemandera après
+chaque réinstallation**, parce qu'une signature ad-hoc change à chaque build :
+l'app n'a jamais deux fois la même identité aux yeux du Trousseau. Cliquer
+« Toujours autoriser » vaut pour ce build-là, pas pour le suivant.
+
+C'est la même racine que `SMAppService` inutilisable et que l'avertissement
+Gatekeeper : **pas d'identité de signature sur cette machine**. Sans objet tant
+que Pulseon ne tourne que chez Arthur, mais ça se paie une fois par
+réinstallation.
+
+**Le défaut que ça a révélé** : `storedToken` traduisait *toute* panne du
+Trousseau en `missingToken`, donc le menu affichait « La PlayStation n'est pas
+branchée » alors que le jeton était bien là et qu'il suffisait de cliquer.
+`accessDenied` est désormais un cas distinct — deux pannes qui se ressemblent et
+ne se réparent pas pareil : l'une se dépose, l'autre se débloque. La traduction
+vit dans `failure(reading:)`, une fonction à part, parce que `storedToken` lit le
+vrai Trousseau de la machine et ne se teste donc pas.
+
 #### Ce que la console nomme, et ce que ça change
 
 **La PS5 déclare ses titres, et Sony dit lui-même ce qu'ils sont.** Relevé sur la

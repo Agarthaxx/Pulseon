@@ -48,6 +48,20 @@ public struct PSNSource: CounterSource {
     public enum Failure: Error, LocalizedError, Equatable {
         /// Rien dans le Trousseau : la source n'est pas branchée.
         case missingToken
+        /// **Le jeton est là, mais macOS refuse de nous le donner.**
+        ///
+        /// Le cas normal, pas un accident : le jeton est déposé par
+        /// `/usr/bin/security`, donc l'autorisation d'y accéder ne couvre pas
+        /// Pulseon, et macOS demande confirmation à la première lecture. Et il
+        /// la redemandera **après chaque réinstallation** — une signature
+        /// ad-hoc change à chaque build, donc l'app n'a jamais deux fois la
+        /// même identité aux yeux du Trousseau. Voir « Empaquetage ».
+        ///
+        /// Distinct de `missingToken`, et c'est tout l'intérêt : les deux
+        /// disaient « la PlayStation n'est pas branchée », ce qui envoyait
+        /// chercher un jeton absent alors qu'il fallait cliquer sur une
+        /// fenêtre.
+        case accessDenied
         /// **Le `npsso` n'est plus valable.** Il vit environ deux mois, et
         /// c'est la panne normale de cette source, pas un accident : il faudra
         /// en redéposer un. Distinct d'une panne réseau, parce que la conduite
@@ -69,6 +83,7 @@ public struct PSNSource: CounterSource {
         public var errorDescription: String? {
             switch self {
             case .missingToken: "La PlayStation n'est pas branchée"
+            case .accessDenied: "Trousseau : autoriser Pulseon à lire le jeton"
             case .tokenRejected: "Jeton PlayStation expiré — à redéposer"
             case .http(let code): "PlayStation a répondu \(code)"
             case .malformed: "Réponse PlayStation incompréhensible"
@@ -99,8 +114,22 @@ public struct PSNSource: CounterSource {
         do {
             return try Secrets.read(service: Secrets.PSN.service, account: Secrets.PSN.account)
         } catch {
-            throw Failure.missingToken
+            throw Self.failure(reading: error)
         }
+    }
+
+    /// Traduit une panne du Trousseau en panne de la source.
+    ///
+    /// Fonction à part et non un `catch` en ligne, pour la raison habituelle :
+    /// `storedToken` lit le vrai Trousseau de la machine, donc rien de ce qu'il
+    /// contient ne se teste. La traduction, elle, est le morceau qui compte.
+    static func failure(reading error: Error) -> Failure {
+        // Absent : il n'y a rien à lire, la source n'est pas branchée.
+        if case Secrets.Failure.notFound = error { return .missingToken }
+        // Refus, trousseau verrouillé, ou toute autre panne : le jeton existe
+        // et on n'a pas pu le lire. Confondre ce cas avec « pas branchée »
+        // enverrait chercher un jeton qui est déjà là.
+        return .accessDenied
     }
 
     // MARK: Le relevé
