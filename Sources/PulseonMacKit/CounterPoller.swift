@@ -10,12 +10,47 @@ import PulseonCore
 public protocol CounterSource: Sendable {
     var device: Device { get }
 
-    /// Totaux cumulés par entité, tels que la source les rend, en secondes.
+    /// Ce que la source dit d'elle-même, en un seul appel.
     ///
-    /// Rendre un dictionnaire vide est une réponse valide : « la source
-    /// répond, elle n'a rien à déclarer ». C'est différent d'une erreur, qui
-    /// signifie qu'on ne sait pas.
-    func readTotals() async throws -> [String: TimeInterval]
+    /// Rendre un relevé vide est une réponse valide : « la source répond, elle
+    /// n'a rien à déclarer ». C'est différent d'une erreur, qui signifie qu'on
+    /// ne sait pas.
+    func read() async throws -> CounterReading
+}
+
+/// Ce qu'une source à compteur rapporte d'un passage.
+///
+/// Les totaux et les identités arrivent ensemble parce qu'ils viennent de la
+/// **même** réponse : les séparer en deux méthodes ferait deux appels réseau
+/// pour un seul relevé, et surtout ouvrirait la porte à un total sans son
+/// identité, donc à un jeu bien compté et mal classé.
+public struct CounterReading: Sendable, Equatable {
+    /// Totaux cumulés par entité, tels que la source les rend, en secondes.
+    public let totals: [String: TimeInterval]
+
+    /// Ce que la source **déclare** de chaque entité, brut.
+    ///
+    /// Jamais notre interprétation : même règle que la catégorie déclarée par
+    /// macOS, stockée telle quelle pour que tout l'historique se reclasse le
+    /// jour où la table de correspondance change d'avis.
+    public let declaredCategories: [String: String]
+
+    /// L'identifiant de l'entité, quand il est **sans ambiguïté**.
+    ///
+    /// Absent dès que deux titres partagent un nom : ils sont additionnés sous
+    /// ce nom, donc aucun des deux identifiants ne le désigne. En choisir un
+    /// serait inventer une identité.
+    public let identifiers: [String: String]
+
+    public init(
+        totals: [String: TimeInterval],
+        declaredCategories: [String: String] = [:],
+        identifiers: [String: String] = [:]
+    ) {
+        self.totals = totals
+        self.declaredCategories = declaredCategories
+        self.identifiers = identifiers
+    }
 }
 
 /// Interroge une source à compteur à intervalle régulier et range ce qu'elle
@@ -74,14 +109,27 @@ public final class CounterPoller {
             defer { self.inFlight = false }
 
             do {
-                let totals = try await self.source.readTotals()
+                let reading = try await self.source.read()
                 let now = Date()
                 var written = 0
-                for (entity, total) in totals {
+                for (entity, total) in reading.totals {
                     let isNew = self.store.record(
                         device: self.source.device, entity: entity, total: total, at: now
                     )
                     if isNew { written += 1 }
+
+                    // L'identité ne se réécrit que quand elle change —
+                    // `noteApp` s'en charge. Sans ça on referait l'erreur du
+                    // `lastSeen` en base : soixante-dix titres réécrits tous
+                    // les quarts d'heure pour une information qui ne bouge
+                    // jamais.
+                    self.store.noteApp(
+                        name: entity,
+                        device: self.source.device,
+                        bundleID: reading.identifiers[entity],
+                        declaredCategory: reading.declaredCategories[entity],
+                        at: now
+                    )
                 }
                 self.lastSuccess = now
                 self.lastFailure = nil

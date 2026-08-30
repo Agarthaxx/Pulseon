@@ -57,7 +57,11 @@ struct MeterRow: View {
                 Meter(share: share, fill: fill, palette: palette)
 
                 if !apps.isEmpty {
-                    AppTrail(apps: Array(apps))
+                    // La réserve voyage avec les noms au lieu de les remplacer :
+                    // une source à compteur sait *quoi*, pas *quand*, et taire
+                    // l'un des deux serait mentir par omission dans un sens ou
+                    // dans l'autre.
+                    AppTrail(apps: Array(apps), note: detail)
                         .font(PulseonTheme.caption)
                         .foregroundStyle(palette.inkFaint)
                 } else if !detail.isEmpty {
@@ -337,9 +341,15 @@ struct DevicesCard: View {
                             // Sa part est honnête, sa place dans le temps est
                             // inconnue — et doit se dire.
                             detail: lane.kind == .counter ? "horaires inconnus" : "",
-                            apps: lane.kind == .counter
-                                ? []
-                                : lane.topEntities.prefix(3).map(\.entity),
+                            // **Les noms aussi sont mesurés.** Ils étaient
+                            // écartés pour les sources à compteur, du temps où
+                            // aucune ne tournait : la ligne PlayStation aurait
+                            // dit « 2 h 30, horaires inconnus » sans jamais
+                            // nommer Elden Ring, alors que le nom du jeu est
+                            // précisément ce que cette source sait le mieux.
+                            // Ce qui est inconnu, c'est l'heure — et la réserve
+                            // le dit, à côté des noms plutôt qu'à leur place.
+                            apps: lane.topEntities.prefix(3).map(\.entity),
                             total: lane.total,
                             share: summedTotal > 0 ? lane.total / summedTotal : 0,
                             palette: palette

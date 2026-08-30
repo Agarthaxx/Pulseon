@@ -129,9 +129,25 @@ public final class AppRegistry {
             )
 
         case .playstation:
-            // Une console est un écran, pas un contenu, et « Jeu » reste le
-            // classement d'un jeu **sur le Mac**. Rien à chercher en base.
-            return device.defaultCategory
+            // **La console nomme ses titres depuis le 2026-08-30**, et Sony
+            // déclare lui-même ce qu'ils sont : `ps5_native_game` pour un jeu,
+            // `ps5_native_media_app` pour YouTube ou Netflix. C'est la même
+            // bascule que la télé le 2026-08-22 — tant qu'un écran ne nommait
+            // rien, tout son temps portait le nom de l'appareil parce qu'on ne
+            // savait rien d'autre.
+            //
+            // Sans identité en base — un titre relevé avant que le collecteur
+            // ne note les identités, ou une valeur que Sony n'a pas déclarée —
+            // on retombe sur `playstation`, jamais sur une devinette d'après le
+            // nom. Ne surtout pas passer par les règles du Mac ici : elles
+            // reconnaissent un navigateur au nom, et un titre contenant « Arc »
+            // ou « Edge » deviendrait du Web.
+            guard let identity = identity(ofApp: name, on: .playstation) else {
+                return device.defaultCategory
+            }
+            return rules.category(
+                forPlayStationTitle: name, declared: identity.declaredCategory
+            )
         }
     }
 

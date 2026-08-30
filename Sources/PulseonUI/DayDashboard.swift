@@ -329,6 +329,12 @@ private struct RingCard: View {
                                     .foregroundStyle(palette.inkFaint)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
+                            if let line = counterLine {
+                                Text(line)
+                                    .font(PulseonTheme.caption)
+                                    .foregroundStyle(palette.inkFaint)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                             if let comparison = day.comparison {
                                 DayComparisonView(comparison: comparison, palette: palette)
                             }
@@ -396,6 +402,11 @@ private struct RingCard: View {
                         .font(PulseonTheme.caption)
                         .foregroundStyle(palette.inkFaint)
                 }
+                if let line = counterLine {
+                    Text(line)
+                        .font(PulseonTheme.caption)
+                        .foregroundStyle(palette.inkFaint)
+                }
 
                 // La comparaison se lit juste sous le total, parce que c'est
                 // là que la question se pose : « 9 h 39, c'est beaucoup ? ».
@@ -437,6 +448,39 @@ private struct RingCard: View {
         guard simultaneity.duration >= 60 else { return nil }
         let screens = simultaneity.peak > 2 ? "plusieurs" : "deux"
         return "\(screens) écrans à la fois pendant \(DurationFormat.compact(simultaneity.duration))"
+    }
+
+    /// « 1h48 de PlayStation, sans horaire connu — comprises dans le total »,
+    /// ou rien.
+    ///
+    /// **Le trou que la légende laissait ouvert.** Elle affiche « Mac 9h42 ·
+    /// PlayStation 1h48 · TV 2h52 » au-dessus d'un total de 11h41 : trois
+    /// nombres qui ne font pas le quatrième. La ligne de simultanéité en
+    /// explique une part, jamais celle-ci — elle écarte les sources à compteur
+    /// par construction, faute d'horaires à croiser.
+    ///
+    /// Ce qui manquait n'est pas un calcul mais une phrase, et c'est la même
+    /// leçon qu'au 2026-08-22 : un fait de la journée, pas une méthode. On ne
+    /// sait pas *quand* la console a tourné, donc on ne peut pas affirmer que
+    /// ce temps s'ajoute aux autres écrans — le total retient la borne basse, et
+    /// c'est ça qu'il faut dire.
+    ///
+    /// **Se tait quand aucun autre écran n'a été mesuré** : ce temps de jeu est
+    /// alors le total à lui seul, il n'est compris dans rien, et le dire serait
+    /// faux.
+    private var counterLine: String? {
+        let lanes = day.digest.lanes
+        let counter = lanes.filter { $0.kind == .counter && $0.total > 0 }
+        guard let lane = counter.first, counter.count == 1 else { return nil }
+
+        let coverage = lanes.filter { $0.kind == .interval }.reduce(0) { $0 + $1.total }
+        guard coverage > 0 else { return nil }
+
+        // **Sans répéter la durée**, qui est écrite juste au-dessus dans la
+        // légende : la ligne qualifie ce chiffre-là, elle ne le redit pas — et
+        // c'est aussi ce qui la fait tenir sur une seule ligne, comme sa
+        // voisine « deux écrans à la fois pendant 53 min ».
+        return "\(lane.device.label) : horaire inconnu, comptée dans le total"
     }
 }
 

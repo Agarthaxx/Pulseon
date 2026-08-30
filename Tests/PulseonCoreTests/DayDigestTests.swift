@@ -159,3 +159,74 @@ func entitiesAreRankedByTime() throws {
     #expect(try #require(top.first).total == 3 * 3600)
     #expect(try #require(top.last).total == 2 * 3600)
 }
+
+// MARK: Une source à compteur ne s'ajoute pas au total
+
+/// Deux relevés du même jeu, encadrant la journée : 2 h 30 de plus.
+private func psEvening() -> [CounterSample] {
+    [
+        CounterSample(
+            device: .playstation, entity: "ELDEN RING",
+            total: 100 * 3600, recordedAt: date(13, 22)
+        ),
+        CounterSample(
+            device: .playstation, entity: "ELDEN RING",
+            total: 102 * 3600 + 30 * 60, recordedAt: date(14, 23, 15)
+        ),
+    ]
+}
+
+/// **Le défaut trouvé avant que le collecteur PSN ne tourne.** La PS5 d'Arthur
+/// est branchée sur la télé mesurée : une soirée de jeu produit *une* session
+/// de télé **et** un compteur qui monte, pour les mêmes minutes. Additionner
+/// annonçait 5 h 30 pour une soirée de 3 h — et la ligne « deux écrans à la
+/// fois » ne pouvait rien expliquer, puisqu'elle écarte les compteurs faute
+/// d'horaires.
+@Test("Une soirée de PS5 sur la télé mesurée ne compte pas deux fois")
+func counterTimeDoesNotInflateCoverage() throws {
+    let tv = ActivitySession(
+        device: .tv, entity: nil, start: date(14, 20), end: date(14, 23)
+    )
+    let digest = builder.build(
+        day: date(14, 12), sessions: [tv], samples: psEvening(), now: date(14, 23, 30)
+    )
+
+    // Chaque appareil garde son propre total : rien n'est perdu.
+    #expect(try #require(digest.lanes.first { $0.device == .tv }).total == 3 * 3600)
+    #expect(
+        try #require(digest.lanes.first { $0.device == .playstation }).total
+            == 2 * 3600 + 30 * 60
+    )
+    // La somme double-compte, et c'est son rôle.
+    #expect(digest.summedTotal == 5 * 3600 + 30 * 60)
+    // La couverture prend la borne basse : tout le jeu a pu tomber dans les
+    // trois heures de télé, et rien ne prouve le contraire.
+    #expect(digest.coveredTotal == 3 * 3600)
+}
+
+/// L'autre borne du même raisonnement : sans le moindre écran mesuré, le temps
+/// de jeu est tout ce qu'on a, et il compte en entier.
+@Test("Sans écran à horaires, le temps de jeu est la couverture")
+func counterTimeStandsAloneWhenNothingElseIsMeasured() {
+    let digest = builder.build(
+        day: date(14, 12), sessions: [], samples: psEvening(), now: date(14, 23, 30)
+    )
+
+    #expect(digest.coveredTotal == 2 * 3600 + 30 * 60)
+}
+
+/// Le cas qui interdit de simplement ignorer les compteurs : une longue soirée
+/// de jeu ne peut pas tenir dans une courte session de télé.
+@Test("Un temps de jeu plus long que l'écran mesuré déborde, et compte")
+func counterTimeExceedingCoverageWins() {
+    let tv = ActivitySession(
+        device: .tv, entity: nil, start: date(14, 22), end: date(14, 23)
+    )
+    let digest = builder.build(
+        day: date(14, 12), sessions: [tv], samples: psEvening(), now: date(14, 23, 30)
+    )
+
+    // 1 h de télé, 2 h 30 de jeu : on ne sait pas où tombe le reste, mais il a
+    // bien eu lieu.
+    #expect(digest.coveredTotal == 2 * 3600 + 30 * 60)
+}

@@ -34,6 +34,28 @@ public enum Secrets {
         case keychain(OSStatus)
     }
 
+    /// Y a-t-il un secret rangé là, sans le lire ?
+    ///
+    /// **La distinction n'est pas de la coquetterie** : sans
+    /// `kSecReturnData`, le Trousseau se contente de chercher l'étiquette et
+    /// ne déchiffre rien, donc il ne demande aucune autorisation. C'est ce qui
+    /// permet au moteur de décider au démarrage s'il branche le collecteur
+    /// PlayStation, sans faire surgir une demande d'accès à chaque ouverture
+    /// de session.
+    ///
+    /// Cette fonction avait été supprimée le 2026-08-24 pour la bonne raison —
+    /// aucun appelant, et une API publique sans appelant ressemble à une
+    /// feature livrée. Elle revient parce qu'elle en a un.
+    public static func exists(service: String, account: String) -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        return SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
+    }
+
     public static func read(service: String, account: String) throws -> String {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

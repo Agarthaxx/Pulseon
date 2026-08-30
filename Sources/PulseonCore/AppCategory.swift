@@ -142,6 +142,26 @@ public struct AppCategoryRules: Sendable {
         return .other
     }
 
+    /// À quoi servait un titre PlayStation, d'après ce que **Sony** en déclare.
+    ///
+    /// Séparée de `category(forApp:)`, et ce n'est pas de la symétrie : la
+    /// version Mac passe par `isBrowser`, qui reconnaît un navigateur au nom.
+    /// Un titre PS5 qui contiendrait « Edge » ou « Arc » deviendrait du Web.
+    /// C'est la même précaution que pour la télé, où retomber sur les règles du
+    /// Mac aurait deviné un navigateur là où il n'y en a pas.
+    ///
+    /// **Sans déclaration, on retombe sur `playstation`** — jamais sur `other`,
+    /// et jamais sur une devinette d'après le nom : « une console est un
+    /// écran » reste vrai pour tout ce que Sony ne nomme pas.
+    public func category(
+        forPlayStationTitle name: String,
+        declared: String? = nil
+    ) -> AppCategory {
+        if let override = overrides[name] { return override }
+        if let declared, let mapped = Self.playstationMapping[declared] { return mapped }
+        return .playstation
+    }
+
     /// Un navigateur n'est pas une activité, et aucune catégorie déclarée ne le
     /// dira jamais correctement.
     ///
@@ -176,6 +196,34 @@ public struct AppCategoryRules: Sendable {
     static let browserNames: [String] = [
         "Safari", "Chrome", "Firefox", "Brave", "Edge", "Arc",
         "Opera", "Chromium", "Vivaldi", "Zen Browser", "Tor Browser",
+    ]
+
+    /// Ce que Sony déclare d'un titre, ramené à nos cases.
+    ///
+    /// **Mesuré sur la bibliothèque d'Arthur le 2026-08-30**, pas supposé : ses
+    /// 73 titres se répartissent en quatre valeurs exactement — 50
+    /// `ps5_native_game`, 12 `ps4_game`, 6 `ps5_web_based_media_app`, 5
+    /// `ps5_native_game`... et surtout, les onze apps non-jeux (YouTube,
+    /// Netflix, Spotify, myCANAL, Prime Video, Twitch, Disney+, Crunchyroll,
+    /// Apple Music, Molotov, SONY PICTURES CORE) sont **toutes** déclarées
+    /// `media_app` par Sony. Personne n'a eu à écrire une liste de noms.
+    ///
+    /// C'est ce qui rend la console comparable à la télé depuis le 2026-08-22 :
+    /// tant qu'elle ne nommait rien, tout son temps était « PlayStation » parce
+    /// qu'on ne savait rien d'autre. Maintenant qu'elle nomme, ce qui est du
+    /// contenu part vers une vraie catégorie de contenu — 162 h de YouTube sur
+    /// PS5 ne sont pas du jeu.
+    ///
+    /// **Les jeux, eux, restent `playstation`** et ne deviennent pas `game` :
+    /// « Jeu » est le classement d'un jeu **sur le Mac**, et la distinction
+    /// entre les deux écrans est justement ce que la catégorie d'appareil
+    /// porte. Choix d'Arthur le 2026-08-30.
+    static let playstationMapping: [String: AppCategory] = [
+        "ps5_native_media_app": .media,
+        "ps5_web_based_media_app": .media,
+        "ps4_media_app": .media,
+        "ps5_native_game": .playstation,
+        "ps4_game": .playstation,
     ]
 
     /// Les catégories App Store d'Apple, ramenées à nos quelques cases.

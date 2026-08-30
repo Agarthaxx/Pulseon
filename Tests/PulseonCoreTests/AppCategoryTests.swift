@@ -128,3 +128,72 @@ import Testing
         }
     }
 }
+
+
+// MARK: Un titre PlayStation, classé par ce que Sony en déclare
+
+/// La bascule du 2026-08-30 : la console nomme, donc son temps peut enfin
+/// rejoindre une vraie catégorie de contenu. 162 h de YouTube sur PS5 ne sont
+/// pas du jeu.
+@Test("Une app média de la PS5 rejoint la vidéo, pas la console")
+func playstationMediaAppIsContent() {
+    let rules = AppCategoryRules()
+    #expect(
+        rules.category(forPlayStationTitle: "YouTube", declared: "ps5_native_media_app")
+            == .media
+    )
+    #expect(
+        rules.category(forPlayStationTitle: "Spotify", declared: "ps5_web_based_media_app")
+            == .media
+    )
+}
+
+/// « Jeu » reste le classement d'un jeu **sur le Mac** : la console garde sa
+/// propre catégorie, c'est ce qui distingue les deux écrans.
+@Test("Un jeu PS5 reste rangé sous la console")
+func playstationGameStaysOnTheConsole() {
+    let rules = AppCategoryRules()
+    #expect(
+        rules.category(forPlayStationTitle: "ELDEN RING", declared: "ps5_native_game")
+            == .playstation
+    )
+    #expect(rules.category(forPlayStationTitle: "ELDEN RING", declared: "ps4_game") == .playstation)
+}
+
+/// Sans déclaration — un titre relevé avant que les identités ne soient notées,
+/// ou une valeur que Sony n'a jamais produite — on ne devine pas.
+@Test("Un titre sans catégorie déclarée retombe sur la console")
+func undeclaredTitleFallsBackToTheConsole() {
+    let rules = AppCategoryRules()
+    #expect(rules.category(forPlayStationTitle: "Un jeu inconnu") == .playstation)
+    #expect(
+        rules.category(forPlayStationTitle: "Un jeu inconnu", declared: "ps9_something")
+            == .playstation
+    )
+}
+
+/// **Le piège que la séparation des règles évite.** Côté Mac, un navigateur se
+/// reconnaît au nom : « Arc », « Edge », « Opera ». Un titre PlayStation qui
+/// contient un de ces mots n'est pas un navigateur, et le faire passer par les
+/// règles du Mac le rangerait en Web. Même précaution que pour la télé.
+@Test("Un jeu dont le nom contient celui d'un navigateur n'est pas du Web")
+func playstationTitleIsNeverMistakenForABrowser() {
+    let rules = AppCategoryRules()
+    #expect(
+        rules.category(forPlayStationTitle: "ARC Raiders", declared: "ps5_native_game")
+            == .playstation
+    )
+    // Et le Mac, lui, continue de le faire — c'est bien deux règles distinctes.
+    #expect(rules.category(forApp: "Arc", bundleID: "company.thebrowser.Browser") == .web)
+}
+
+/// La correction manuelle gagne sur Sony comme elle gagne sur Apple : c'est ce
+/// qui fait que l'app est celle d'Arthur.
+@Test("Une correction manuelle gagne sur la déclaration de Sony")
+func overrideBeatsSony() {
+    let rules = AppCategoryRules(overrides: ["Twitch": .communication])
+    #expect(
+        rules.category(forPlayStationTitle: "Twitch", declared: "ps5_web_based_media_app")
+            == .communication
+    )
+}

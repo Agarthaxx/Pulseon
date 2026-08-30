@@ -191,13 +191,30 @@ public struct DayDigestBuilder: Sendable {
         }
 
         let intervalBlocks = lanes.filter { $0.kind == .interval }.flatMap(\.blocks)
-        let counterTotal = lanes.filter { $0.kind == .counter }.reduce(0) { $0 + $1.total }
+        let intervalCoverage = IntervalMath.mergedDuration(of: intervalBlocks)
+        let counterTotals = lanes.filter { $0.kind == .counter }.map(\.total)
 
         return DayDigest(
             date: calendar.dateComponents([.year, .month, .day], from: start),
             lanes: lanes,
             summedTotal: lanes.reduce(0) { $0 + $1.total },
-            coveredTotal: IntervalMath.mergedDuration(of: intervalBlocks) + counterTotal
+            // **La borne basse, jamais la somme.** Une source à compteur n'a
+            // aucun horaire : on ignore si ses heures tombent pendant qu'un
+            // autre écran était allumé. La couverture réelle est donc quelque
+            // part entre `max(...)` — tout le temps de jeu tombe dans du temps
+            // déjà couvert — et la somme — il n'en recouvre rien. On prend la
+            // borne basse, parce que **sous-compter est permis et inventer ne
+            // l'est pas**, la même règle qui ferme une session au dernier
+            // instant *observé* plutôt qu'à l'heure courante.
+            //
+            // Ce n'était pas une erreur tant que la PlayStation était le seul
+            // compteur et la télé pas encore mesurée. Ça l'est devenu le jour
+            // où les deux ont tourné ensemble : la PS5 d'Arthur est branchée
+            // sur cette télé, donc une soirée de 3 h s'annonçait 5 h 30 —
+            // additionnée avec elle-même, en somme. Et la ligne « deux écrans
+            // à la fois » ne pouvait pas l'expliquer, puisqu'elle écarte les
+            // compteurs faute d'horaires.
+            coveredTotal: ([intervalCoverage] + counterTotals).max() ?? 0
         )
     }
 
