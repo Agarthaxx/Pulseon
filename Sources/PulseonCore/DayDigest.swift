@@ -34,6 +34,26 @@ public struct Lane: Sendable, Equatable {
     /// branché" de "journée à zéro", que l'UI ne doit pas confondre.
     public let isConnected: Bool
 
+    /// **Un zéro qui n'est pas un zéro.**
+    ///
+    /// Vrai quand une source à compteur a bien parlé, mais qu'aucun de ses
+    /// relevés ne précède la journée affichée : sans point de départ, une
+    /// différence ne se calcule pas. Son total vaut alors `0` faute de mieux,
+    /// et **ce zéro n'a rien de mesuré**.
+    ///
+    /// C'est le cas du premier jour d'une source à compteur, et il est arrivé
+    /// pour de vrai le 2026-08-30 : Arthur a joué toute la soirée, la
+    /// PlayStation venait d'être branchée, et la carte annonçait
+    /// « PlayStation — 0 min ». Le calcul était juste ; l'écran, lui, affirmait
+    /// une absence de jeu qui n'avait jamais été constatée. C'est exactement ce
+    /// que `isConnected` existe pour empêcher côté intervalles — il manquait
+    /// son équivalent côté compteurs.
+    ///
+    /// À ne pas confondre avec un vrai zéro : une fois un relevé de la veille
+    /// en base, « le compteur n'a pas bougé » **est** une mesure, et se dit
+    /// « 0 min ».
+    public let awaitingBaseline: Bool
+
     public var kind: SourceKind { device.kind }
 
     public init(
@@ -41,13 +61,15 @@ public struct Lane: Sendable, Equatable {
         total: TimeInterval,
         blocks: [TraceBlock],
         topEntities: [EntityTotal],
-        isConnected: Bool
+        isConnected: Bool,
+        awaitingBaseline: Bool = false
     ) {
         self.device = device
         self.total = total
         self.blocks = blocks
         self.topEntities = topEntities
         self.isConnected = isConnected
+        self.awaitingBaseline = awaitingBaseline
     }
 }
 
@@ -178,13 +200,18 @@ public struct DayDigestBuilder: Sendable {
                 let totals = counterDeltas(
                     deviceSamples, dayStart: start, dayEnd: end
                 )
+                // Sans relevé **antérieur** à la journée, aucune différence ne
+                // se calcule : le total tombe à zéro par manque de point de
+                // départ, pas par absence d'usage. Voir `awaitingBaseline`.
+                let hasBaseline = deviceSamples.contains { $0.recordedAt < start }
                 lanes.append(
                     Lane(
                         device: device,
                         total: totals.reduce(0) { $0 + $1.total },
                         blocks: [],
                         topEntities: totals,
-                        isConnected: !deviceSamples.isEmpty
+                        isConnected: !deviceSamples.isEmpty,
+                        awaitingBaseline: !deviceSamples.isEmpty && !hasBaseline
                     )
                 )
             }

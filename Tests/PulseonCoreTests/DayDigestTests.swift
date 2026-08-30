@@ -230,3 +230,62 @@ func counterTimeExceedingCoverageWins() {
     // bien eu lieu.
     #expect(digest.coveredTotal == 2 * 3600 + 30 * 60)
 }
+
+/// **Le zéro qu'on affichait sans l'avoir mesuré.** Le premier jour d'une source
+/// à compteur, ses relevés existent mais aucun ne précède minuit : il n'y a rien
+/// à comparer. Le total tombe à zéro par manque de point de départ, et l'écran
+/// annonçait « PlayStation — 0 min » un soir où Arthur jouait vraiment.
+@Test("Une source à compteur sans relevé de la veille n'affirme pas un zéro")
+func counterWithoutBaselineIsNotAMeasuredZero() throws {
+    let sample = CounterSample(
+        device: .playstation, entity: "The Witcher 3",
+        total: 68 * 3600, recordedAt: date(14, 19, 22)
+    )
+    let digest = builder.build(
+        day: date(14, 12), sessions: [], samples: [sample], now: date(14, 23)
+    )
+    let lane = try #require(digest.lanes.first { $0.device == .playstation })
+
+    // La source a parlé — ce n'est pas « pas branchée ».
+    #expect(lane.isConnected)
+    // Mais la journée n'est pas calculable, et ça doit se voir.
+    #expect(lane.awaitingBaseline)
+    #expect(lane.total == 0)
+}
+
+/// L'inverse, et c'est ce qui rend la distinction utile : une fois un relevé de
+/// la veille en base, « le compteur n'a pas bougé » **est** une mesure.
+@Test("Avec un relevé de la veille, un compteur immobile est un vrai zéro")
+func counterWithBaselineReportsARealZero() throws {
+    let samples = [
+        CounterSample(
+            device: .playstation, entity: "The Witcher 3",
+            total: 68 * 3600, recordedAt: date(13, 22)
+        ),
+        CounterSample(
+            device: .playstation, entity: "The Witcher 3",
+            total: 68 * 3600, recordedAt: date(14, 19)
+        ),
+    ]
+    let digest = builder.build(
+        day: date(14, 12), sessions: [], samples: samples, now: date(14, 23)
+    )
+    let lane = try #require(digest.lanes.first { $0.device == .playstation })
+
+    #expect(lane.isConnected)
+    #expect(lane.awaitingBaseline == false)
+    #expect(lane.total == 0)
+}
+
+/// Et une source qui n'a jamais rien écrit reste « pas branchée » : trois états,
+/// pas deux.
+@Test("Une source à compteur muette n'attend pas un point de départ")
+func silentCounterIsSimplyUnplugged() throws {
+    let digest = builder.build(
+        day: date(14, 12), sessions: [], samples: [], now: date(14, 23)
+    )
+    let lane = try #require(digest.lanes.first { $0.device == .playstation })
+
+    #expect(lane.isConnected == false)
+    #expect(lane.awaitingBaseline == false)
+}

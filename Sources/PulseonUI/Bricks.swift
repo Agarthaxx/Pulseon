@@ -142,6 +142,14 @@ struct Chip: View {
 
 struct UnpluggedRow: View {
     let device: Device
+    /// Pourquoi il n'y a rien à montrer.
+    ///
+    /// « Pas encore branchée » est le cas d'origine, mais ce n'est pas le seul :
+    /// une source à compteur peut avoir parlé sans qu'on puisse encore en tirer
+    /// une journée. Les deux se dessinent pareil — pointillé, rien d'écrit comme
+    /// durée — parce que dans les deux cas **on ne sait pas**, et c'est
+    /// précisément ce que le pointillé dit.
+    var note: String = "pas encore branchée"
     let palette: PulseonPalette
 
     var body: some View {
@@ -151,9 +159,11 @@ struct UnpluggedRow: View {
                 Text(device.label)
                     .font(PulseonTheme.row)
                     .foregroundStyle(palette.inkSoft)
-                Text("pas encore branchée")
+                Text(note)
                     .font(PulseonTheme.caption)
                     .foregroundStyle(palette.inkFaint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             Spacer()
             // Le pointillé dit l'inconnu, là où le plein dit le mesuré.
@@ -332,7 +342,20 @@ struct DevicesCard: View {
                     .padding(.bottom, 2)
 
                 ForEach(lanes, id: \.device) { lane in
-                    if lane.isConnected {
+                    if lane.awaitingBaseline {
+                        // **Un zéro non mesuré ne s'affiche pas.** La source a
+                        // parlé, mais son premier relevé est le point de
+                        // départ : il n'y a rien à comparer avant lui. Écrire
+                        // « 0 min » affirmerait une absence de jeu qu'on n'a
+                        // jamais constatée — et c'est arrivé le 2026-08-30,
+                        // Arthur ayant joué toute la soirée du jour même où la
+                        // PlayStation a été branchée.
+                        UnpluggedRow(
+                            device: lane.device,
+                            note: "premier relevé pris — le temps se comptera demain",
+                            palette: palette
+                        )
+                    } else if lane.isConnected {
                         MeterRow(
                             symbol: PulseonTheme.symbol(for: lane.device),
                             tint: PulseonTheme.color(for: lane.device, in: palette),
