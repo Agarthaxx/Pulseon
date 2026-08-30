@@ -67,7 +67,13 @@ let digest = DayDigest(
         ),
         Lane(
             device: .playstation, total: psTotal, blocks: [],
-            topEntities: [EntityTotal(entity: "Elden Ring", total: psTotal)],
+            // Deux titres, parce qu'un seul ne montrerait jamais si la rangée
+            // de noms et la réserve « horaires inconnus » tiennent ensemble sur
+            // une ligne. Les noms viennent de la vraie bibliothèque d'Arthur.
+            topEntities: [
+                EntityTotal(entity: "ELDEN RING", total: 1.3 * 3600),
+                EntityTotal(entity: "Rocket League®", total: 0.5 * 3600),
+            ],
             isConnected: true
         ),
         Lane(

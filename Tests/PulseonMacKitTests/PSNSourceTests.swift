@@ -116,6 +116,50 @@ import Testing
         #expect(try PSNSource.parse(Self.page(#"{"titles":[]}"#)).nextOffset == nil)
     }
 
+    // MARK: Ce que Sony déclare de ses titres
+
+    /// **Mesuré, pas supposé** : sur les 73 titres d'Arthur, Sony déclare
+    /// `ps5_native_media_app` ou `ps5_web_based_media_app` pour les onze apps
+    /// non-jeux, et `ps5_native_game` / `ps4_game` pour les autres. Personne
+    /// n'a eu besoin d'écrire une liste de noms.
+    @Test("La catégorie déclarée par Sony est lue, et gardée brute")
+    func readsDeclaredCategory() throws {
+        let page = try PSNSource.parse(
+            Self.page(
+                #"""
+                {"titles":[
+                  {"titleId":"PPSA01284_00","name":"ELDEN RING","playDuration":"PT1H","category":"ps5_native_game"},
+                  {"titleId":"CUSA01015_00","name":"YouTube","playDuration":"PT2H","category":"ps5_native_media_app"}
+                ]}
+                """#
+            )
+        )
+        #expect(page.declaredCategories["ELDEN RING"] == "ps5_native_game")
+        #expect(page.declaredCategories["YouTube"] == "ps5_native_media_app")
+        #expect(page.identifiers["ELDEN RING"] == "PPSA01284_00")
+    }
+
+    /// Deux titres additionnés sous un même nom n'ont plus d'identité propre :
+    /// en garder une des deux la désignerait à tort.
+    @Test("Un nom porté par deux titres perd son identifiant")
+    func ambiguousNameHasNoIdentifier() throws {
+        let page = try PSNSource.parse(
+            Self.page(
+                #"""
+                {"titles":[
+                  {"titleId":"CUSA00900_00","name":"Call of Duty®","playDuration":"PT10H","category":"ps4_game"},
+                  {"titleId":"PPSA37414_00","name":"Call of Duty®","playDuration":"PT5H","category":"ps5_native_game"}
+                ]}
+                """#
+            )
+        )
+        #expect(try #require(page.totals["Call of Duty®"]) == 15 * 3600)
+        #expect(page.identifiers["Call of Duty®"] == nil)
+        // La catégorie, elle, survit : deux versions du même jeu ne se
+        // déclarent pas différemment.
+        #expect(page.declaredCategories["Call of Duty®"] == "ps4_game")
+    }
+
     // MARK: Le trajet complet
 
     /// Rejoue les trois temps de l'échange, en comptant ce qui est demandé.
@@ -184,7 +228,7 @@ import Testing
     @Test("Le npsso s'échange en deux temps, puis les jeux arrivent")
     func fullExchange() async throws {
         let sony = Sony()
-        let totals = try await source(sony).readTotals()
+        let totals = try await source(sony).read().totals
 
         #expect(totals == ["ELDEN RING": 3 * 3600])
         #expect(await sony.calls == ["authorize", "token", "titles"])
@@ -198,8 +242,8 @@ import Testing
         let sony = Sony()
         let psn = source(sony)
 
-        _ = try await psn.readTotals()
-        _ = try await psn.readTotals()
+        _ = try await psn.read()
+        _ = try await psn.read()
 
         #expect(await sony.count(of: "authorize") == 1)
         #expect(await sony.count(of: "titles") == 2)
@@ -213,8 +257,8 @@ import Testing
         await sony.setExpiresIn(0)
         let psn = source(sony)
 
-        _ = try await psn.readTotals()
-        _ = try await psn.readTotals()
+        _ = try await psn.read()
+        _ = try await psn.read()
 
         #expect(await sony.count(of: "authorize") == 2)
     }
@@ -229,7 +273,7 @@ import Testing
         await sony.setAuthorizeLocation("https://ca.account.sony.com/signin?e=1")
 
         await #expect(throws: PSNSource.Failure.tokenRejected) {
-            try await source(sony).readTotals()
+            try await source(sony).read()
         }
     }
 
@@ -239,7 +283,7 @@ import Testing
         await sony.setTitlesStatus(401)
 
         await #expect(throws: PSNSource.Failure.http(401)) {
-            try await source(sony).readTotals()
+            try await source(sony).read()
         }
         // Deux échanges — le premier, puis celui de la seconde chance — et pas
         // une boucle.
@@ -255,7 +299,7 @@ import Testing
             #"{"titles":[{"name":"B","playDuration":"PT2H"}]}"#,
         ])
 
-        let totals = try await source(sony).readTotals()
+        let totals = try await source(sony).read().totals
         #expect(totals == ["A": 3600, "B": 7200])
     }
 
@@ -266,7 +310,7 @@ import Testing
         let sony = Sony()
         await sony.setPages([#"{"titles":[{"name":"A","playDuration":"PT1H"}],"nextOffset":0}"#])
 
-        let totals = try await source(sony).readTotals()
+        let totals = try await source(sony).read().totals
         #expect(totals == ["A": 3600])
         #expect(await sony.count(of: "titles") == 1)
     }
@@ -298,7 +342,7 @@ import Testing
         )
 
         await #expect(throws: PSNSource.Failure.unreachable) {
-            try await psn.readTotals()
+            try await psn.read()
         }
     }
 
@@ -310,7 +354,7 @@ import Testing
         )
 
         await #expect(throws: PSNSource.Failure.missingToken) {
-            try await psn.readTotals()
+            try await psn.read()
         }
     }
 }

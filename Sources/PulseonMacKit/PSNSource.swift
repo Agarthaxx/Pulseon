@@ -105,7 +105,7 @@ public struct PSNSource: CounterSource {
 
     // MARK: Le relevé
 
-    public func readTotals() async throws -> [String: TimeInterval] {
+    public func read() async throws -> CounterReading {
         let token = try await vault.access { try await mintAccessToken() }
 
         do {
@@ -212,8 +212,12 @@ public struct PSNSource: CounterSource {
 
     // MARK: 3. Les jeux
 
-    private func titles(bearer: String) async throws -> [String: TimeInterval] {
+    private func titles(bearer: String) async throws -> CounterReading {
         var totals: [String: TimeInterval] = [:]
+        var declared: [String: String] = [:]
+        var identifiers: [String: String] = [:]
+        /// Les noms portés par plus d'un titre : leur identifiant est écarté.
+        var ambiguous: Set<String> = []
         var offset = 0
 
         // La liste pagine. La borne n'est pas une élégance : une pagination
@@ -236,27 +240,44 @@ public struct PSNSource: CounterSource {
             let page = try Self.parse(data)
             // `uniquingKeysWith: +` et non un écrasement : voir `parse`.
             totals.merge(page.totals) { $0 + $1 }
+            declared.merge(page.declaredCategories) { first, _ in first }
+            for (name, id) in page.identifiers {
+                if identifiers.updateValue(id, forKey: name) != nil { ambiguous.insert(name) }
+            }
+            ambiguous.formUnion(page.ambiguousNames)
 
             guard let next = page.nextOffset, next > offset else { break }
             offset = next
         }
 
-        return totals
+        for name in ambiguous { identifiers[name] = nil }
+
+        return CounterReading(
+            totals: totals, declaredCategories: declared, identifiers: identifiers
+        )
     }
 
     // MARK: La lecture de la réponse
 
     struct Page: Equatable {
         let totals: [String: TimeInterval]
+        /// Ce que Sony déclare du titre : `ps5_native_game`,
+        /// `ps5_native_media_app`… Stocké brut, jamais interprété ici.
+        let declaredCategories: [String: String]
+        let identifiers: [String: String]
+        /// Les noms portés par plusieurs titres dans cette page.
+        let ambiguousNames: Set<String>
         let nextOffset: Int?
     }
 
     static func parse(_ data: Data) throws -> Page {
         struct Response: Decodable {
             struct Title: Decodable {
+                let titleId: String?
                 let name: String?
                 let localizedName: String?
                 let playDuration: String?
+                let category: String?
             }
             let titles: [Title]?
             let nextOffset: Int?
@@ -271,6 +292,10 @@ public struct PSNSource: CounterSource {
         guard let titles = response.titles else { throw Failure.malformed }
 
         var totals: [String: TimeInterval] = [:]
+        var declared: [String: String] = [:]
+        var identifiers: [String: String] = [:]
+        var ambiguous: Set<String> = []
+
         for title in titles {
             // Le nom localisé d'abord : c'est celui que la console affiche.
             guard let name = (title.localizedName ?? title.name)?.trimmingCharacters(
@@ -291,9 +316,30 @@ public struct PSNSource: CounterSource {
             // bond inventé de l'autre. La somme de deux compteurs cumulés
             // reste un compteur cumulé, et c'est bien le même jeu.
             totals[name, default: 0] += seconds
+
+            // La catégorie du premier titre rencontré fait foi. Deux titres de
+            // même nom sont le même produit — la version PS4 et la version PS5
+            // ne se déclarent pas différemment.
+            if declared[name] == nil { declared[name] = title.category }
+            if let id = title.titleId {
+                if identifiers.updateValue(id, forKey: name) != nil { ambiguous.insert(name) }
+            }
         }
 
-        return Page(totals: totals, nextOffset: response.nextOffset)
+        // Un nom porté par deux titres n'a pas d'identifiant : les deux totaux
+        // sont additionnés sous ce nom, donc aucun des deux ne le désigne. En
+        // garder un serait inventer une identité — et c'est mesuré, pas
+        // théorique : « Call of Duty® », « Battlefield™ 6 » et « FAR CRY®6 »
+        // sont chacun deux titres dans la bibliothèque d'Arthur.
+        for name in ambiguous { identifiers[name] = nil }
+
+        return Page(
+            totals: totals,
+            declaredCategories: declared,
+            identifiers: identifiers,
+            ambiguousNames: ambiguous,
+            nextOffset: response.nextOffset
+        )
     }
 
     // MARK: Le réseau
