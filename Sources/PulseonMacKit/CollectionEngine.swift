@@ -73,6 +73,18 @@ public final class CollectionEngine {
     /// qu'elle est injoignable — ce qui n'est pas la même chose qu'éteinte.
     public var tvIsUnreachable: Bool { tv?.lastReading == .unknown }
 
+    /// Le collecteur PlayStation, s'il est branché. Non-nil seulement quand un
+    /// `npsso` a été déposé au Trousseau : sans jeton, un poller ne ferait
+    /// qu'échouer tous les quarts d'heure.
+    private var psn: CounterPoller?
+
+    /// Ce que Sony a répondu au dernier relevé, quand ça s'est mal passé.
+    ///
+    /// **Muette n'est pas à zéro.** Un jeton expiré et une soirée sans jeu
+    /// produisent le même écran — aucune ligne PlayStation — donc c'est au menu
+    /// de faire la différence. C'est la même règle que « TV injoignable ».
+    public var psnFailure: String? { psn?.lastFailure }
+
     /// Les sessions et relevés de la journée, gardés en mémoire entre deux
     /// relectures. C'est ce qui rend le défilement gratuit : `build` borne les
     /// sessions ouvertes sur l'horizon qu'on lui passe, donc avancer d'une
@@ -168,6 +180,7 @@ public final class CollectionEngine {
         guard !isCollecting else { return }
         monitor.start()
         startTV()
+        startPSN()
         isCollecting = true
         refresh()
     }
@@ -177,6 +190,8 @@ public final class CollectionEngine {
         monitor.stop()
         tv?.stop()
         tv = nil
+        psn?.stop()
+        psn = nil
         isCollecting = false
         refresh()
     }
@@ -200,6 +215,28 @@ public final class CollectionEngine {
         )
         tv = monitor
         monitor.start()
+    }
+
+    /// Branche le collecteur PlayStation si un jeton a été déposé.
+    ///
+    /// La PlayStation est une source à **compteur**, et c'est celle pour
+    /// laquelle tout ce vocabulaire a été écrit : elle ne rend qu'un total
+    /// cumulé par jeu, sans le moindre horaire. Elle n'ouvre donc aucune
+    /// session — `CounterPoller` range des relevés bruts, et la différence
+    /// entre deux relevés se fait à la lecture. C'est ce qui garantit qu'aucune
+    /// heure n'est inventée.
+    ///
+    /// `Secrets.exists` plutôt qu'une lecture : chercher l'étiquette ne
+    /// déchiffre rien, donc ne déclenche pas la demande d'autorisation du
+    /// Trousseau à chaque ouverture de session.
+    private func startPSN() {
+        guard psn == nil,
+            Secrets.exists(service: Secrets.PSN.service, account: Secrets.PSN.account)
+        else { return }
+
+        let poller = CounterPoller(source: PSNSource(), store: store)
+        psn = poller
+        poller.start()
     }
 
     /// Écrit tout l'historique dans un fichier choisi par l'utilisateur.
