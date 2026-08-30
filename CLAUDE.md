@@ -1598,6 +1598,45 @@ pour un titre ; le menu d'accueil et les réglages n'en sont pas. Ce temps-là n
 pas perdu pour autant : la télé le voit, avec de vrais horaires, et l'affiche en
 « Télé » — ce qui est exactement ce qu'on sait de cet écran.
 
+#### Le premier jour d'un compteur affichait un zéro non mesuré
+
+**Trouvé par Arthur le soir même du branchement** : « je ne vois toujours rien ?
+car je joue à un jeu depuis pas mal de temps aujourd'hui ». Le calcul était
+juste ; l'écran affirmait quelque chose de faux. La carte « Appareils » annonçait
+**« PlayStation — 0 min »** pendant qu'il jouait.
+
+Le premier jour d'une source à compteur, ses relevés existent mais **aucun ne
+précède minuit** : il n'y a rien à comparer, donc le total tombe à zéro *par
+manque de point de départ, pas par absence d'usage*. `isConnected` ne pouvait pas
+l'attraper — la source avait bien parlé.
+
+C'est exactement ce que le projet s'interdit partout ailleurs (« pas branchée ≠
+journée à zéro », « nil plutôt qu'une invention »). **La règle existait côté
+intervalles depuis le début ; il lui manquait son équivalent côté compteurs.**
+
+`Lane.awaitingBaseline` porte la distinction, et il en faut **trois états, pas
+deux** :
+
+| État | Ce que ça veut dire | Comment ça se dessine |
+|---|---|---|
+| Muette | aucun relevé, jamais | « pas encore branchée », pointillé |
+| En attente d'un point de départ | a parlé, mais rien avant la journée | pointillé, **aucune durée**, « premier relevé pris — le temps se comptera demain » |
+| Vrai zéro | un relevé de la veille existe, le compteur n'a pas bougé | « 0 min » — et là c'est une mesure |
+
+**Ce qu'on a mesuré de la latence de Sony au passage**, parce que ça change ce
+qu'on peut promettre : le 2026-08-30 à 22 h, Arthur jouait à The Witcher 3 depuis
+des heures. Le champ `lastPlayedDateTime` était **à jour à la minute** (21:18),
+et `playDuration` **n'avait pas bougé d'une seconde** depuis 19 h — identique au
+relevé en base, ce qui a d'ailleurs prouvé que le collecteur fonctionnait :
+`record` sautait un doublon, il n'échouait pas.
+
+**Les deux champs ne se mettent donc pas à jour au même moment** : Sony note
+*quand* tout de suite, et *combien* plus tard. Conséquence à connaître — une
+soirée de jeu risque d'être créditée le lendemain, donc comptée sur le mauvais
+jour. **Piste pour y remédier sans rien inventer** : `lastPlayedDateTime` est une
+date *mesurée*. Rattacher une différence à la journée qu'elle désigne ne
+fabriquerait aucun horaire — juste une date. À faire si le décalage se confirme.
+
 #### Le Trousseau redemande son autorisation à chaque réinstallation
 
 **Constaté à la première installation, le 2026-08-30** : le collecteur n'a rien
