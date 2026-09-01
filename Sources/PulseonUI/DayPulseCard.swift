@@ -56,15 +56,6 @@ struct DayPulseCard: View {
 
                     HourRule(dayLength: day.dayLength, palette: palette)
                 }
-
-                if hasCounterSource {
-                    // Court, parce que la carte « Déroulé » dit déjà la même
-                    // exclusion juste au-dessus : deux phrases longues empilées
-                    // se lisent comme un bégaiement.
-                    Text("Sans horaire connu, la PlayStation n'y figure pas.")
-                        .font(PulseonTheme.caption)
-                        .foregroundStyle(palette.inkFaint)
-                }
             }
         }
     }
@@ -82,10 +73,6 @@ struct DayPulseCard: View {
         guard let window = pulse.densestWindow(spanning: 2 * 3600) else { return nil }
         return "le plus dense de \(day.clockLabel(atOffset: window.start))"
             + " à \(day.clockLabel(atOffset: window.end))"
-    }
-
-    private var hasCounterSource: Bool {
-        day.digest.lanes.contains { $0.kind == .counter && $0.total > 0 }
     }
 }
 

@@ -37,7 +37,7 @@ import Testing
     {
         DayPresentation(
             digest: DayDigestBuilder(calendar: calendar).build(
-                day: dayStart, sessions: [], samples: [], now: now ?? dayStart
+                day: dayStart, sessions: [], now: now ?? dayStart
             ),
             dayStart: dayStart,
             dayLength: 24 * 3600,
@@ -123,7 +123,7 @@ import Testing
             return PeriodPresentation.Day(
                 start: dayStart,
                 digest: DayDigestBuilder(calendar: calendar).build(
-                    day: dayStart, sessions: [], samples: [], now: dayStart
+                    day: dayStart, sessions: [], now: dayStart
                 ),
                 isToday: includesToday
                     && today.map { calendar.isDate(dayStart, inSameDayAs: $0) } == true,

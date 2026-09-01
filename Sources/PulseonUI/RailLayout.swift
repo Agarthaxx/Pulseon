@@ -39,12 +39,9 @@ public struct RailSegment: Equatable, Sendable, Identifiable {
 ///   normale produirait des dizaines de segments collés que rien ne distingue,
 ///   et chaque jointure dessinerait un liseré parasite.
 public enum RailLayout {
-    /// - Parameter lanes: toutes les pistes de la journée. Les sources à
-    ///   compteur sont **ignorées** : elles n'ont aucun horaire, donc aucune
-    ///   place sur un axe de temps. Les dessiner ici serait inventer une heure.
+    /// - Parameter lanes: toutes les pistes de la journée.
     public static func segments(from lanes: [Lane]) -> [RailSegment] {
         let intervals = lanes
-            .filter { $0.kind == .interval }
             .flatMap { lane in
                 lane.blocks
                     .filter { $0.duration > 0 }

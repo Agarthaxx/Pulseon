@@ -84,7 +84,6 @@ public final class PeriodBrowser {
                 from: weekStart,
                 through: lastDay,
                 sessions: try store.sessions(from: weekStart, to: weekEnd),
-                samples: try store.samples(before: weekEnd),
                 now: now
             )
 

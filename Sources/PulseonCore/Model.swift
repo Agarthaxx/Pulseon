@@ -1,35 +1,33 @@
 import Foundation
 
-/// Ce qu'un appareil sait dire de lui-même.
+/// Les appareils que Pulseon mesure.
 ///
-/// La distinction n'est pas cosmétique : elle décide de ce qu'on a le droit
-/// d'afficher. Une source `interval` connaît ses horaires et se place sur une
-/// timeline. Une source `counter` ne connaît qu'un total cumulé relevé
-/// périodiquement (la PlayStation), et son placement horaire est inconnu —
-/// l'UI doit le dire au lieu de l'inventer.
-public enum SourceKind: String, Codable, Sendable {
-    case interval
-    case counter
-}
-
+/// **Tous savent dire *quand*, et c'est ce qui rend le projet simple.** Il a
+/// existé un second genre de source — le « compteur », qui ne rend qu'un total
+/// cumulé sans le moindre horaire — et tout un vocabulaire a été écrit pour lui
+/// (`SourceKind`, `CounterSample`, `CounterPoller`), plus une série de
+/// précautions dans les vues pour ne jamais lui inventer une place dans la
+/// journée.
+///
+/// La PlayStation en a été l'unique exemple, et elle est partie le 2026-09-01.
+/// La raison n'est pas technique — le collecteur tournait — mais mesurée :
+/// **la PS5 est branchée sur la télé**, donc son temps est déjà compté par le
+/// collecteur TV, avec de vrais horaires. Sur douze jours de base, la télé
+/// porte 26 h 39 de temps anonyme contre 1 h 28 nommé : ces 26 h *sont* la
+/// console. Deux collecteurs mesuraient le même écran.
+///
+/// Ce qui reste de l'épisode est une règle, pas du code : **ne jamais inventer
+/// de placement horaire**. Elle n'a plus de source qui la mette à l'épreuve,
+/// et elle vaut toujours pour la prochaine.
 public enum Device: String, Codable, CaseIterable, Sendable, Identifiable {
     public var id: String { rawValue }
 
     case mac
-    case playstation
     case tv
-
-    public var kind: SourceKind {
-        switch self {
-        case .mac, .tv: .interval
-        case .playstation: .counter
-        }
-    }
 
     public var label: String {
         switch self {
         case .mac: "Mac"
-        case .playstation: "PlayStation"
         case .tv: "TV"
         }
     }
@@ -58,29 +56,5 @@ public struct ActivitySession: Codable, Sendable, Identifiable {
         self.entity = entity
         self.start = start
         self.end = end
-    }
-}
-
-/// Un relevé ponctuel d'un compteur cumulatif (le `playDuration` d'un jeu PSN
-/// à l'instant du poll). Le temps joué se déduit par différence entre relevés.
-public struct CounterSample: Codable, Sendable, Identifiable {
-    public let id: UUID
-    public let device: Device
-    public let entity: String
-    public let total: TimeInterval
-    public let recordedAt: Date
-
-    public init(
-        id: UUID = UUID(),
-        device: Device,
-        entity: String,
-        total: TimeInterval,
-        recordedAt: Date
-    ) {
-        self.id = id
-        self.device = device
-        self.entity = entity
-        self.total = total
-        self.recordedAt = recordedAt
     }
 }

@@ -338,17 +338,7 @@ struct DevicesCard: View {
                             tint: PulseonTheme.color(for: lane.device, in: palette),
                             fill: PulseonTheme.gradient(for: lane.device, in: palette),
                             label: lane.device.label,
-                            // Sa part est honnête, sa place dans le temps est
-                            // inconnue — et doit se dire.
-                            detail: lane.kind == .counter ? "horaires inconnus" : "",
-                            // **Les noms aussi sont mesurés.** Ils étaient
-                            // écartés pour les sources à compteur, du temps où
-                            // aucune ne tournait : la ligne PlayStation aurait
-                            // dit « 2 h 30, horaires inconnus » sans jamais
-                            // nommer Elden Ring, alors que le nom du jeu est
-                            // précisément ce que cette source sait le mieux.
-                            // Ce qui est inconnu, c'est l'heure — et la réserve
-                            // le dit, à côté des noms plutôt qu'à leur place.
+                            detail: "",
                             apps: lane.topEntities.prefix(3).map(\.entity),
                             total: lane.total,
                             share: summedTotal > 0 ? lane.total / summedTotal : 0,

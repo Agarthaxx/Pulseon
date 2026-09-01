@@ -73,24 +73,11 @@ public final class CollectionEngine {
     /// qu'elle est injoignable — ce qui n'est pas la même chose qu'éteinte.
     public var tvIsUnreachable: Bool { tv?.lastReading == .unknown }
 
-    /// Le collecteur PlayStation, s'il est branché. Non-nil seulement quand un
-    /// `npsso` a été déposé au Trousseau : sans jeton, un poller ne ferait
-    /// qu'échouer tous les quarts d'heure.
-    private var psn: CounterPoller?
-
-    /// Ce que Sony a répondu au dernier relevé, quand ça s'est mal passé.
-    ///
-    /// **Muette n'est pas à zéro.** Un jeton expiré et une soirée sans jeu
-    /// produisent le même écran — aucune ligne PlayStation — donc c'est au menu
-    /// de faire la différence. C'est la même règle que « TV injoignable ».
-    public var psnFailure: String? { psn?.lastFailure }
-
-    /// Les sessions et relevés de la journée, gardés en mémoire entre deux
+    /// Les sessions de la journée, gardés en mémoire entre deux
     /// relectures. C'est ce qui rend le défilement gratuit : `build` borne les
     /// sessions ouvertes sur l'horizon qu'on lui passe, donc avancer d'une
     /// seconde ne demande qu'une addition — pas une requête.
     private var cachedSessions: [ActivitySession] = []
-    private var cachedSamples: [CounterSample] = []
     private var cachedDayStart: Date?
 
     /// Relecture du disque. Une minute suffit : entre deux, seule la session
@@ -180,7 +167,6 @@ public final class CollectionEngine {
         guard !isCollecting else { return }
         monitor.start()
         startTV()
-        startPSN()
         isCollecting = true
         refresh()
     }
@@ -190,8 +176,6 @@ public final class CollectionEngine {
         monitor.stop()
         tv?.stop()
         tv = nil
-        psn?.stop()
-        psn = nil
         isCollecting = false
         refresh()
     }
@@ -217,28 +201,6 @@ public final class CollectionEngine {
         monitor.start()
     }
 
-    /// Branche le collecteur PlayStation si un jeton a été déposé.
-    ///
-    /// La PlayStation est une source à **compteur**, et c'est celle pour
-    /// laquelle tout ce vocabulaire a été écrit : elle ne rend qu'un total
-    /// cumulé par jeu, sans le moindre horaire. Elle n'ouvre donc aucune
-    /// session — `CounterPoller` range des relevés bruts, et la différence
-    /// entre deux relevés se fait à la lecture. C'est ce qui garantit qu'aucune
-    /// heure n'est inventée.
-    ///
-    /// `Secrets.exists` plutôt qu'une lecture : chercher l'étiquette ne
-    /// déchiffre rien, donc ne déclenche pas la demande d'autorisation du
-    /// Trousseau à chaque ouverture de session.
-    private func startPSN() {
-        guard psn == nil,
-            Secrets.exists(service: Secrets.PSN.service, account: Secrets.PSN.account)
-        else { return }
-
-        let poller = CounterPoller(source: PSNSource(), store: store)
-        psn = poller
-        poller.start()
-    }
-
     /// Écrit tout l'historique dans un fichier choisi par l'utilisateur.
     ///
     /// **L'envers de « rien ne sort de ta machine »** : rien n'en sort tout
@@ -259,7 +221,7 @@ public final class CollectionEngine {
         do {
             let written = try Exporter.write(format, from: store, to: url)
             failure = nil
-            lastExport = "\(written.sessions) sessions exportées"
+            lastExport = "\(written) sessions exportées"
             // La confirmation standard de macOS, et la seule qui prouve
             // vraiment quelque chose : le fichier est là, on le voit.
             NSWorkspace.shared.activateFileViewerSelecting([url])
@@ -279,7 +241,7 @@ public final class CollectionEngine {
         launchAtLogin = LaunchAtLogin.state
     }
 
-    /// Recharge en mémoire les sessions et relevés de la journée en cours.
+    /// Recharge en mémoire les sessions de la journée en cours.
     ///
     /// Une lecture qui échoue est signalée, pas maquillée : rendre une journée
     /// vide ferait croire à zéro minute d'écran alors qu'on ne sait tout
@@ -290,12 +252,10 @@ public final class CollectionEngine {
         let end = calendar.date(byAdding: .day, value: 1, to: start)!
         do {
             cachedSessions = try store.sessions(from: start, to: end)
-            cachedSamples = try store.samples(before: end)
             cachedDayStart = start
             readFailure = nil
         } catch {
             cachedSessions = []
-            cachedSamples = []
             // Le cache n'est marqué sur aucune journée : le prochain tick
             // retentera la lecture au lieu de se croire à jour.
             cachedDayStart = nil
@@ -324,7 +284,6 @@ public final class CollectionEngine {
         let digest = DayDigestBuilder(calendar: Calendar.current).build(
             day: dayStart,
             sessions: cachedSessions,
-            samples: cachedSamples,
             now: horizon(now)
         )
 

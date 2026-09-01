@@ -28,13 +28,11 @@ import Testing
 
     private func digest(
         sessions: [ActivitySession],
-        samples: [CounterSample] = [],
         now: Date? = nil
     ) -> DayDigest {
         DayDigestBuilder(calendar: calendar).build(
             day: day(12),
             sessions: sessions,
-            samples: samples,
             now: now ?? day(23, 59)
         )
     }
@@ -96,26 +94,6 @@ import Testing
 
         #expect(totals.count == 2)
         #expect(totals.allSatisfy { $0.total == 2 * 3600 })
-    }
-
-    @Test("Une source à compteur est classée par son entité")
-    func counterSourceIsClassified() throws {
-        let digest = digest(
-            sessions: [],
-            samples: [
-                CounterSample(device: .playstation, entity: "Elden Ring", total: 3600, recordedAt: day(0).addingTimeInterval(-3600)),
-                CounterSample(device: .playstation, entity: "Elden Ring", total: 3600 + 1800, recordedAt: day(14)),
-            ]
-        )
-        let totals = build(digest, classify: fixed([:]))
-
-        #expect(totals.count == 1)
-        let game = try #require(totals.first)
-        // La console est sa propre catégorie, et non « Jeu » : « Jeu » reste le
-        // classement d'un jeu *sur le Mac*, lu dans son `Info.plist`. Confondre
-        // les deux mélangerait un écran et un contenu dans le même rond.
-        #expect(game.category == .playstation)
-        #expect(game.total == 1800)
     }
 
     /// Un appareil sans entité **ne se range pas dans un contenu**.
@@ -197,9 +175,9 @@ import Testing
         #expect(assignment.category(for: .mac, entity: "Xcode") == .development)
         // Inconnue sur le Mac : aucune supposition, `other`.
         #expect(assignment.category(for: .mac, entity: "Inconnue") == .other)
-        // Inconnue sur une console ou une télé : l'appareil lui-même est la
-        // réponse, et il ne prétend pas connaître le contenu.
-        #expect(assignment.category(for: .playstation, entity: "Inconnu") == .playstation)
+        // Inconnue sur la télé : l'appareil lui-même est la réponse, et il ne
+        // prétend pas connaître le contenu.
+        #expect(assignment.category(for: .tv, entity: "Inconnue") == .tv)
         #expect(assignment.category(for: .tv, entity: nil) == .tv)
     }
 }

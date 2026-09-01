@@ -40,31 +40,6 @@ public final class StoredSession {
     }
 }
 
-@Model
-public final class StoredCounterSample {
-    public var deviceRaw: String
-    /// Voir `StoredSession.appName` : ni `entity` ni `entityName` ne sont
-    /// utilisables comme noms de propriété dans un `@Model`.
-    public var appName: String
-    public var total: TimeInterval
-    public var recordedAt: Date
-
-    public init(device: Device, entity: String, total: TimeInterval, recordedAt: Date) {
-        self.deviceRaw = device.rawValue
-        self.appName = entity
-        self.total = total
-        self.recordedAt = recordedAt
-    }
-
-    public var device: Device { Device(rawValue: deviceRaw) ?? .playstation }
-
-    public var asSample: CounterSample {
-        CounterSample(
-            device: device, entity: appName, total: total, recordedAt: recordedAt
-        )
-    }
-}
-
 /// Où vit la base. Un exécutable SwiftPM n'a pas de bundle identifier, et
 /// SwiftData retombe alors sur `~/Library/Application Support/default.store` —
 /// un chemin non-namespacé, partagé avec toute autre app dans le même cas.
@@ -103,7 +78,7 @@ public enum StoreLocation {
                 at: directory, withIntermediateDirectories: true
             )
             let container = try ModelContainer(
-                for: StoredSession.self, StoredCounterSample.self, StoredApp.self,
+                for: StoredSession.self, StoredApp.self,
                 configurations: ModelConfiguration(url: storeURL)
             )
             return (container, nil)
@@ -112,7 +87,7 @@ public enum StoreLocation {
             // lui-même est invalide — une erreur de programmation, qui doit
             // se voir tout de suite.
             let fallback = try! ModelContainer(
-                for: StoredSession.self, StoredCounterSample.self, StoredApp.self,
+                for: StoredSession.self, StoredApp.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: true)
             )
             return (fallback, error.localizedDescription)
@@ -278,68 +253,6 @@ public final class SessionStore {
     public func allSessions() throws -> [ActivitySession] {
         let descriptor = FetchDescriptor<StoredSession>(sortBy: [SortDescriptor(\.start)])
         return try context.fetch(descriptor).map(\.asSession)
-    }
-
-    public func allSamples() throws -> [CounterSample] {
-        let descriptor = FetchDescriptor<StoredCounterSample>(
-            sortBy: [SortDescriptor(\.recordedAt)]
-        )
-        return try context.fetch(descriptor).map(\.asSample)
-    }
-
-    /// Enregistre un relevé de compteur, **sauf s'il n'apprend rien**.
-    ///
-    /// Les sources à compteur se relèvent périodiquement, et la plupart des
-    /// relevés retournent le même total : on ne joue pas toute la journée.
-    /// Réécrire ce total à chaque passage referait exactement l'erreur du
-    /// `lastSeen` en base — des centaines de mégaoctets par jour pour ne rien
-    /// apprendre. Voir `Heartbeat`.
-    ///
-    /// Sauter les doublons ne perturbe pas l'agrégation : `DayDigestBuilder`
-    /// cherche « le dernier relevé antérieur au jour », et un relevé plus
-    /// ancien fait tout aussi bien l'affaire tant que le total n'a pas bougé.
-    ///
-    /// Un total qui *baisse* est écrit quand même. C'est ce que la source a
-    /// dit, et on ne réécrit pas ce qu'on observe ; c'est à l'agrégation de
-    /// refuser les deltas négatifs, ce qu'elle fait déjà.
-    ///
-    /// - Returns: vrai si le relevé a été écrit.
-    @discardableResult
-    public func record(
-        device: Device, entity: String, total: TimeInterval, at date: Date
-    ) -> Bool {
-        if let last = lastSample(device: device, entity: entity), last.total == total {
-            return false
-        }
-        context.insert(
-            StoredCounterSample(device: device, entity: entity, total: total, recordedAt: date)
-        )
-        save()
-        return true
-    }
-
-    private func lastSample(device: Device, entity: String) -> StoredCounterSample? {
-        let raw = device.rawValue
-        let name = entity
-        let descriptor = FetchDescriptor<StoredCounterSample>(
-            predicate: #Predicate { $0.deviceRaw == raw && $0.appName == name },
-            sortBy: [SortDescriptor(\.recordedAt, order: .reverse)]
-        )
-        return try? context.fetch(descriptor).first
-    }
-
-    /// Les relevés de compteur antérieurs à `before`.
-    ///
-    /// Pas de borne basse ici, et c'est voulu : le calcul d'un temps de jeu
-    /// exige le dernier relevé *antérieur* à la journée, qui peut dater de
-    /// plusieurs jours si on n'a pas joué entre-temps. Les relevés sont rares
-    /// — un par quart d'heure au plus, et seulement quand un total bouge.
-    public func samples(before: Date) throws -> [CounterSample] {
-        let descriptor = FetchDescriptor<StoredCounterSample>(
-            predicate: #Predicate { $0.recordedAt < before },
-            sortBy: [SortDescriptor(\.recordedAt)]
-        )
-        return try context.fetch(descriptor).map(\.asSample)
     }
 
     /// La session en cours d'un appareil : la plus récemment ouverte.

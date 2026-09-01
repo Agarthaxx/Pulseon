@@ -37,10 +37,9 @@ struct DataExportTests {
         let csv = DataExport.csv(sessions: [session()], timeZone: paris)
         let row = try #require(lines(csv).dropFirst().first)
         let fields = row.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
-        #expect(fields[0] == "session")
-        #expect(fields[1] == "mac")
-        #expect(fields[2] == "Xcode")
-        #expect(fields[5] == "3600")
+        #expect(fields[0] == "mac")
+        #expect(fields[1] == "Xcode")
+        #expect(fields[4] == "3600")
     }
 
     /// **Le test central.** Écrire l'heure courante à la place ferait passer une
@@ -51,8 +50,10 @@ struct DataExportTests {
         let csv = DataExport.csv(sessions: [session(to: nil)], timeZone: paris)
         let row = try #require(lines(csv).dropFirst().first)
         let fields = row.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+        // Ni fin, ni durée : les deux se déduisent l'une de l'autre, et une
+        // session en cours n'a ni l'une ni l'autre.
+        #expect(fields[3] == "")
         #expect(fields[4] == "")
-        #expect(fields[5] == "")
     }
 
     /// Une télé dont l'app n'est pas reconnue n'a pas d'entité. Le champ est
@@ -61,23 +62,7 @@ struct DataExportTests {
     func missingEntityStaysEmpty() throws {
         let csv = DataExport.csv(sessions: [session(.tv, nil)], timeZone: paris)
         let row = try #require(lines(csv).dropFirst().first)
-        #expect(row.split(separator: ",", omittingEmptySubsequences: false)[2] == "")
-    }
-
-    @Test("Un relevé de compteur sort sur ses propres colonnes")
-    func counterRow() throws {
-        let sample = CounterSample(
-            device: .playstation, entity: "Elden Ring", total: 7200, recordedAt: start
-        )
-        let csv = DataExport.csv(sessions: [], samples: [sample], timeZone: paris)
-        let row = try #require(lines(csv).dropFirst().first)
-        let fields = row.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
-        #expect(fields[0] == "counter")
-        // Ni début ni fin : une source à compteur n'a aucun horaire, et le
-        // fichier ne doit pas lui en donner.
-        #expect(fields[3] == "")
-        #expect(fields[4] == "")
-        #expect(fields[7] == "7200")
+        #expect(row.split(separator: ",", omittingEmptySubsequences: false)[1] == "")
     }
 
     // MARK: L'échappement

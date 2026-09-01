@@ -17,9 +17,9 @@ struct SimultaneityTests {
     }
 
     private func digest(
-        mac: [TraceBlock] = [], tv: [TraceBlock] = [], playstation: Double = 0
+        mac: [TraceBlock] = [], tv: [TraceBlock] = []
     ) -> DayDigest {
-        var lanes = [
+        let lanes = [
             Lane(
                 device: .mac, total: 0, blocks: mac, topEntities: [], isConnected: !mac.isEmpty
             ),
@@ -27,15 +27,6 @@ struct SimultaneityTests {
                 device: .tv, total: 0, blocks: tv, topEntities: [], isConnected: !tv.isEmpty
             ),
         ]
-        if playstation > 0 {
-            lanes.append(
-                Lane(
-                    device: .playstation, total: playstation * 3600, blocks: [],
-                    topEntities: [EntityTotal(entity: "Elden Ring", total: playstation * 3600)],
-                    isConnected: true
-                )
-            )
-        }
         return DayDigest(
             date: DateComponents(year: 2026, month: 8, day: 22), lanes: lanes,
             summedTotal: 0, coveredTotal: 0
@@ -85,32 +76,24 @@ struct SimultaneityTests {
     // MARK: Ce qu'une soustraction dirait de faux
 
     /// **La raison pour laquelle ce n'est pas `summedTotal - coveredTotal`.**
-    /// La PlayStation ne donne qu'un total cumulé : affirmer qu'elle tournait en
-    /// même temps que la télé serait inventer un horaire — la règle 1.
-    @Test("Une source à compteur n'entre jamais dans la simultanéité")
-    func counterSourceIsNeverSimultaneous() {
-        let simultaneity = digest(mac: [block(9, 2)], playstation: 3).simultaneity
-        #expect(simultaneity.duration == 0)
-    }
-
-    /// L'autre raison : à trois appareils allumés une heure ensemble, la
-    /// soustraction rend deux heures alors qu'on n'a vécu qu'une heure.
+    ///
+    /// À trois écrans allumés une heure ensemble, la soustraction rend deux
+    /// heures alors qu'on n'a vécu qu'une heure de simultanéité. Le balayage,
+    /// lui, compte l'instant une seule fois et retient le pic à part.
+    ///
+    /// Testé sur `IntervalMath` directement et non sur un `DayDigest` : le
+    /// projet ne mesure que deux appareils, mais l'algorithme doit tenir le
+    /// troisième le jour où il arrive — c'est justement ce que la soustraction
+    /// ne saurait pas faire.
     @Test("Trois écrans une heure ensemble font une heure, pas deux")
     func threeScreensForAnHourIsOneHour() {
-        let lanes = Device.allCases.map {
-            Lane(
-                device: $0, total: hour,
-                // Y compris la PlayStation : le filtre par nature de source doit
-                // l'écarter même si des blocs lui étaient donnés par erreur.
-                blocks: $0 == .playstation ? [] : [block(20, 1)],
-                topEntities: [], isConnected: true
-            )
-        }
-        let simultaneity = DayDigest(
-            date: DateComponents(), lanes: lanes, summedTotal: 3 * hour, coveredTotal: hour
-        ).simultaneity
-        #expect(simultaneity.duration == hour)
-        #expect(simultaneity.peak == 2)
+        let together = [block(20, 1)]
+        let (duration, peak) = IntervalMath.simultaneity(of: [together, together, together])
+
+        #expect(duration == hour)
+        #expect(peak == 3)
+        // Ce que la soustraction aurait dit : 3 h additionnées − 1 h couverte.
+        #expect(duration != 2 * hour)
     }
 
     // MARK: Les bords

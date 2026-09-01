@@ -16,10 +16,10 @@ struct DayAnatomyTests {
         TraceBlock(entity: entity, startOffset: start * 3600, duration: duration * 3600)
     }
 
-    private func digest(mac: [TraceBlock] = [], tv: [TraceBlock] = [], playstation: Double = 0)
+    private func digest(mac: [TraceBlock] = [], tv: [TraceBlock] = [])
         -> DayDigest
     {
-        var lanes: [Lane] = [
+        let lanes: [Lane] = [
             Lane(
                 device: .mac, total: mac.reduce(0) { $0 + $1.duration }, blocks: mac,
                 topEntities: [], isConnected: !mac.isEmpty
@@ -29,15 +29,6 @@ struct DayAnatomyTests {
                 topEntities: [], isConnected: !tv.isEmpty
             ),
         ]
-        if playstation > 0 {
-            lanes.append(
-                Lane(
-                    device: .playstation, total: playstation * 3600, blocks: [],
-                    topEntities: [EntityTotal(entity: "Elden Ring", total: playstation * 3600)],
-                    isConnected: true
-                )
-            )
-        }
         return DayDigest(
             date: DateComponents(year: 2026, month: 8, day: 22), lanes: lanes,
             summedTotal: 0, coveredTotal: 0
@@ -133,23 +124,10 @@ struct DayAnatomyTests {
 
     // MARK: Ce dont on ne sait rien
 
-    /// **La règle 1 du projet.** La PlayStation ne donne qu'un total cumulé :
-    /// la faire entrer ici lui inventerait une heure de début.
-    @Test("Une source à compteur n'entre pas dans l'anatomie")
-    func counterSourceIsExcluded() throws {
-        let anatomy = try #require(
-            build(digest(mac: [block(9, 1)], playstation: 3))
-        )
-        #expect(anatomy.firstScreen == 9 * hour)
-        #expect(anatomy.lastScreen == 10 * hour)
-        #expect(anatomy.longestStretch.duration == 1 * hour)
-    }
-
     /// Une journée dont on ne connaît aucun horaire n'a pas commencé à minuit :
     /// elle n'a pas d'anatomie du tout. Zéro serait une affirmation fausse.
     @Test("Sans horaire connu, il n'y a pas d'anatomie — et surtout pas des zéros")
     func noScheduleMeansNoAnatomy() {
-        #expect(build(digest(playstation: 3)) == nil)
         #expect(build(digest()) == nil)
     }
 

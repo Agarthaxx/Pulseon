@@ -27,14 +27,11 @@ public struct EntityTotal: Sendable, Equatable {
 public struct Lane: Sendable, Equatable {
     public let device: Device
     public let total: TimeInterval
-    /// Vide pour une source à compteur : son placement horaire est inconnu.
     public let blocks: [TraceBlock]
     public let topEntities: [EntityTotal]
     /// Faux quand la source n'a jamais rien écrit. Distingue "collecteur pas
     /// branché" de "journée à zéro", que l'UI ne doit pas confondre.
     public let isConnected: Bool
-
-    public var kind: SourceKind { device.kind }
 
     public init(
         device: Device,
@@ -55,13 +52,17 @@ public struct Lane: Sendable, Equatable {
 ///
 /// Deux totaux, parce qu'ils ne veulent pas dire la même chose :
 ///
-/// - `summedTotal` additionne les appareils. Jouer sur la PlayStation avec le
-///   Mac allumé compte les deux, donc ce chiffre dépasse le temps réellement
-///   passé devant un écran.
+/// - `summedTotal` additionne les appareils. Regarder la télé avec le Mac
+///   allumé compte les deux, donc ce chiffre dépasse le temps réellement passé
+///   devant un écran.
 /// - `coveredTotal` fusionne les intervalles qui se chevauchent : c'est le
-///   temps réel passé devant au moins un écran. Les sources à compteur y sont
-///   ajoutées telles quelles faute d'horaires — on ne peut pas savoir si
-///   elles chevauchent le reste, et le supposer serait une invention.
+///   temps réel passé devant au moins un écran.
+///
+/// Le second est devenu simple le jour où le dernier appareil sans horaire est
+/// parti. Il a porté une borne basse — `max(couverture, compteurs)` — parce
+/// qu'on ignorait si le temps de PlayStation tombait ou non pendant qu'un autre
+/// écran était allumé. Tous les appareils sachant désormais dire *quand*, la
+/// fusion suffit et ne suppose plus rien.
 public struct DayDigest: Sendable {
     public let date: DateComponents
     public let lanes: [Lane]
@@ -89,13 +90,12 @@ public struct DayDigest: Sendable {
     /// ne dira jamais — exactement le parti pris du projet.
     ///
     /// **Calculé sur les blocs, jamais par `summedTotal - coveredTotal`** : voir
-    /// `IntervalMath.simultaneity(of:)` pour les deux raisons, dont celle qui
-    /// compte le plus ici — une source à compteur n'a aucun horaire, donc on ne
-    /// peut pas affirmer qu'elle tournait en même temps qu'une autre.
+    /// `IntervalMath.simultaneity(of:)`. La soustraction rend le temps compté en
+    /// trop par l'addition, pas le temps passé sur plusieurs écrans — à trois
+    /// appareils allumés une heure ensemble elle donnerait deux heures, alors
+    /// qu'on n'a vécu qu'une heure de simultanéité.
     public var simultaneity: Simultaneity {
-        let (duration, peak) = IntervalMath.simultaneity(
-            of: lanes.filter { $0.kind == .interval }.map(\.blocks)
-        )
+        let (duration, peak) = IntervalMath.simultaneity(of: lanes.map(\.blocks))
         return Simultaneity(duration: duration, peak: peak)
     }
 
@@ -139,7 +139,6 @@ public struct DayDigestBuilder: Sendable {
     public func build(
         day: Date,
         sessions: [ActivitySession],
-        samples: [CounterSample],
         now: Date = Date()
     ) -> DayDigest {
         let start = calendar.startOfDay(for: day)
@@ -149,72 +148,36 @@ public struct DayDigestBuilder: Sendable {
         var lanes: [Lane] = []
 
         for device in Device.allCases {
-            switch device.kind {
-            case .interval:
-                let deviceSessions = sessions.filter { $0.device == device }
-                let blocks = clampedBlocks(
-                    deviceSessions, dayStart: start, horizon: horizon
+            let deviceSessions = sessions.filter { $0.device == device }
+            let blocks = clampedBlocks(
+                deviceSessions, dayStart: start, horizon: horizon
+            )
+            lanes.append(
+                Lane(
+                    device: device,
+                    // Fusionné, jamais additionné : **un appareil ne peut pas
+                    // être allumé deux fois en même temps.** Le chevauchement a
+                    // du sens entre appareils — c'est tout l'objet de
+                    // `summedTotal` — mais à l'intérieur d'un seul il ne peut
+                    // venir que d'un défaut d'écriture, et c'est arrivé : deux
+                    // collecteurs concurrents ont donné « Mac : 51 h » sur une
+                    // journée de 2 h. L'écran n'aurait jamais dû pouvoir
+                    // l'afficher, quelle que soit la cause en amont.
+                    total: IntervalMath.mergedDuration(of: blocks),
+                    blocks: blocks,
+                    topEntities: rank(blocks),
+                    isConnected: !deviceSessions.isEmpty
                 )
-                lanes.append(
-                    Lane(
-                        device: device,
-                        // Fusionné, jamais additionné : **un appareil ne peut
-                        // pas être allumé deux fois en même temps.** Le
-                        // chevauchement a du sens entre appareils — c'est tout
-                        // l'objet de `summedTotal` — mais à l'intérieur d'un
-                        // seul il ne peut venir que d'un défaut d'écriture, et
-                        // c'est arrivé : deux collecteurs concurrents ont donné
-                        // « Mac : 51 h » sur une journée de 2 h. L'écran
-                        // n'aurait jamais dû pouvoir l'afficher, quelle que
-                        // soit la cause en amont.
-                        total: IntervalMath.mergedDuration(of: blocks),
-                        blocks: blocks,
-                        topEntities: rank(blocks),
-                        isConnected: !deviceSessions.isEmpty
-                    )
-                )
-            case .counter:
-                let deviceSamples = samples.filter { $0.device == device }
-                let totals = counterDeltas(
-                    deviceSamples, dayStart: start, dayEnd: end
-                )
-                lanes.append(
-                    Lane(
-                        device: device,
-                        total: totals.reduce(0) { $0 + $1.total },
-                        blocks: [],
-                        topEntities: totals,
-                        isConnected: !deviceSamples.isEmpty
-                    )
-                )
-            }
+            )
         }
-
-        let intervalBlocks = lanes.filter { $0.kind == .interval }.flatMap(\.blocks)
-        let intervalCoverage = IntervalMath.mergedDuration(of: intervalBlocks)
-        let counterTotals = lanes.filter { $0.kind == .counter }.map(\.total)
 
         return DayDigest(
             date: calendar.dateComponents([.year, .month, .day], from: start),
             lanes: lanes,
             summedTotal: lanes.reduce(0) { $0 + $1.total },
-            // **La borne basse, jamais la somme.** Une source à compteur n'a
-            // aucun horaire : on ignore si ses heures tombent pendant qu'un
-            // autre écran était allumé. La couverture réelle est donc quelque
-            // part entre `max(...)` — tout le temps de jeu tombe dans du temps
-            // déjà couvert — et la somme — il n'en recouvre rien. On prend la
-            // borne basse, parce que **sous-compter est permis et inventer ne
-            // l'est pas**, la même règle qui ferme une session au dernier
-            // instant *observé* plutôt qu'à l'heure courante.
-            //
-            // Ce n'était pas une erreur tant que la PlayStation était le seul
-            // compteur et la télé pas encore mesurée. Ça l'est devenu le jour
-            // où les deux ont tourné ensemble : la PS5 d'Arthur est branchée
-            // sur cette télé, donc une soirée de 3 h s'annonçait 5 h 30 —
-            // additionnée avec elle-même, en somme. Et la ligne « deux écrans
-            // à la fois » ne pouvait pas l'expliquer, puisqu'elle écarte les
-            // compteurs faute d'horaires.
-            coveredTotal: ([intervalCoverage] + counterTotals).max() ?? 0
+            coveredTotal: IntervalMath.mergedDuration(
+                of: lanes.flatMap(\.blocks)
+            )
         )
     }
 
@@ -236,31 +199,6 @@ public struct DayDigestBuilder: Sendable {
             )
         }
         .sorted { $0.startOffset < $1.startOffset }
-    }
-
-    /// Le compteur est cumulatif : le temps du jour est la progression entre
-    /// le dernier relevé d'avant minuit et le dernier relevé du jour. Sans
-    /// relevé antérieur on ne peut rien conclure — on ne compte rien plutôt
-    /// que de prendre le total cumulé pour du temps du jour.
-    private func counterDeltas(
-        _ samples: [CounterSample],
-        dayStart: Date,
-        dayEnd: Date
-    ) -> [EntityTotal] {
-        Dictionary(grouping: samples, by: \.entity)
-            .compactMap { entity, samples -> EntityTotal? in
-                let sorted = samples.sorted { $0.recordedAt < $1.recordedAt }
-                guard
-                    let baseline = sorted.last(where: { $0.recordedAt < dayStart }),
-                    let latest = sorted.last(where: {
-                        $0.recordedAt >= dayStart && $0.recordedAt < dayEnd
-                    })
-                else { return nil }
-                let delta = latest.total - baseline.total
-                guard delta > 0 else { return nil }
-                return EntityTotal(entity: entity, total: delta)
-            }
-            .sorted { $0.total > $1.total }
     }
 
     private func rank(_ blocks: [TraceBlock]) -> [EntityTotal] {

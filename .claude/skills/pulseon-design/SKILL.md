@@ -90,8 +90,8 @@ d'abord, iPhone ensuite. Ce qu'elle porte, dans l'ordre d'importance :
    deux anneaux pleins côte à côte (« je ne suis pas trop fan » — et il fallait
    écrire au centre du second une somme de catégories qui n'est pas comparable au
    total de la journée).
-   **La télé et la PlayStation ont chacune leur rond** (2026-08-19), et il
-   n'apparaît que les jours où l'appareil a servi. Chacun porte **la couleur de
+   **La télé a son propre rond** (2026-08-19), et il n'apparaît que les jours où
+   l'appareil a servi. Chacun porte **la couleur de
    son arc** dans l'anneau du haut. Voir la règle 9 ci-dessous.
    **Une seule rangée, toujours** — « je préfère la photo avec une seule
    rangée ». Quand la fenêtre se resserre, les ronds rétrécissent
@@ -181,9 +181,9 @@ Timeline de la maquette (écran 4).
 
 **L'onglet Chronologie existe depuis le 2026-08-19** (`DayTimeline`), bâti sur
 `TimelineGeometry` et sur le `RailLayout` repris de la PR #22. La maquette y
-plaçait la PlayStation à 12:20 : elle n'y est pas, elle vit sous un filet dans
-une section « Sans horaire connu ». C'est la règle 1, et cet écran-là ne peut pas
-la lister comme les autres.
+plaçait la PlayStation à 12:20 — elle n'y a jamais été, faute d'horaires, et elle
+a été retirée du projet le 2026-09-01. **L'écran n'a donc plus qu'un rail**, et
+sa section « Sans horaire connu » est partie avec la console.
 
 ## Ce qui survit à n'importe quelle maquette
 
@@ -192,12 +192,15 @@ montre *quand*.**
 
 ### Règles non négociables
 
-1. **Ne jamais inventer de placement horaire.** Une source à compteur (la
-   PlayStation) ne connaît pas ses horaires. Et **centrer son bloc ne suffit
-   pas** : centré sous un axe des heures, il tombait pile sous « 12 h » et se
-   lisait « joué vers midi ». Il faut cumuler un filet, un titre de section
-   explicite, le bloc centré, son libellé centré dessous, et un contour
-   pointillé.
+1. **Ne jamais inventer de placement horaire.** **Aucune source ne la met plus à
+   l'épreuve depuis le 2026-09-01** — la PlayStation, seule source à ne pas
+   savoir dire *quand*, a été retirée. La règle reste, et ce qu'elle a coûté
+   aussi : **centrer un bloc ne suffit pas**. Centré sous un axe des heures, il
+   tombait pile sous « 12 h » et se lisait « joué vers midi » ; il fallait
+   cumuler un filet, un titre de section explicite, le bloc centré, son libellé
+   centré dessous et un contour pointillé — et le risque résiduel restait. Avant
+   d'accepter une source sans horaire, lire « La PlayStation est partie » dans le
+   `CLAUDE.md` : elle contaminait huit endroits du code.
 2. **« Pas encore branchée » ≠ « journée à zéro ».** Deux états visuellement
    distincts, toujours. Zéro est une affirmation ; « rien de mesuré » n'en est
    pas une.
@@ -224,9 +227,12 @@ montre *quand*.**
 9. **Un écran n'est pas un contenu.** Un appareil qui ne dit pas ce qu'il affiche
    ne se range jamais dans une catégorie de contenu. `Device.tv` valait `.media`
    jusqu'au 2026-08-19 : une soirée de télé s'affichait « Vidéo et musique »
-   alors que l'app Musique avait tourné 6 secondes, et une soirée de PS5 branchée
-   sur cette télé s'y serait rangée en musique. La télé et la PlayStation ont
-   donc **chacune leur catégorie**. Corollaire : « Jeu » reste le classement d'un
+   alors que l'app Musique avait tourné 6 secondes. La télé a donc **sa propre
+   catégorie**, et c'est le cas majoritaire de cet écran — la PS5 est branchée
+   dessus en HDMI, donc une soirée de jeu est un écran allumé sans app Tizen
+   visible (26 h 39 de temps anonyme contre 1 h 28 nommé, sur douze jours).
+   **Ne pas renommer ce repli « PlayStation » sans l'avoir mesuré** : n'importe
+   quelle entrée HDMI y tomberait. Corollaire : « Jeu » reste le classement d'un
    jeu *sur le Mac*, lu dans son `Info.plist`. C'est la règle 1 appliquée au
    classement plutôt qu'à l'horaire — **ne pas affirmer ce qu'on n'a pas
    mesuré**, ici un genre de contenu plutôt qu'une heure.

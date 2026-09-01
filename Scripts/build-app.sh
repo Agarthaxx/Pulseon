@@ -12,6 +12,25 @@ cd "$(dirname "$0")/.."
 APP_NAME="Pulseon"
 BUNDLE_ID="com.arthurlanllier.pulseon"
 VERSION="0.1.0"
+
+# **De quand date ce binaire**, estampillé au moment où le code le devient.
+#
+# Deux fois — le 2026-08-18 et le 2026-09-01 — une app périmée dans
+# /Applications a fait passer du travail réel pour des bugs, parce que rien ne
+# permettait de distinguer « le correctif ne marche pas » de « le correctif
+# n'est pas là ». Le menu affiche donc ces deux valeurs (voir `BuildStamp`).
+#
+# La date de modification du binaire ne conviendrait pas : la copie et la
+# signature la réécrivent toutes les deux, donc elle daterait la dernière
+# manipulation du fichier et non la compilation.
+BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+# Le `+` dit que l'arbre était modifié : un SHA seul désignerait alors du code
+# qui n'est pas celui qu'on a compilé. Mieux vaut un identifiant qui s'avoue
+# approximatif qu'un identifiant faux.
+BUILD_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo "")"
+if [ -n "$BUILD_COMMIT" ] && ! git diff --quiet HEAD 2>/dev/null; then
+    BUILD_COMMIT="${BUILD_COMMIT}+"
+fi
 BUILD_DIR=".build/release"
 APP="${BUILD_DIR}/${APP_NAME}.app"
 
@@ -55,6 +74,11 @@ cat > "${APP}/Contents/Info.plist" <<PLIST
     <string>${VERSION}</string>
     <key>CFBundleVersion</key>
     <string>${VERSION}</string>
+    <!-- Lues par `BuildStamp`, affichées dans le menu de la barre. -->
+    <key>PulseonBuildDate</key>
+    <string>${BUILD_DATE}</string>
+    <key>PulseonBuildCommit</key>
+    <string>${BUILD_COMMIT}</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <!-- Agent : vit dans la barre de menu, pas dans le Dock, et n'ouvre

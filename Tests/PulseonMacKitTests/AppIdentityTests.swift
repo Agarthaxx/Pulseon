@@ -21,7 +21,7 @@ import Testing
 
         init(rules: AppCategoryRules = AppCategoryRules()) {
             container = try! ModelContainer(
-                for: StoredSession.self, StoredCounterSample.self, StoredApp.self,
+                for: StoredSession.self, StoredApp.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: true)
             )
             let context = ModelContext(container)

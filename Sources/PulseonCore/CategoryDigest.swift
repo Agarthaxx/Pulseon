@@ -51,36 +51,26 @@ public struct CategoryDigestBuilder: Sendable {
     public func build(from digest: DayDigest) -> [CategoryTotal] {
         var blocksByCategory: [AppCategory: [TraceBlock]] = [:]
         var entityTotals: [AppCategory: [String: TimeInterval]] = [:]
-        /// Les sources à compteur n'ont aucun bloc : leur temps s'ajoute tel
-        /// quel, faute d'horaires à fusionner.
-        var counterTotals: [AppCategory: TimeInterval] = [:]
 
         for lane in digest.lanes {
-            switch lane.kind {
-            case .interval:
-                for block in lane.blocks {
-                    let category = classify(lane.device, block.entity)
-                    blocksByCategory[category, default: []].append(block)
-                    if let entity = block.entity {
-                        entityTotals[category, default: [:]][entity, default: 0] += block.duration
-                    }
-                }
-            case .counter:
-                for entity in lane.topEntities {
-                    let category = classify(lane.device, entity.entity)
-                    counterTotals[category, default: 0] += entity.total
-                    entityTotals[category, default: [:]][entity.entity, default: 0] += entity.total
+            for block in lane.blocks {
+                let category = classify(lane.device, block.entity)
+                blocksByCategory[category, default: []].append(block)
+                if let entity = block.entity {
+                    entityTotals[category, default: [:]][entity, default: 0] += block.duration
                 }
             }
         }
 
-        let categories = Set(blocksByCategory.keys).union(counterTotals.keys)
-
-        return categories.map { category in
-            let intervals = IntervalMath.mergedDuration(of: blocksByCategory[category] ?? [])
-            return CategoryTotal(
+        return blocksByCategory.keys.map { category in
+            CategoryTotal(
                 category: category,
-                total: intervals + (counterTotals[category] ?? 0),
+                // Fusionné et non additionné : deux apps de la même catégorie
+                // ouvertes en parallèle ne comptent qu'une fois. Deux
+                // *catégories* simultanées, elles, comptent chacune leur temps
+                // — coder en regardant un film donne du développement et de la
+                // vidéo, et l'instant partagé n'appartient à aucune des deux.
+                total: IntervalMath.mergedDuration(of: blocksByCategory[category] ?? []),
                 entities: rank(entityTotals[category] ?? [:])
             )
         }

@@ -147,7 +147,6 @@ public enum PulseonTheme {
     public static func color(for device: Device, in palette: PulseonPalette) -> Color {
         switch device {
         case .mac: palette.navy
-        case .playstation: palette.gold
         case .tv: Color(red: 0.427, green: 0.616, blue: 0.612)
         }
     }
@@ -179,7 +178,6 @@ public enum PulseonTheme {
         // cet écran d'un coup d'œil, sans redescendre lire un libellé.
         case .tv:
             (Color(red: 0.573, green: 0.769, blue: 0.765), Color(red: 0.427, green: 0.616, blue: 0.612))
-        case .playstation: (palette.goldLight, palette.gold)
         case .web:
             (Color(red: 0.529, green: 0.741, blue: 0.910), Color(red: 0.286, green: 0.518, blue: 0.741))
         case .communication:
@@ -199,7 +197,6 @@ public enum PulseonTheme {
     ) -> (light: Color, base: Color, deep: Color) {
         switch device {
         case .mac: (palette.navyLight, palette.navy, palette.navyDeep)
-        case .playstation: (palette.goldLight, palette.gold, palette.goldDeep)
         case .tv:
             (
                 Color(red: 0.573, green: 0.769, blue: 0.765),
@@ -269,7 +266,6 @@ public enum PulseonTheme {
         case .productivity: "checkmark.circle.fill"
         case .game: "gamecontroller.fill"
         case .tv: "tv.inset.filled"
-        case .playstation: "gamecontroller.fill"
         case .other: "square.grid.2x2.fill"
         }
     }
@@ -277,7 +273,6 @@ public enum PulseonTheme {
     public static func symbol(for device: Device) -> String {
         switch device {
         case .mac: "laptopcomputer"
-        case .playstation: "gamecontroller.fill"
         case .tv: "tv.inset.filled"
         }
     }

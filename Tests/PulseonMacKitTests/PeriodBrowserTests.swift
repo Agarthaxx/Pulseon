@@ -16,7 +16,7 @@ private final class WeekBase {
 
     init() throws {
         container = try ModelContainer(
-            for: StoredSession.self, StoredCounterSample.self,
+            for: StoredSession.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         store = SessionStore(context: container.mainContext)

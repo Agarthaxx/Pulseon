@@ -100,9 +100,7 @@ public enum DayPulseBuilder {
     public static let defaultBucket: TimeInterval = 15 * 60
 
     /// - Parameters:
-    ///   - lanes: toutes les pistes de la journée. Celles qui n'ont pas
-    ///     d'horaire sont écartées ici plutôt que par l'appelant, pour qu'aucun
-    ///     écran ne puisse l'oublier.
+    ///   - lanes: toutes les pistes de la journée.
     ///   - dayLength: la vraie longueur du jour, changements d'heure compris.
     public static func build(
         lanes: [Lane],
@@ -116,7 +114,7 @@ public enum DayPulseBuilder {
 
         // Fusionner **avant** de découper. Découper puis additionner compterait
         // deux fois une tranche où deux écrans étaient allumés ensemble.
-        let runs = IntervalMath.mergedRuns(of: lanes.filter { $0.kind == .interval }.flatMap(\.blocks))
+        let runs = IntervalMath.mergedRuns(of: lanes.flatMap(\.blocks))
 
         var covered = Array(repeating: 0.0, count: count)
         for run in runs {

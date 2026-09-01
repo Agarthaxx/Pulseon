@@ -24,15 +24,6 @@ struct DayAnatomyCard: View {
     /// eu lieu.
     private var isLive: Bool { day.now != nil }
 
-    /// Une source à compteur n'a aucun horaire, donc elle n'entre pas dans le
-    /// déroulé (règle 1). Le dire seulement les jours où elle a du temps : une
-    /// mise en garde permanente sur une source inactive serait du bruit.
-    private var hiddenCounters: [Device] {
-        day.digest.lanes
-            .filter { $0.kind == .counter && $0.total > 0 }
-            .map(\.device)
-    }
-
     var body: some View {
         Card(palette: palette) {
             VStack(alignment: .leading, spacing: 15) {
@@ -65,21 +56,8 @@ struct DayAnatomyCard: View {
                         GridRow { fact(facts: 2); fact(facts: 3) }
                     }
                 }
-
-                if !hiddenCounters.isEmpty {
-                    Text(counterNotice)
-                        .font(PulseonTheme.caption)
-                        .foregroundStyle(palette.inkFaint)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
         }
-    }
-
-    private var counterNotice: String {
-        let names = hiddenCounters.map(\.label).joined(separator: " et ")
-        let verb = hiddenCounters.count > 1 ? "n'ont" : "n'a"
-        return "\(names) \(verb) pas d'horaire connu : ce déroulé ne parle que des autres écrans."
     }
 
     // MARK: Les quatre faits

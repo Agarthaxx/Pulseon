@@ -85,18 +85,12 @@ public struct DayAnatomyBuilder: Sendable {
         self.minimumBreak = minimumBreak
     }
 
-    /// - Returns: nil quand aucune source à intervalles n'a le moindre bloc.
+    /// - Returns: nil quand aucune piste n'a le moindre bloc.
     ///   **Nil et non une anatomie à zéro** : une journée sans horaire connu n'a
     ///   pas commencé à minuit, elle n'a pas d'anatomie du tout. C'est la même
     ///   règle que « pas encore branchée ≠ journée à zéro ».
     public func build(from digest: DayDigest) -> DayAnatomy? {
-        // **Les sources à compteur sont écartées, et c'est la règle 1.** La
-        // PlayStation ne donne qu'un total : la faire entrer ici lui inventerait
-        // une heure de début. Conséquence assumée et à dire à l'écran quand elle
-        // a du temps ce jour-là — l'anatomie ne parle alors que des autres
-        // écrans.
         let blocks = digest.lanes
-            .filter { $0.kind == .interval }
             .flatMap(\.blocks)
             // Un bloc de durée nulle n'est pas un instant d'écran : il vient
             // d'une session réparée (voir `clampedBlocks`), et le compter

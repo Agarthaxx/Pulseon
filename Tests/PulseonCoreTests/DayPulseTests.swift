@@ -59,19 +59,6 @@ struct DayPulseTests {
         #expect(pulse.intensities.allSatisfy { $0 <= 1 })
     }
 
-    @Test("une source à compteur n'entre pas dans le battement")
-    func counterSourceIsExcluded() throws {
-        // La PlayStation n'a aucun horaire : lui faire occuper une tranche
-        // inventerait une heure de jeu (règle 1).
-        let playstation = Lane(
-            device: .playstation, total: 2 * hour, blocks: [],
-            topEntities: [EntityTotal(entity: "Elden Ring", total: 2 * hour)],
-            isConnected: true
-        )
-        let pulse = DayPulseBuilder.build(lanes: [playstation], dayLength: day)
-        #expect(pulse.isSilent)
-    }
-
     @Test("une journée sans mesure se tait, au lieu de dessiner un plat")
     func silentDay() throws {
         let pulse = DayPulseBuilder.build(lanes: [], dayLength: day)

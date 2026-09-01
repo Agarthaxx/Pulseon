@@ -17,28 +17,27 @@ public enum Exporter {
         return "pulseon-\(formatter.string(from: date)).\(format.fileExtension)"
     }
 
-    /// - Returns: le nombre de sessions et de relevés écrits, de quoi dire à
-    ///   l'utilisateur ce qu'il vient d'obtenir. Un export silencieux ne
-    ///   distingue pas « tout est là » de « le fichier est vide ».
+    /// - Returns: le nombre de sessions écrites, de quoi dire à l'utilisateur
+    ///   ce qu'il vient d'obtenir. Un export silencieux ne distingue pas « tout
+    ///   est là » de « le fichier est vide ».
     @discardableResult
     public static func write(
         _ format: DataExport.Format,
         from store: SessionStore,
         to url: URL,
         now: Date = Date()
-    ) throws -> (sessions: Int, samples: Int) {
+    ) throws -> Int {
         let sessions = try store.allSessions()
-        let samples = try store.allSamples()
 
         let data: Data
         switch format {
         case .csv:
-            data = Data(DataExport.csv(sessions: sessions, samples: samples).utf8)
+            data = Data(DataExport.csv(sessions: sessions).utf8)
         case .json:
-            data = try DataExport.json(sessions: sessions, samples: samples, generatedAt: now)
+            data = try DataExport.json(sessions: sessions, generatedAt: now)
         }
 
         try data.write(to: url, options: .atomic)
-        return (sessions.count, samples.count)
+        return sessions.count
     }
 }
