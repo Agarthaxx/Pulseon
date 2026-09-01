@@ -2122,6 +2122,32 @@ reposera la question.
 **Ce qu'Arthur doit faire pour ça** : lancer une sonde chez lui, télé allumée sur
 la PS5 — même méthode que le 2026-08-22 pour les apps. La sonde reste à écrire.
 
+**Le retrait est allé jusqu'au bout, à sa demande** : « je ne veux pas de code PSN
+sur ma stack de boulot ». Les branches `feat/psn-presence`, `feat/psn-source` et
+`fix/counter-first-day` sont supprimées (locales et distantes), la PR #62 fermée,
+et `Scripts/probe-psn.sh` effacé — il avait échappé au premier passage parce
+qu'il vit dans `Scripts/` et non dans `Sources/`. **Le réflexe à garder : chercher
+aussi hors de `Sources/`.** L'historique de `main`, lui, garde les commits de la
+PR #61 : Arthur a choisi de ne pas le réécrire, ce code étant déjà mort partout
+ailleurs.
+
+**Vérifié sur la machine, et deux choses n'étaient pas évidentes :**
+
+- **L'app installée datait du 30/08 et interrogeait encore Sony** — un relevé
+  écrit le 2026-09-01 à 17 h 43, pendant qu'on supprimait le code. Vider la table
+  avant de réinstaller n'aurait donc servi à rien : elle se serait remplie à
+  nouveau. **L'ordre compte** — le jeton du Trousseau d'abord (il coupe
+  l'alimentation), la base ensuite, le binaire enfin.
+- **SwiftData a supprimé la table tout seul.** `ZSTOREDCOUNTERSAMPLE` n'a pas eu
+  besoin d'être vidée à la main : au premier lancement du build sans
+  `StoredCounterSample`, la migration légère l'a **déposée entièrement**. Retirer
+  un `@Model` du schéma est donc une migration que SwiftData sait faire sans plan
+  explicite, au même titre qu'ajouter un attribut optionnel.
+
+App rebâtie et réinstallée le 2026-09-01 à 19:25, **une seule instance**, aucun
+symbole PSN dans le binaire, et le collecteur réécrit dans la seconde. Base
+intacte : 7 547 sessions, 127 apps. Le jeton `npsso` est supprimé du Trousseau.
+
 **Et il a signalé des bugs dans l'app**, non encore regardés à la fin de cette
 séance. C'est le premier sujet de la prochaine.
 
