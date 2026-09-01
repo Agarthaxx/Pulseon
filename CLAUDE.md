@@ -2199,8 +2199,35 @@ App rebâtie et réinstallée le 2026-09-01 à 19:25, **une seule instance**, au
 symbole PSN dans le binaire, et le collecteur réécrit dans la seconde. Base
 intacte : 7 547 sessions, 127 apps. Le jeton `npsso` est supprimé du Trousseau.
 
-**Et il a signalé des bugs dans l'app**, non encore regardés à la fin de cette
-séance. C'est le premier sujet de la prochaine.
+**Les « bugs » signalés étaient l'app périmée**, et c'est la **deuxième fois** :
+« bah c'était ça plus ou moins, l'appli n'était pas à jour ! ». Le 2026-08-18 il
+disait « je ne vois aucun changement », même cause — le binaire de
+`/Applications` datait d'avant la séance.
+
+**La leçon de 2026-08-18 était déjà écrite, et elle n'a pas suffi.** Ce n'est
+donc pas un problème de mémoire mais de **vérifiabilité** : rien, dans l'app, ne
+dit de quand elle date. Arthur ne peut pas le savoir en la regardant, et moi je
+ne peux le savoir qu'en allant lire une date de fichier. Une app de mesure qui ne
+sait pas dire ce qu'elle est laisse confondre « le correctif ne marche pas » avec
+« le correctif n'est pas là » — deux diagnostics opposés, et c'est le second qui
+s'est produit deux fois.
+
+**La règle qui en sort : après toute PR qui touche le code, rebâtir et
+réinstaller avant de dire que c'est livré.** Trois commandes, et elles supposent
+de quitter le collecteur — donc de le demander :
+
+```
+./Scripts/build-app.sh && rm -rf /Applications/Pulseon.app \
+  && cp -R .build/release/Pulseon.app /Applications/ && open /Applications/Pulseon.app
+```
+
+Puis vérifier trois choses, parce qu'aucune ne se déduit des autres :
+`pgrep -x Pulseon | wc -l` vaut **1**, `sfltool dumpbtm | grep -A6 Pulseon`
+montre **une seule** inscription de type `legacy agent`, et la base a écrit une
+session dans la minute.
+
+**Vérifié le 2026-09-01 à 19:25** : une instance, une inscription, collecte
+reprise dans la seconde, base intacte (7 547 sessions, 127 apps).
 
 ### État au 2026-08-30 (fin de huitième session)
 
