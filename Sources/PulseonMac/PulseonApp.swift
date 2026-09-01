@@ -344,6 +344,18 @@ private struct MenuContent: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
+
+        Divider()
+
+        // **De quand date ce qui tourne.** Deux fois, une app périmée dans
+        // /Applications a fait passer du travail réel pour des bugs : rien ne
+        // distinguait « le correctif ne marche pas » de « le correctif n'est
+        // pas là ». Cette ligne répond sans rien lancer. Voir `BuildStamp`.
+        //
+        // En dernière position et sans action : c'est une information de
+        // diagnostic, pas une commande, et elle ne doit pas se disputer la
+        // place avec ce dont on se sert tous les jours.
+        Text(BuildStamp.current)
     }
 
     /// Le menu dit toujours la vérité sur l'état réel du système : si l'app
