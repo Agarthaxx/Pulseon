@@ -1650,10 +1650,15 @@ Quatre choses à ne pas perdre :
   mesure l'a montré. La puce réseau reste vivante en veille : une détection au
   ping aurait compté une télé éteinte toute la nuit comme du temps d'écran. C'est
   exactement le risque qui avait été signalé avant de coder, et il s'est réalisé.
-- **La télé éteinte a deux comportements**, tous deux observés à une heure
-  d'intervalle : le port refuse la connexion, ou il répond `standby`. Sans doute
-  selon la profondeur du sommeil. Les deux valent « éteinte » — n'en traiter qu'un
-  laisserait l'autre mentir.
+- **La télé éteinte a trois comportements**, tous observés : le port refuse la
+  connexion, il répond `standby`, ou il répond **`PowerState` vide** — le
+  troisième relevé le 2026-09-01, télé éteinte confirmée par Arthur. Sans doute
+  selon la profondeur du sommeil. Les trois valent « éteinte », et le code les
+  couvre déjà **parce qu'il teste l'égalité à `on` plutôt que d'énumérer les
+  valeurs d'extinction**. Le détail vaut d'être noté : une comparaison écrite
+  dans l'autre sens (`state == "standby" ? .off : .on`) aurait compté une télé
+  éteinte comme allumée le jour où Samsung a ajouté cette valeur. **Tester ce
+  qu'on veut affirmer, jamais son complément.**
 - **Interroger la télé ne la rallume pas** (vérifié, ç'aurait été rédhibitoire).
   Et l'API répond **sans authentification** en lecture : aucun secret à ranger
   nulle part, ce qui est aussi pourquoi le projet n'a plus de code Trousseau.
@@ -1727,6 +1732,44 @@ Quatre choses à ne pas perdre :
   l'écran (une seule requête, le cas courant), 884 ms au premier balayage
   complet, 541 ms ensuite. Le pire cas est celui d'une entrée HDMI, une fois par
   minute (`TVMonitor.appInterval`), et seulement télé allumée.
+
+#### Ce que la télé ne nommera jamais : son entrée HDMI
+
+**Question d'Arthur le 2026-09-01** — « quand je suis sur la TV, peut-on être
+capable de savoir si je suis sur une application telle YouTube, ou que la console
+est utilisée ? » — **répondue par la mesure le jour même**, sur sa télé, depuis
+son réseau.
+
+| Ce qu'on cherchait | Réponse |
+|---|---|
+| Une app du catalogue (`/applications/<id>`) | **200**, avec `name` et `visible` — ça marche |
+| La source active : `/sources`, `/external`, `/inputsource`, `/inputsources`, `/input`, `/system`, `/settings`, `/media`, `/tv`, `/nl`, `/channels`, `/applications`, `/webapplication` | **404 sur les treize** |
+
+**Donc : oui pour YouTube, non pour la console.** Une PS5 n'est pas une app
+Tizen, elle est une entrée HDMI, et l'API locale ne dit pas sur quelle entrée la
+télé est posée. « Console allumée » n'est pas distinguable de « n'importe quelle
+autre entrée HDMI », ni d'ailleurs d'une app Tizen absente du catalogue.
+
+**Conséquence à tenir : `Télé` reste le nom de ce temps-là.** Le renommer
+« PlayStation » serait affirmer une entrée qu'on n'a pas mesurée — la règle 9
+appliquée à un libellé plutôt qu'à une catégorie. C'est frustrant parce que ça
+représente le gros du temps de télé (26 h 39 contre 1 h 28 nommé sur douze
+jours), et c'est précisément pour ça qu'il faut résister : plus une supposition
+couvre de temps, plus elle coûte cher quand elle est fausse.
+
+**Les deux seules voies restantes**, toutes deux fermées aujourd'hui :
+
+- le **WebSocket `samsung.remote.control`** — il donne la liste des apps
+  installées, **pas la source active** : il ne répondrait donc même pas à la
+  question, en plus d'exiger un appairage et un jeton ;
+- l'**API cloud SmartThings**, qui expose bien une capacité `mediaInputSource` —
+  écartée le 2026-08-17 pour la dépendance externe (compte Samsung, jeton OAuth),
+  et le retrait du Trousseau le 2026-09-01 renforce l'argument : le projet n'a
+  plus aucun secret à garder, et c'est une propriété qu'on préfère défendre.
+
+**Et `running` ment toujours** : revérifié en direct le 2026-09-01, télé éteinte,
+Netflix, Prime Video et Apple TV déclaraient tous les trois `running: true`.
+Seul `visible` compte, et il valait `false` partout — ce qui est juste.
 
 **Le temps de télé nommé rejoint une vraie catégorie de contenu**, et le
 non-nommé reste « Télé ». Les deux coexistent vraiment dans une même soirée, ce
@@ -2074,11 +2117,11 @@ tout le parti pris visuel ci-dessus.
    l'app à l'écran** depuis le 2026-08-22. ~~Collecteur PlayStation~~ — branché
    le 2026-08-30 puis **retiré le 2026-09-01** : la PS5 est sur la télé, son
    temps y est déjà mesuré avec de vrais horaires. Ne pas le rouvrir.
-   - **Nommer l'entrée HDMI de la télé** est le successeur direct, et il est
-     ouvert : le temps de PS5 s'affiche « Télé », ce qui est honnête mais
-     imprécis. La question à trancher par la mesure — la télé sait-elle nommer sa
-     source active ? — demande un relevé chez Arthur, télé allumée sur la
-     console. **On mesure avant de coder**, comme pour les apps le 2026-08-22.
+   - ~~**Nommer l'entrée HDMI de la télé**~~ — **tranché par la mesure le
+     2026-09-01, et la réponse est non** : treize points d'entrée essayés sur
+     l'API locale, treize 404. Le temps de PS5 reste « Télé », ce qui est tout ce
+     qu'on en sait. Voir « Ce que la télé ne nommera jamais ». **Ne pas rouvrir
+     sans une voie nouvelle** — les deux connues sont fermées.
 7. Réévaluer l'intégration iPhone.
 
 ### État au 2026-09-01 (fin de neuvième session)
@@ -2115,17 +2158,20 @@ branches `feat/psn-presence`, `feat/psn-source` et `fix/counter-first-day`, et l
 PR #62 est fermée. **`feat/steam-source` est partie le même jour**, sur sa
 demande : c'était l'autre source à compteur, celle qu'il n'avait jamais réclamée.
 
-**Ce qui reste ouvert, et c'est la suite directe** : le temps de PS5 s'affiche
-« Télé ». C'est honnête — c'est tout ce que Pulseon mesure de cet écran — mais
-imprécis, et ça représente **26 h 39 sur douze jours contre 1 h 28 de temps
-nommé**. Arthur veut le voir sous le nom « PlayStation ». La bonne façon n'est pas
-de renommer le repli, ce qui rangerait sous « PlayStation » n'importe quelle
-entrée HDMI : **c'est de demander à la télé si elle sait nommer sa source active**
-(HDMI1, HDMI2…). Si oui, c'est mesuré et non deviné. Si non, on le saura, et on
-reposera la question.
+**La question de la sous-catégorie « PlayStation » est tranchée, et c'est non.**
+Arthur voulait voir le temps de PS5 sous ce nom plutôt que sous « Télé ». La
+bonne façon n'était pas de renommer le repli — n'importe quelle entrée HDMI y
+serait tombée — mais de demander à la télé sa source active. **Mesuré le
+2026-09-01 depuis son réseau : treize points d'entrée, treize 404.** L'API locale
+ne l'expose pas. Détail dans « Ce que la télé ne nommera jamais : son entrée
+HDMI ». Le temps de PS5 reste donc « Télé », et c'est tout ce qu'on en sait —
+26 h 39 sur douze jours contre 1 h 28 de temps nommé.
 
-**Ce qu'Arthur doit faire pour ça** : lancer une sonde chez lui, télé allumée sur
-la PS5 — même méthode que le 2026-08-22 pour les apps. La sonde reste à écrire.
+**Un état d'extinction de plus, découvert au passage** : la télé peut répondre un
+`PowerState` **vide**, en plus du port qui refuse et du `standby`. Le code le
+traitait déjà bien, et pour une raison qui vaut d'être retenue — il teste
+l'égalité à `on` au lieu d'énumérer les valeurs d'extinction. **Tester ce qu'on
+veut affirmer, jamais son complément.**
 
 **Le retrait est allé jusqu'au bout, à sa demande** : « je ne veux pas de code PSN
 sur ma stack de boulot ». Les branches `feat/psn-presence`, `feat/psn-source` et
