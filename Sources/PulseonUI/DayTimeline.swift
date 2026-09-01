@@ -184,15 +184,9 @@ private struct RailCard: View {
 
     private var segments: [RailSegment] { RailLayout.segments(from: day.digest.lanes) }
 
-    /// Les appareils qui ont du temps et des horaires : ceux qu'on peut placer.
+    /// Les appareils qui ont du temps : ceux que le rail montre.
     private var placed: [Lane] {
-        day.digest.lanes.filter { $0.kind == .interval && $0.total > 0 }
-    }
-
-    /// Les sources qui ont du temps mais **aucun horaire**. Elles ne peuvent pas
-    /// être sur le rail : y placer un bloc serait inventer une heure.
-    private var unplaced: [Lane] {
-        day.digest.lanes.filter { $0.kind == .counter && $0.isConnected && $0.total > 0 }
+        day.digest.lanes.filter { $0.total > 0 }
     }
 
     var body: some View {
@@ -200,7 +194,7 @@ private struct RailCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 CardTitle("Quand", palette: palette)
 
-                if segments.isEmpty, unplaced.isEmpty {
+                if segments.isEmpty {
                     EmptyDay(day: day, palette: palette)
                 } else {
                     if !placed.isEmpty {
@@ -216,11 +210,6 @@ private struct RailCard: View {
                     .frame(height: railHeight)
 
                     HourAxis(dayLength: day.dayLength, palette: palette)
-
-                    if !unplaced.isEmpty {
-                        UnplacedSection(
-                            lanes: unplaced, dayLength: day.dayLength, palette: palette)
-                    }
                 }
             }
         }
@@ -361,79 +350,6 @@ private struct HourAxis: View {
         if hour == 0 { return 0 }
         if hour == last { return geometry.width - tickWidth }
         return geometry.x(atOffset: TimeInterval(hour) * 3600) - tickWidth / 2
-    }
-}
-
-// MARK: - Ce qui n'a pas d'heure
-
-/// Les durées dont on ne connaît **que** la quantité.
-///
-/// Règle non négociable du projet : **ne jamais inventer de placement
-/// horaire.** La largeur reste proportionnelle au temps, seule chose qu'on
-/// sache ; tout le reste doit dire l'ignorance.
-///
-/// **Centrer le bloc ne suffit pas**, et ça s'était vu en PNG : centré juste
-/// sous un axe des heures, il tombait pile sous « 12 h » et se lisait « joué
-/// vers midi ». D'où trois précautions cumulées — un filet et un titre qui
-/// coupent le lien avec l'axe, le bloc et son libellé centrés, et un contour
-/// pointillé plutôt qu'un bloc plein.
-private struct UnplacedSection: View {
-    let lanes: [Lane]
-    let dayLength: TimeInterval
-    let palette: PulseonPalette
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Rectangle()
-                .fill(palette.hairline)
-                .frame(height: 1)
-                .padding(.top, 4)
-
-            Text("Sans horaire connu")
-                .font(PulseonTheme.caption)
-                .foregroundStyle(palette.inkFaint)
-
-            ForEach(lanes, id: \.device) { lane in
-                UnplacedBar(lane: lane, dayLength: dayLength, palette: palette)
-            }
-        }
-    }
-}
-
-private struct UnplacedBar: View {
-    let lane: Lane
-    let dayLength: TimeInterval
-    let palette: PulseonPalette
-
-    var body: some View {
-        VStack(spacing: 5) {
-            GeometryReader { proxy in
-                let geometry = TimelineGeometry(width: proxy.size.width, dayLength: dayLength)
-                let rect = geometry.rect(offset: 0, duration: lane.total)
-                let shape = RoundedRectangle(cornerRadius: 5, style: .continuous)
-
-                shape
-                    // Fond neutre et non une teinte translucide : de la couleur
-                    // à 18 % sur une carte sombre donne un olive sale.
-                    .fill(palette.sunken)
-                    .overlay {
-                        shape.strokeBorder(
-                            PulseonTheme.color(for: lane.device, in: palette),
-                            style: StrokeStyle(lineWidth: 1, dash: [4, 3])
-                        )
-                    }
-                    .frame(width: rect.width, height: 18)
-                    // Centré, et jamais aligné à gauche : un bord gauche se
-                    // lirait comme une heure de début.
-                    .offset(x: (geometry.width - rect.width) / 2)
-            }
-            .frame(height: 18)
-
-            Text("\(lane.device.label) · \(DurationFormat.compact(lane.total))")
-                .font(PulseonTheme.caption)
-                .foregroundStyle(palette.inkFaint)
-                .frame(maxWidth: .infinity)
-        }
     }
 }
 

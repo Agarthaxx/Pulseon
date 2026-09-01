@@ -28,7 +28,7 @@ struct CollectionEngineTests {
 
         init() throws {
             container = try ModelContainer(
-                for: StoredSession.self, StoredCounterSample.self, StoredApp.self,
+                for: StoredSession.self, StoredApp.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: true)
             )
             store = SessionStore(context: container.mainContext)

@@ -57,7 +57,6 @@ let tvBlocks: [TraceBlock] = [
 ]
 let macTotal = macBlocks.reduce(0) { $0 + $1.duration }
 let tvTotal = tvBlocks.reduce(0) { $0 + $1.duration }
-let psTotal: TimeInterval = 1.8 * 3600
 
 let digest = DayDigest(
     date: Calendar.current.dateComponents([.year, .month, .day], from: dayStart),
@@ -70,13 +69,10 @@ let digest = DayDigest(
                 EntityTotal(entity: "Brave Browser", total: 0.8 * 3600),
             ], isConnected: true),
         Lane(
-            device: .playstation, total: psTotal, blocks: [],
-            topEntities: [EntityTotal(entity: "Elden Ring", total: psTotal)], isConnected: true),
-        Lane(
             device: .tv, total: tvTotal, blocks: tvBlocks,
             topEntities: [EntityTotal(entity: "YouTube", total: 164 * 60)], isConnected: true),
     ],
-    summedTotal: macTotal + tvTotal + psTotal,
+    summedTotal: macTotal + tvTotal,
     coveredTotal: macTotal + tvTotal - 53 * 60
 )
 

@@ -98,21 +98,6 @@ import Testing
         #expect(segments.reduce(0) { $0 + $1.duration } == hour(4))
     }
 
-    /// Règle non négociable : une source sans horaire n'a aucune place sur un axe
-    /// de temps. La dessiner sur le rail serait inventer une heure.
-    @Test("Une source à compteur n'apparaît pas sur le rail")
-    func counterSourcesAreExcluded() {
-        let playstation = Lane(
-            device: .playstation,
-            total: hour(2),
-            blocks: [],
-            topEntities: [EntityTotal(entity: "Elden Ring", total: hour(2))],
-            isConnected: true
-        )
-
-        #expect(RailLayout.segments(from: [playstation]).isEmpty)
-    }
-
     @Test("Une journée vide ne produit aucun segment")
     func emptyDayHasNoSegments() {
         #expect(RailLayout.segments(from: []).isEmpty)

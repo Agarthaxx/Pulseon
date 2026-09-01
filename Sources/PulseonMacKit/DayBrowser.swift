@@ -108,7 +108,6 @@ public final class DayBrowser {
             let digest = DayDigestBuilder(calendar: calendar).build(
                 day: dayStart,
                 sessions: try store.sessions(from: dayStart, to: nextDay),
-                samples: try store.samples(before: nextDay),
                 now: now
             )
             let isToday = calendar.isDate(dayStart, inSameDayAs: now)
@@ -217,7 +216,6 @@ public final class DayBrowser {
                 builder.build(
                     day: start,
                     sessions: try store.sessions(from: start, to: end),
-                    samples: try store.samples(before: end),
                     now: elapsed.map { start.addingTimeInterval($0) } ?? end
                 )
             )

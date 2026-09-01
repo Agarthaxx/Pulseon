@@ -62,7 +62,6 @@ extension DayDigestBuilder {
         from: Date,
         through: Date,
         sessions: [ActivitySession],
-        samples: [CounterSample],
         now: Date = Date()
     ) -> PeriodDigest {
         let firstDay = calendar.startOfDay(for: from)
@@ -84,7 +83,7 @@ extension DayDigestBuilder {
                 continue
             }
             days.append(
-                build(day: day, sessions: buckets[index], samples: samples, now: now)
+                build(day: day, sessions: buckets[index], now: now)
             )
         }
 

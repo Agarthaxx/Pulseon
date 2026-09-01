@@ -21,8 +21,8 @@ private func block(_ startHour: Double, _ hours: Double, _ entity: String) -> Tr
 }
 
 /// Une journée plausible : matinée hachée, coupure du midi, après-midi dense,
-/// film le soir, et une partie de PlayStation sans horaire connu. Les blocs
-/// très courts sont là exprès — c'est le cas qui casse les mises en page.
+/// et un film le soir. Les blocs très courts sont là exprès — c'est le cas qui
+/// casse les mises en page.
 let macBlocks: [TraceBlock] = [
     block(8.6, 0.4, "Mail"), block(9.1, 1.4, "Xcode"), block(10.6, 0.2, "Brave Browser"),
     block(10.9, 1.1, "Xcode"), block(12.2, 0.3, "Slack"),
@@ -51,8 +51,6 @@ let tvBlocksToday: [TraceBlock] = [
 
 let macTotal = macBlocks.reduce(0) { $0 + $1.duration }
 let tvTotal = tvBlocksToday.reduce(0) { $0 + $1.duration }
-let psTotal: TimeInterval = 1.8 * 3600
-
 let digest = DayDigest(
     date: Calendar.current.dateComponents([.year, .month, .day], from: dayStart),
     lanes: [
@@ -66,23 +64,12 @@ let digest = DayDigest(
             isConnected: true
         ),
         Lane(
-            device: .playstation, total: psTotal, blocks: [],
-            // Deux titres, parce qu'un seul ne montrerait jamais si la rangée
-            // de noms et la réserve « horaires inconnus » tiennent ensemble sur
-            // une ligne. Les noms viennent de la vraie bibliothèque d'Arthur.
-            topEntities: [
-                EntityTotal(entity: "ELDEN RING", total: 1.3 * 3600),
-                EntityTotal(entity: "Rocket League®", total: 0.5 * 3600),
-            ],
-            isConnected: true
-        ),
-        Lane(
             device: .tv, total: tvTotal, blocks: tvBlocksToday,
             topEntities: [EntityTotal(entity: "YouTube", total: 164 * 60)],
             isConnected: true
         ),
     ],
-    summedTotal: macTotal + tvTotal + psTotal,
+    summedTotal: macTotal + tvTotal,
     // La télé finit à 21 h 53 et le film sur le Mac démarre à 21 h : les deux
     // écrans se recouvrent de 53 min, décomptées une seule fois ici — c'est tout
     // l'écart entre `summedTotal` et `coveredTotal`.
@@ -147,9 +134,10 @@ func dashboard(_ load: DayDashboard.Load, canGoForward: Bool, scheme: ColorSchem
 /// il n'y a pas de base, donc la correspondance est écrite à la main — c'est de
 /// la donnée de démonstration, au même titre que les blocs de la journée.
 ///
-/// **« Elden Ring » n'y figure pas exprès** : un jeu PlayStation n'a jamais eu
-/// d'icône côté Mac, et c'est le cas qu'il faut regarder — la ligne doit rester
-/// droite avec un nom sans image au milieu d'apps qui en ont une.
+/// **Toutes les apps n'y figurent pas exprès** : une app désinstallée, ou
+/// utilisée avant que `noteApp` ne tourne, n'a aucune icône — et c'est le cas
+/// qu'il faut regarder, la ligne devant rester droite avec un nom sans image au
+/// milieu d'apps qui en ont une.
 let demoBundleIDs = [
     "Mail": "com.apple.mail",
     "Xcode": "com.apple.dt.Xcode",
@@ -233,17 +221,13 @@ let denseDigest = DayDigest(
             topEntities: [EntityTotal(entity: "Xcode", total: 3 * 3600)], isConnected: true
         ),
         Lane(
-            device: .playstation, total: 1.4 * 3600, blocks: [],
-            topEntities: [EntityTotal(entity: "Elden Ring", total: 1.4 * 3600)], isConnected: true
-        ),
-        Lane(
             device: .tv, total: 2.0 * 3600,
             blocks: [TraceBlock(entity: nil, startOffset: 20 * 3600, duration: 2 * 3600)],
             topEntities: [], isConnected: true
         ),
     ],
-    summedTotal: denseBlocks.reduce(0) { $0 + $1.duration } + 3.4 * 3600,
-    coveredTotal: denseBlocks.reduce(0) { $0 + $1.duration } + 3.4 * 3600
+    summedTotal: denseBlocks.reduce(0) { $0 + $1.duration } + 2.0 * 3600,
+    coveredTotal: denseBlocks.reduce(0) { $0 + $1.duration } + 2.0 * 3600
 )
 
 let denseCategories = CategoryDigestBuilder(classify: denseAssignment.category(for:entity:))
@@ -358,7 +342,6 @@ MainActor.assumeIsolated {
                 topEntities: [EntityTotal(entity: "Firefox Developer Edition", total: 2.1 * 3600)],
                 isConnected: true
             ),
-            Lane(device: .playstation, total: 0, blocks: [], topEntities: [], isConnected: false),
             Lane(device: .tv, total: 0, blocks: [], topEntities: [], isConnected: false),
         ],
         summedTotal: macTotal, coveredTotal: macTotal
@@ -401,7 +384,7 @@ MainActor.assumeIsolated {
 /// collecteur était éteint), un **vrai zéro** mesuré, et une journée **qui n'a
 /// pas encore eu lieu**.
 private func weekDay(
-    mac: Double, tv: Double = 0, playstation: Double = 0, measured: Bool = true
+    mac: Double, tv: Double = 0, measured: Bool = true
 ) -> DayDigest {
     let hour: TimeInterval = 3600
     return DayDigest(
@@ -412,17 +395,13 @@ private func weekDay(
                 isConnected: measured
             ),
             Lane(
-                device: .playstation, total: playstation * hour, blocks: [], topEntities: [],
-                isConnected: measured && playstation > 0
-            ),
-            Lane(
                 device: .tv, total: tv * hour, blocks: [], topEntities: [],
                 isConnected: measured && tv > 0
             ),
         ],
-        summedTotal: (mac + tv + playstation) * hour,
+        summedTotal: (mac + tv) * hour,
         // Aucun chevauchement dans cette démo : les journées y sont simples.
-        coveredTotal: (mac + tv + playstation) * hour
+        coveredTotal: (mac + tv) * hour
     )
 }
 
@@ -433,32 +412,30 @@ MainActor.assumeIsolated {
     /// Volontairement contrastée, et **à plusieurs appareils** : c'est la
     /// composition par couleur qu'il faut pouvoir juger sur un petit rond, pas
     /// seulement la taille. Une journée non mesurée, un vrai zéro, une soirée
-    /// PlayStation, et le week-end qui n'a pas eu lieu.
-    let totals: [(mac: Double, tv: Double, ps: Double, measured: Bool)] = [
-        (5.4, 0.8, 0, true),
-        (0, 0, 0, false),
-        (7.1, 1.5, 0, true),
-        (0, 0, 0, true),
-        (2.3, 0.8, 1.8, true),
-        (0, 0, 0, true),
-        (0, 0, 0, true),
+    /// de télé, et le week-end qui n'a pas eu lieu.
+    let totals: [(mac: Double, tv: Double, measured: Bool)] = [
+        (5.4, 0.8, true),
+        (0, 0, false),
+        (7.1, 1.5, true),
+        (0, 0, true),
+        (2.3, 2.6, true),
+        (0, 0, true),
+        (0, 0, true),
     ]
     let todayIndex = 4
 
     let days = totals.enumerated().map { index, day in
         PeriodPresentation.Day(
             start: calendar.date(byAdding: .day, value: index, to: weekStart) ?? weekStart,
-            digest: weekDay(
-                mac: day.mac, tv: day.tv, playstation: day.ps, measured: day.measured),
+            digest: weekDay(mac: day.mac, tv: day.tv, measured: day.measured),
             isToday: index == todayIndex,
             isFuture: index > todayIndex
         )
     }
 
-    let weekTotal = totals.reduce(0) { $0 + ($1.mac + $1.tv + $1.ps) * 3600 }
+    let weekTotal = totals.reduce(0) { $0 + ($1.mac + $1.tv) * 3600 }
     let macTotalWeek = totals.reduce(0) { $0 + $1.mac * 3600 }
     let tvTotalWeek = totals.reduce(0) { $0 + $1.tv * 3600 }
-    let psTotalWeek = totals.reduce(0) { $0 + $1.ps * 3600 }
 
     let weekDigest = PeriodDigest(
         days: days.map(\.digest),
@@ -473,18 +450,13 @@ MainActor.assumeIsolated {
                 isConnected: true
             ),
             Lane(
-                device: .playstation, total: psTotalWeek, blocks: [],
-                topEntities: [EntityTotal(entity: "Elden Ring", total: psTotalWeek)],
-                isConnected: true
-            ),
-            Lane(
                 device: .tv, total: tvTotalWeek, blocks: [], topEntities: [],
                 isConnected: true
             ),
         ],
         summedTotal: weekTotal,
         coveredTotal: weekTotal,
-        daysWithActivity: totals.count { $0.mac + $0.tv + $0.ps > 0 }
+        daysWithActivity: totals.count { $0.mac + $0.tv > 0 }
     )
 
     let weekCategories: [CategoryTotal] = [
@@ -605,14 +577,9 @@ MainActor.assumeIsolated {
                 topEntities: [EntityTotal(entity: "Xcode", total: 4.8 * 3600)],
                 isConnected: true
             ),
-            Lane(
-                device: .playstation, total: psTotal, blocks: [],
-                topEntities: [EntityTotal(entity: "Elden Ring", total: psTotal)],
-                isConnected: true
-            ),
             Lane(device: .tv, total: tvTotal, blocks: tvBlocks, topEntities: [], isConnected: true),
         ],
-        summedTotal: macTotal + psTotal + tvTotal,
+        summedTotal: macTotal + tvTotal,
         coveredTotal: macTotal + tvTotal
     )
 

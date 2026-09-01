@@ -309,12 +309,6 @@ private struct MenuContent: View {
             Text("⚠︎ TV injoignable — état inconnu")
         }
 
-        // Même règle : une source muette ne doit pas ressembler à une source à
-        // zéro. Un jeton expiré et une soirée sans jeu donnent le même écran.
-        if let psn = engine.psnFailure {
-            Text("⚠︎ PlayStation — \(psn)")
-        }
-
         Divider()
 
         Button("Ouvrir la journée") {

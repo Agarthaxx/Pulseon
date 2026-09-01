@@ -39,19 +39,22 @@ public enum DataExport {
 
     // MARK: CSV
 
-    /// Les colonnes, dans l'ordre. Le `kind` en tête parce que les deux natures
-    /// de mesure du projet ne portent pas les mêmes champs : une source à
-    /// intervalles a un début et une fin, une source à compteur n'a qu'un total
-    /// relevé à un instant. Les mélanger sans le dire produirait un fichier où
-    /// des colonnes vides ressembleraient à des zéros.
+    /// Les colonnes, dans l'ordre.
+    ///
+    /// Le fichier a porté un `kind` en tête, plus un `recorded_at` et un
+    /// `total_seconds` vides sur toutes les lignes de session : le projet avait
+    /// deux natures de mesure, et les mélanger sans le dire aurait produit un
+    /// fichier où des colonnes vides ressemblaient à des zéros. Le second genre
+    /// de source est parti le 2026-09-01, donc ces trois colonnes ne portaient
+    /// plus qu'une constante et deux vides. **Une colonne toujours vide n'est
+    /// pas une précaution, c'est du bruit** — et elle inviterait à croire qu'une
+    /// mesure manque.
     static let columns = [
-        "kind", "device", "entity", "start", "end", "duration_seconds",
-        "recorded_at", "total_seconds",
+        "device", "entity", "start", "end", "duration_seconds",
     ]
 
     public static func csv(
         sessions: [ActivitySession],
-        samples: [CounterSample] = [],
         timeZone: TimeZone = .current
     ) -> String {
         var lines = [columns.joined(separator: ",")]
@@ -59,7 +62,6 @@ public enum DataExport {
         for session in sessions {
             lines.append(
                 row([
-                    "session",
                     session.device.rawValue,
                     session.entity ?? "",
                     timestamp(session.start, in: timeZone),
@@ -69,20 +71,6 @@ public enum DataExport {
                     // fichier que plus personne ne pourra recouper.
                     session.end.map { timestamp($0, in: timeZone) } ?? "",
                     session.end.map { seconds($0.timeIntervalSince(session.start)) } ?? "",
-                    "", "",
-                ])
-            )
-        }
-
-        for sample in samples {
-            lines.append(
-                row([
-                    "counter",
-                    sample.device.rawValue,
-                    sample.entity,
-                    "", "", "",
-                    timestamp(sample.recordedAt, in: timeZone),
-                    seconds(sample.total),
                 ])
             )
         }
@@ -127,7 +115,6 @@ public enum DataExport {
     /// fuseau donné.
     public static func json(
         sessions: [ActivitySession],
-        samples: [CounterSample] = [],
         generatedAt: Date,
         timeZone: TimeZone = .current
     ) throws -> Data {
@@ -148,14 +135,6 @@ public enum DataExport {
                         Int($0.timeIntervalSince(session.start).rounded())
                     }
                 )
-            },
-            counters: samples.map { sample in
-                Payload.Counter(
-                    device: sample.device.rawValue,
-                    entity: sample.entity,
-                    totalSeconds: Int(sample.total.rounded()),
-                    recordedAt: timestamp(sample.recordedAt, in: timeZone)
-                )
             }
         )
 
@@ -170,7 +149,6 @@ public enum DataExport {
         let generatedAt: String
         let timeZone: String
         let sessions: [Session]
-        let counters: [Counter]
 
         /// **Les champs inconnus sortent en `null`, jamais absents.**
         ///
@@ -203,13 +181,6 @@ public enum DataExport {
                 try container.encode(end, forKey: .end)
                 try container.encode(durationSeconds, forKey: .durationSeconds)
             }
-        }
-
-        struct Counter: Encodable {
-            let device: String
-            let entity: String
-            let totalSeconds: Int
-            let recordedAt: String
         }
     }
 }

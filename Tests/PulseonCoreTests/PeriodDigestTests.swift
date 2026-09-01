@@ -24,7 +24,7 @@ func emptyDaysAreKept() throws {
     ]
 
     let period = builder.buildPeriod(
-        from: date(10, 0), through: date(13, 23), sessions: sessions, samples: [],
+        from: date(10, 0), through: date(13, 23), sessions: sessions,
         now: date(13, 23))
 
     #expect(period.days.count == 4, "du 10 au 13 inclus")
@@ -41,7 +41,7 @@ func coveredTotalSumsDays() throws {
     ]
 
     let period = builder.buildPeriod(
-        from: date(10, 0), through: date(11, 23), sessions: sessions, samples: [],
+        from: date(10, 0), through: date(11, 23), sessions: sessions,
         now: date(11, 23))
 
     // Deux journées ne se chevauchent jamais : les additionner est licite.
@@ -56,7 +56,7 @@ func sessionAcrossMidnightCountsInBoth() throws {
     ]
 
     let period = builder.buildPeriod(
-        from: date(10, 0), through: date(11, 23), sessions: sessions, samples: [],
+        from: date(10, 0), through: date(11, 23), sessions: sessions,
         now: date(11, 23))
 
     // Une heure de chaque côté, pas deux heures d'un seul.
@@ -73,7 +73,7 @@ func periodLanesHaveNoBlocks() throws {
     ]
 
     let period = builder.buildPeriod(
-        from: date(10, 0), through: date(11, 23), sessions: sessions, samples: [],
+        from: date(10, 0), through: date(11, 23), sessions: sessions,
         now: date(11, 23))
 
     let mac = try #require(period.lanes.first { $0.device == .mac })
@@ -91,7 +91,7 @@ func neverConnectedStaysUnconnected() throws {
         sessions: [
             ActivitySession(device: .mac, entity: "Xcode", start: date(10, 9), end: date(10, 10))
         ],
-        samples: [], now: date(12, 23))
+        now: date(12, 23))
 
     #expect(try #require(period.lanes.first { $0.device == .mac }).isConnected)
     #expect(try #require(period.lanes.first { $0.device == .tv }).isConnected == false)
@@ -106,7 +106,7 @@ func oneQuietDayDoesNotDisconnect() throws {
     ]
 
     let period = builder.buildPeriod(
-        from: date(10, 0), through: date(12, 23), sessions: sessions, samples: [],
+        from: date(10, 0), through: date(12, 23), sessions: sessions,
         now: date(12, 23))
 
     #expect(try #require(period.lanes.first { $0.device == .mac }).isConnected)
@@ -121,9 +121,9 @@ func singleDayPeriodMatchesDayDigest() throws {
     ]
 
     let period = builder.buildPeriod(
-        from: date(10, 12), through: date(10, 12), sessions: sessions, samples: [],
+        from: date(10, 12), through: date(10, 12), sessions: sessions,
         now: date(10, 23))
-    let day = builder.build(day: date(10, 12), sessions: sessions, samples: [], now: date(10, 23))
+    let day = builder.build(day: date(10, 12), sessions: sessions, now: date(10, 23))
 
     #expect(period.days.count == 1)
     #expect(period.coveredTotal == day.coveredTotal)
@@ -139,34 +139,10 @@ func sessionsOutsidePeriodAreIgnored() throws {
     ]
 
     let period = builder.buildPeriod(
-        from: date(10, 0), through: date(11, 23), sessions: sessions, samples: [],
+        from: date(10, 0), through: date(11, 23), sessions: sessions,
         now: date(25, 23))
 
     #expect(period.coveredTotal == 3600)
     let mac = try #require(period.lanes.first { $0.device == .mac })
     #expect(mac.topEntities.map(\.entity) == ["dedans"])
-}
-
-@Test("Le temps d'un compteur se calcule jour par jour sur la période")
-func counterDeltasPerDay() throws {
-    let samples = [
-        // Référence la veille de la période.
-        CounterSample(
-            device: .playstation, entity: "Bloodborne", total: 36000, recordedAt: date(9, 22)),
-        CounterSample(
-            device: .playstation, entity: "Bloodborne", total: 39600, recordedAt: date(10, 21)),
-        CounterSample(
-            device: .playstation, entity: "Bloodborne", total: 45000, recordedAt: date(11, 21)),
-    ]
-
-    let period = builder.buildPeriod(
-        from: date(10, 0), through: date(11, 23), sessions: [], samples: samples,
-        now: date(11, 23))
-
-    // 1 h le premier jour, 1 h 30 le second.
-    #expect(period.days.map(\.summedTotal) == [3600, 5400])
-    #expect(period.summedTotal == 9000)
-    let ps = try #require(period.lanes.first { $0.device == .playstation })
-    #expect(ps.total == 9000)
-    #expect(ps.blocks.isEmpty)
 }
