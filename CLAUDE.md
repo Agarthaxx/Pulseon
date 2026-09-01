@@ -1599,10 +1599,11 @@ d'Arthur, et ça ne se redécouvre pas gratuitement :
   la minute, la durée n'avait pas bougé d'une seconde depuis 19 h. Sony note
   *quand* tout de suite, et *combien* des heures plus tard.
 - **Il existe un point d'entrée « présence »** (`basicPresences`) qui dit en
-  temps réel à quel jeu la console joue. Il a été codé et il marchait — la
-  PlayStation devenait alors une source à **intervalles**. Le code vit sur la
-  branche **`feat/psn-presence`**, non mergée, comme `feat/device-discovery` et
-  `feat/steam-source`.
+  temps réel à quel jeu la console joue, ce qui aurait fait de la PlayStation une
+  source à **intervalles**. Il a été codé et il marchait. **Le code n'existe
+  plus** : Arthur a demandé qu'aucune ligne de PSN ne survive, y compris sur une
+  branche non mergée. Ce paragraphe est tout ce qu'il en reste, et c'est
+  volontaire — la connaissance de la mesure vaut d'être gardée, le code non.
 
 **Et une leçon de méthode qui est d'Arthur** : il a collé son `npsso` dans la
 conversation, et le jeton a dû être invalidé et redéposé. Le Trousseau n'était
@@ -2103,12 +2104,16 @@ est une fusion d'intervalles au lieu d'un `max(couverture, compteurs)` ;
 par nature de source qu'aucun ne pouvait oublier ; l'export CSV perd trois
 colonnes qui ne portaient plus qu'une constante et deux vides.
 
-**Le travail PSN n'est pas jeté**, il vit sur `feat/psn-presence` avec ce qui a
-été mesuré chez Sony — dont le fait, contraire à la prémisse fondatrice du
-vocabulaire compteur, que **l'API expose bien une présence en temps réel**. Même
-statut que `feat/device-discovery` et `feat/steam-source` : du raisonnement mesuré
-qu'il vaut mieux relire que réécrire. **La PR #62 est devenue sans objet** — elle
-corrigeait l'affichage du premier jour d'un compteur.
+**Le travail PSN avait d'abord été conservé sur une branche**, par réflexe — la
+convention du projet garde `feat/device-discovery` plutôt que de réécrire du
+raisonnement mesuré. **Arthur l'a refusée** : « je ne veux pas de code PSN sur ma
+stack de boulot », puis « ça ne sert à rien ». La distinction qu'il pose est
+juste, et elle corrige la convention : **une branche est un dépôt de code, pas un
+carnet de mesures.** Ce qui méritait d'être gardé — ce que l'API de Sony fait
+vraiment — est écrit ici, en prose, où on le relira. Le code est parti avec les
+branches `feat/psn-presence`, `feat/psn-source` et `fix/counter-first-day`, et la
+PR #62 est fermée. **`feat/steam-source` est partie le même jour**, sur sa
+demande : c'était l'autre source à compteur, celle qu'il n'avait jamais réclamée.
 
 **Ce qui reste ouvert, et c'est la suite directe** : le temps de PS5 s'affiche
 « Télé ». C'est honnête — c'est tout ce que Pulseon mesure de cet écran — mais
@@ -2460,10 +2465,10 @@ journée de 51 heures »). 117 tests sur la branche, 126 une fois combinée à
 
 - **La PR #24 (Steam) a été écrite sans qu'Arthur l'ait demandée.** « On fait le
   cœur du métier » avait été traduit en « une nouvelle source de données », et la
-  source choisie était celle qui m'arrangeait techniquement. **Les sources du
-  projet sont Mac, PlayStation et TV.** Le code dort sur `feat/steam-source` ; le
-  branchement générique d'un `CounterPoller` dans `CollectionEngine` y est
-  réutilisable tel quel pour la PlayStation.
+  source choisie était celle qui m'arrangeait techniquement. La leçon tient
+  toujours ; la liste qui l'accompagnait, non. **Les sources du projet sont
+  désormais Mac et TV** — la PlayStation a été retirée le 2026-09-01, et la
+  branche `feat/steam-source` supprimée le même jour à sa demande.
 - **Un symptôme spectaculaire cache souvent un dégât plus discret.** Le « 51 h »
   du 2026-08-18 se voyait ; les heures de machine éteinte écrites en base comme
   du temps d'écran, non. Chercher la donnée fausse *et fermée*, pas celle qui
