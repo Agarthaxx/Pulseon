@@ -1,15 +1,15 @@
 # Pulseon
 
-App native Apple pour suivre le temps passé sur Mac, PlayStation, TV, et
-(potentiellement, plus tard) iPhone. **iOS d'abord**, macOS ensuite.
+App native Apple pour suivre le temps passé sur Mac, TV, et (potentiellement,
+plus tard) iPhone. **iOS d'abord**, macOS ensuite.
 
 ## Sources de données et statut
 
 | Source      | Statut  | Méthode                                                                 |
 |-------------|---------|-------------------------------------------------------------------------|
 | Mac         | **Tourne** | `NSWorkspace` (app active) + `Quartz` (inactivité) + assertion vidéo, depuis l'app macOS |
-| PlayStation | **Tourne** | API non-officielle PSN — poll de `playDuration` par jeu, temps journalier = delta entre deux relevés |
-| TV          | **Codée** | API HTTP locale de la télé (Samsung Tizen, port 8001) — `PowerState` dit si l'écran est allumé. Source à intervalles, comme le Mac |
+| TV          | **Tourne** | API HTTP locale de la télé (Samsung Tizen, port 8001) — `PowerState` dit si l'écran est allumé. Source à intervalles, comme le Mac |
+| PlayStation | **Retirée** | La PS5 est branchée sur la télé : son temps est déjà mesuré, avec de vrais horaires. Voir « La PlayStation est partie » |
 | iPhone      | Différé | Voir contrainte ci-dessous                                              |
 
 ## Décisions et contraintes connues
@@ -23,11 +23,11 @@ App native Apple pour suivre le temps passé sur Mac, PlayStation, TV, et
   pose aucun problème et c'est même la cible principale. C'est *collecter*
   le temps d'écran de l'iPhone qui est bloqué. Le pivot iOS ne rouvre pas ce
   dossier.
-- **PlayStation** : pas de temps de jeu en temps réel exposé par l'API,
-  seulement un total cumulé par jeu (`playDuration`), mis à jour avec un
-  délai. On reconstitue le temps journalier par différence entre deux
-  relevés. **Branchée le 2026-08-30**, Arthur ayant enfin pu récupérer son
-  `npsso` — voir « La PlayStation : un compteur, et rien d'autre ».
+- **PlayStation : retirée le 2026-09-01, un jour après avoir été branchée.**
+  Pas parce qu'elle ne marchait pas — elle marchait — mais parce qu'elle
+  mesurait un écran déjà mesuré : **la PS5 est branchée sur la télé**. Voir
+  « La PlayStation est partie, et le genre "compteur" avec elle ». Ne pas la
+  reproposer sans qu'Arthur le demande.
 - **TV : la mesure exige que le Mac collecteur soit sur le même réseau que
   la télé, au moment où elle est allumée.** `SamsungTVProbe` interroge
   l'API HTTP locale de la télé (`:8001`) — constaté le 2026-08-17 en
@@ -159,8 +159,14 @@ ou l'autre — jamais à autre chose :
 | Appareil    | Signal d'activité                                  | Forme envoyée |
 |-------------|----------------------------------------------------|---------------|
 | Mac         | Clavier/souris **+ vidéo en cours**                | Intervalles   |
-| TV          | Consommation électrique de la prise au-dessus d'un seuil | Intervalles |
-| PlayStation | Aucun signal temporel, juste un total qui monte    | Compteur      |
+| TV          | `PowerState: on` sur l'API HTTP locale             | Intervalles   |
+
+**Il n'y a plus qu'une forme, et c'est nouveau.** Le cœur en a connu deux : les
+intervalles, et le **compteur** — un total cumulé sans le moindre horaire, dont
+la PlayStation a été l'unique exemple. Elle est partie le 2026-09-01 et tout ce
+vocabulaire avec elle. Une source à venir qui ne saurait pas dire *quand*
+demanderait donc de le réintroduire ; c'est un vrai coût, et il vaut mieux le
+savoir avant de la brancher.
 
 Corriger le cas du film rapproche d'ailleurs le Mac de la TV : les deux
 disent désormais « l'écran était allumé et montrait quelque chose », au lieu
@@ -211,29 +217,27 @@ prétend rien de plus**. On ne classe jamais d'après la ressemblance du nom :
 « Mail Designer » n'est pas un client mail, et un faux rangement est pire qu'un
 `other` honnête.
 
-**Un écran n'est pas un contenu.** La télé et la PlayStation ont **chacune leur
-propre catégorie** (`Télé`, `PlayStation`), et ce n'est pas un détail de
-libellé — c'est une correction payée à l'usage le 2026-08-19. `Device.tv`
-valait `.media` : tout le temps de télé tombait donc dans « Vidéo et musique »,
-**avant même de savoir ce qui passait à l'écran**. Le soir où la télé a
-réellement été mesurée pour la première fois, la catégorie affichait 2 h 52
-alors que l'app Musique avait tourné **6 secondes** — et c'est Arthur qui l'a vu :
-« pourquoi ma musique a autant grimpé ? ».
+**Un écran n'est pas un contenu.** La télé a **sa propre catégorie** (`Télé`), et
+ce n'est pas un détail de libellé — c'est une correction payée à l'usage le
+2026-08-19. `Device.tv` valait `.media` : tout le temps de télé tombait donc dans
+« Vidéo et musique », **avant même de savoir ce qui passait à l'écran**. Le soir
+où la télé a réellement été mesurée pour la première fois, la catégorie affichait
+2 h 52 alors que l'app Musique avait tourné **6 secondes** — et c'est Arthur qui
+l'a vu : « pourquoi ma musique a autant grimpé ? ».
 
-Le raccourci qui la défendait (« une console sert à jouer, une télé à regarder »)
-tient tant qu'on parle de l'appareil, et casse à l'instant où le total atterrit
-dans une catégorie de contenu, à côté d'IINA : l'app affirme alors ce qu'elle n'a
-pas mesuré. Pulseon ne sait qu'une chose de la télé — `PowerState: on`. **Le cas
-qui rend la faute indéfendable est déjà réel** : la PS5 d'Arthur est branchée sur
-cette télé et le collecteur PSN est bloqué, donc une soirée de jeu n'existe que
-sous forme de « télé allumée » — elle aurait été rangée en musique.
+Le raccourci qui la défendait (« une télé sert à regarder ») tient tant qu'on
+parle de l'appareil, et casse à l'instant où le total atterrit dans une catégorie
+de contenu, à côté d'IINA : l'app affirme alors ce qu'elle n'a pas mesuré.
+Pulseon ne sait qu'une chose de la télé — `PowerState: on`. **Le cas qui rend la
+faute indéfendable est réel et quotidien** : la PS5 d'Arthur est branchée sur
+cette télé, donc une soirée de jeu n'existe que sous forme de « télé allumée » —
+elle aurait été rangée en musique.
 
 Trois conséquences à ne pas défaire :
 
 - **« Jeu » reste le classement d'un jeu *sur le Mac***, lu dans son `Info.plist`.
-  La console est un écran, pas un contenu. Les deux portent l'or, celui de
-  l'appareil PlayStation — elles ne se distingueraient que par leur libellé le
-  jour où un jeu Mac et la console tournent la même journée.
+  Un écran allumé n'est pas un genre de contenu, et une soirée de PS5 vue par la
+  télé reste « Télé » : c'est tout ce qu'on en sait.
 - **La couleur d'un rond d'appareil est celle de son arc** dans l'anneau du haut
   et de sa pastille dans la légende. Un rond qui parle d'un écran doit se
   rattacher à cet écran sans qu'on redescende lire un libellé.
@@ -246,9 +250,10 @@ Trois conséquences à ne pas défaire :
 **C'est arrivé le 2026-08-22** : la télé nomme son app quand elle la reconnaît,
 et ce temps-là repart vers une vraie catégorie de contenu — `Télé` devient le
 repli, comme prévu, **sans rien perdre de l'historique**, la catégorie brute
-étant stockée telle quelle. Le repli n'est pas résiduel pour autant : la PS5 est
-branchée sur cette télé, et une entrée HDMI reste un écran allumé sans app
-visible. Voir « Ce que la télé sait nommer ».
+étant stockée telle quelle. Le repli n'est pas résiduel pour autant, et c'est
+même le cas majoritaire : la PS5 est branchée sur cette télé, et une entrée HDMI
+reste un écran allumé sans app visible. Mesuré sur douze jours de base — **26 h 39
+de temps anonyme contre 1 h 28 nommé.** Voir « Ce que la télé sait nommer ».
 
 **Une seule rangée de ronds, toujours** (choix d'Arthur le 2026-08-19 :
 « je préfère la photo avec une seule rangée »). Passer de cinq catégories à sept
@@ -280,8 +285,8 @@ noms se déchiffre, et macOS les fournit sans réseau — donc sans rien révél
 personne. `AppRegistry` les résout par identifiant de bundle et les met en cache
 (trouver l'app sur le disque puis la rasteriser ne doit pas se refaire à chaque
 image d'une liste qui défile). **Rendre `nil` est une vraie réponse** : une app
-désinstallée n'a plus d'icône, un jeu PlayStation n'en a jamais eu. À l'appelant
-d'afficher un repli, jamais un carré vide.
+désinstallée n'a plus d'icône, et une app de la télé n'est pas installée sur le
+Mac. À l'appelant d'afficher un repli, jamais un carré vide.
 
 **Le trajet complet, parce qu'il traverse trois paquets et que c'est voulu :**
 `AppRegistry.iconSource` traduit `NSImage` en `Image` — **c'est là que AppKit
@@ -901,9 +906,6 @@ la **part** de cette tranche passée devant un écran. Trois règles y sont tenu
   sur son Mac ne fait pas 200 % d'une tranche : c'est `coveredTotal` contre
   `summedTotal`, et la leçon de la journée de 51 heures appliquée à un nouveau
   calcul ;
-- **une source à compteur est écartée** (règle 1). La PlayStation n'a aucun
-  horaire : la placer dans une tranche inventerait une heure. La carte le **dit**,
-  sans quoi son absence se lirait comme un creux ;
 - **la longueur du jour est fournie**, jamais supposée égale à 86 400 — une
   journée de changement d'heure décalerait toutes ses tranches.
 
@@ -1041,13 +1043,13 @@ le glyphe de la catégorie à défaut. `CategoryTotal.entities` étant déjà cl
 par durée, la dominante est la première — rien à recalculer.
 
 **Le repli n'est pas un cas rare traité par acquit de conscience, c'est le cas
-normal d'au moins une catégorie.** « Jeu » sur PlayStation n'aura jamais d'icône
-côté Mac ; une app désinstallée n'en a plus ; et surtout, une app utilisée avant
+normal d'au moins une catégorie.** Une app de la télé n'est pas installée sur le
+Mac ; une app désinstallée n'a plus d'icône ; et surtout, une app utilisée avant
 que `noteApp` ne tourne (le 2026-08-17 à 13 h 16 sur la machine d'Arthur) n'a
 aucun identifiant de bundle en base, donc aucune icône — voir « Ce que les icônes
 ne rattraperont pas ». Le rendu de démonstration le montre d'ailleurs sans le
-chercher : Xcode et Brave sortent en vrai, IINA, Slack et Elden Ring retombent
-sur leur glyphe. **Jamais de carré vide.**
+chercher : Xcode et Brave sortent en vrai, IINA et Slack retombent sur leur
+glyphe. **Jamais de carré vide.**
 
 **Tous les petits ronds de l'app font la même taille** — ceux des catégories
 comme ceux des journées de la semaine. Décision d'Arthur le 2026-08-19 : « je me
@@ -1092,9 +1094,7 @@ ici qu'un arc de plus, à hauteur constante.
 
 **La timeline en multipiste a été supprimée**, à sa demande : « j'aime bien le
 rond plutôt que la timeline chrono qu'on a ». `TimelineGeometry` reste, pure et
-testée, pour l'onglet Timeline de la maquette. Attention le jour où il se
-construira : la maquette y place la PlayStation à 12:20, or elle ne connaît pas
-ses horaires.
+testée, pour l'onglet Timeline de la maquette.
 
 **Un pourcentage non nul ne s'affiche jamais « 0 % ».** Trois minutes dans une
 journée font 0,4 %, tronqué à zéro juste à côté d'une durée non nulle — trouvé
@@ -1167,12 +1167,13 @@ précisément ce qu'un total ne dira jamais.
 
 **Le calcul n'est pas `summedTotal - coveredTotal`**, et ce n'est pas un détail :
 
-- cette soustraction donne le temps compté en trop par l'addition, pas le temps
-  passé sur plusieurs écrans. À **trois** appareils allumés une heure ensemble
-  elle rend deux heures, alors qu'on n'a vécu qu'une heure de simultanéité ;
-- elle inclurait le total d'une **source à compteur**. La PlayStation n'a aucun
-  horaire : affirmer qu'elle tournait en même temps que la télé serait inventer
-  un placement horaire, c'est-à-dire violer la règle 1.
+cette soustraction donne le temps compté en trop par l'addition, pas le temps
+passé sur plusieurs écrans. À **trois** appareils allumés une heure ensemble elle
+rend deux heures, alors qu'on n'a vécu qu'une heure de simultanéité. Le projet
+n'en mesure aujourd'hui que deux, donc l'écart ne se voit pas — c'est bien
+pourquoi le test qui le tient interroge `IntervalMath` directement plutôt qu'un
+`DayDigest` : l'algorithme doit être juste **avant** qu'un troisième écran
+arrive, pas après.
 
 `IntervalMath.simultaneity(of:)` balaie donc les vrais blocs, **après avoir
 fusionné ceux de chaque appareil** — un appareil ne peut pas être allumé deux
@@ -1186,8 +1187,8 @@ Deux précisions de formulation qui sont des précisions de mesure :
   trois écrans tournaient ensemble sous-entendrait une mesure qu'on n'a pas
   faite.
 - **Jamais « les deux »**, qui renverrait aux pastilles de la légende — or elle
-  peut en porter une troisième, la PlayStation, dont on ignore justement les
-  horaires.
+  pourra en porter une troisième le jour où un appareil s'ajoute, et la phrase
+  serait alors fausse sans que personne ne pense à la relire.
 
 ### L'anatomie de la journée
 
@@ -1207,10 +1208,6 @@ Ce qui a demandé une décision :
 - **Les traites fusionnent tous les appareils.** Passer du Mac à la télé n'est
   pas une coupure : l'écran n'a pas cessé, seul l'écran a changé. Même raison qui
   fait exister `coveredTotal` à côté de `summedTotal`.
-- **Une source à compteur est écartée** (règle 1). La PlayStation ne donne qu'un
-  total : la faire entrer inventerait une heure de début. La carte le **dit**
-  les jours où elle a du temps, plutôt que de la taire — une mise en garde
-  permanente sur une source inactive serait du bruit.
 - **Nil, jamais des zéros.** Sans le moindre horaire connu, la journée n'a pas
   d'anatomie et la carte n'existe pas. Zéro affirmerait qu'elle a commencé à
   minuit. Même règle que « pas encore branchée ≠ journée à zéro ».
@@ -1469,13 +1466,13 @@ appareil allonge l'écran et transforme les simultanéités en mur dès le trois
 **Une simultanéité se lit au fait que le rail est divisé**, jamais au fait que la
 page est plus longue — et c'est précisément ce qu'un total ne dira jamais.
 
-**La PlayStation n'est pas sur le rail**, et c'est la règle 1 : elle n'a aucun
-horaire, l'y placer serait inventer une heure. Elle vit sous un filet, dans une
-section « Sans horaire connu », en contour pointillé, centrée, libellée dessous.
-**Les cinq précautions sont cumulées parce qu'aucune ne suffit seule** : centré
-sous un axe des heures, le bloc se lisait « joué vers midi ». Le risque résiduel
-reste : il tombe visuellement sous « 12 h ». La largeur reste proportionnelle au
-temps, seule chose qu'on sache de lui.
+**L'écran a porté une section « Sans horaire connu »**, sous un filet, pour la
+PlayStation — la seule source qui ne savait pas dire *quand*. Elle est partie
+avec elle le 2026-09-01. Ce qu'elle a appris mérite d'être gardé pour la
+prochaine source du même genre : **centrer un bloc ne suffit pas**. Centré sous
+un axe des heures, il tombait pile sous « 12 h » et se lisait « joué vers midi ».
+Il fallait cumuler cinq précautions — filet, titre de section explicite, bloc
+centré, libellé centré dessous, contour pointillé — et le risque résiduel restait.
 
 **La chronologie partage le `DayBrowser` de l'écran du jour**, elle n'a pas le
 sien : deux navigations séparées feraient dériver les deux écrans, et changer
@@ -1540,179 +1537,93 @@ Deux détails d'exécution :
   bouge d'une minute serait absurde. Elle est donc recalculée au changement de
   journée, et au plus une fois toutes les cinq minutes sur la journée en cours.
   Une journée passée, elle, ne bougera plus jamais.
-- **Limite assumée sur les sources à compteur** : n'ayant aucun horaire, leur
-  total du jour ne peut pas être coupé à une heure précise. Sur une comparaison
-  partielle elles sont donc comptées en entier des deux côtés — ce qui reste
-  cohérent, le total d'aujourd'hui étant lui aussi « ce qui s'est accumulé
-  jusqu'ici ».
 
-### La PlayStation : un compteur, et rien d'autre
+### La PlayStation est partie, et le genre « compteur » avec elle
 
-Branchée le **2026-08-30**, huit sessions après que toute la plomberie
-« compteur » ait été écrite pour elle et jamais utilisée : `CounterSource`,
-`CounterPoller`, `PlayDuration` (le lecteur ISO 8601, écrit et sans appelant) et
-`Secrets`. Il ne manquait que la source, et le `npsso` qu'Arthur ne pouvait pas
-récupérer.
+**Branchée le 2026-08-30, retirée le 2026-09-01.** Elle a tourné une journée, et
+ce n'est pas un échec technique : le collecteur marchait, il relevait les 73
+titres du vrai compte d'Arthur. C'est un problème de périmètre, et c'est Arthur
+qui l'a tranché : « je n'aime pas l'ajout, dans tous les cas mon rendu d'écran
+est fiable car si la PS5 est allumée, la télé aussi donc au niveau décompte je le
+vois », puis, sans qu'on le lui redemande : « tu peux tout delete, je ne veux pas
+de dette tech, pas de code mort ».
 
-**Le jeton ne sert jamais directement, il s'échange en trois temps** — et rien
-de tout ça n'est documenté par Sony, c'est constaté : cookie `npsso` → **code
-d'autorisation** (une redirection 302), code → **jeton d'accès** (une heure),
-jeton → la liste des jeux. Le jeton d'accès est gardé jusqu'à son échéance
-(`TokenVault`), sinon chaque relevé referait les trois appels — 96 allers-retours
-par jour pour une information qui change au mieux une fois par soirée.
+**Il a raison, et c'est mesurable dans sa base** : sur douze jours, la télé porte
+26 h 39 de temps anonyme contre 1 h 28 nommé. Ces 26 h *sont* la console,
+branchée en HDMI. Deux collecteurs mesuraient donc le même écran — et celui de la
+télé le fait **mieux**, puisqu'il a de vrais horaires.
 
-Cinq pièges, tous couverts par des tests :
+#### Ce que ça a coûté de garder une source sans horaire
 
-- **`URLSession` suit le 302 tout seul**, vers `com.scee.psxandroid...://` que
-  rien ne sait ouvrir, et le code part avec l'en-tête qu'on voulait lire. Le
-  symptôme est trompeur — une erreur réseau là où le serveur a parfaitement
-  répondu. D'où `RedirectRefusal`.
+C'est le vrai enseignement, et il vaut pour toute source future. La PlayStation a
+été l'unique source à compteur du projet, et son incapacité à dire *quand* a
+contaminé **tout le code qu'elle touchait** — jamais par un bug, toujours par une
+précaution supplémentaire à écrire et à ne jamais oublier :
+
+| Où | Ce qu'il fallait tenir |
+|---|---|
+| `DayDigest` | une branche entière, et `coveredTotal` en `max(couverture, compteurs)` au lieu d'une fusion |
+| `DayAnatomy`, `DayPulse`, `RailLayout`, `simultaneity` | un filtre par nature de source dans chacun, qu'aucun ne pouvait oublier |
+| `CategoryDigest` | un total additionné à côté des intervalles fusionnés |
+| Chronologie | une section « Sans horaire connu », cinq précautions visuelles cumulées |
+| Écran du jour | une ligne « horaire inconnu, comptée dans le total » |
+| Carte Déroulé, Battement | une mise en garde chacune, conditionnelle |
+| Carte Appareils | une réserve « horaires inconnus » |
+| Export CSV | une colonne `kind` et deux colonnes vides sur chaque ligne de session |
+
+Tout ça est parti. **La règle 1 — ne jamais inventer de placement horaire —
+reste écrite** : elle n'a plus de source qui la mette à l'épreuve, et elle vaut
+toujours pour la prochaine. Mais brancher une source qui ne sait pas dire *quand*
+demande désormais de réintroduire ce vocabulaire en entier. C'est un coût réel,
+et il vaut mieux le connaître avant de dire oui.
+
+#### Ce qui a été mesuré chez Sony, et qui resservira si la question se rouvre
+
+Rien de tout ça n'est documenté par Sony — c'est constaté sur le vrai compte
+d'Arthur, et ça ne se redécouvre pas gratuitement :
+
+- **Le jeton s'échange en trois temps** : cookie `npsso` → code d'autorisation
+  (une redirection 302 dont l'en-tête `location` porte le code) → jeton d'accès
+  (une heure) → les données. `URLSession` suit le 302 tout seul vers un schéma
+  d'URL que rien ne sait ouvrir, et le code part avec l'en-tête qu'on voulait
+  lire — le symptôme est trompeur, une erreur réseau là où le serveur a
+  parfaitement répondu.
 - **Un `npsso` expiré ne se signale par aucun statut d'erreur** : Sony répond 302
   vers une page de connexion, sans code. Se fier au code HTTP ferait passer un
-  jeton mort pour un succès. C'est la **panne normale** de cette source (le jeton
-  vit ~2 mois), donc elle a son propre cas et le menu le dit.
-- **Un même jeu porte souvent deux titres**, et c'est mesuré : « Call of Duty® »,
-  « Battlefield™ 6 » et « FAR CRY®6 » existent chacun en deux identifiants dans
-  la bibliothèque d'Arthur. Comme l'entité enregistrée est le **nom**, écraser
-  ferait osciller le total entre deux valeurs à chaque relevé — différences
-  négatives ignorées d'un côté, bond inventé de l'autre. On additionne : la somme
-  de deux compteurs cumulés reste un compteur cumulé. **73 titres → 70 entités.**
-- **Un nom porté par deux titres perd son identifiant.** Les deux totaux vivant
-  sous ce nom, aucun des deux `titleId` ne le désigne, et en garder un serait
-  inventer une identité.
-- **Une liste absente n'est pas une liste vide.** La seconde veut dire « rien
-  joué », la première « la réponse n'a pas la forme attendue ».
+  jeton mort pour un succès.
+- **Un même jeu porte souvent deux titres.** « Call of Duty® », « Battlefield™ 6 »
+  et « FAR CRY®6 » existent chacun en deux identifiants dans sa bibliothèque.
+  73 titres → 70 noms.
+- **`playDuration` et `lastPlayedDateTime` ne se mettent pas à jour ensemble.**
+  Le 2026-08-30 à 22 h, Arthur jouait depuis des heures : la date était juste à
+  la minute, la durée n'avait pas bougé d'une seconde depuis 19 h. Sony note
+  *quand* tout de suite, et *combien* des heures plus tard.
+- **Il existe un point d'entrée « présence »** (`basicPresences`) qui dit en
+  temps réel à quel jeu la console joue. Il a été codé et il marchait — la
+  PlayStation devenait alors une source à **intervalles**. Le code vit sur la
+  branche **`feat/psn-presence`**, non mergée, comme `feat/device-discovery` et
+  `feat/steam-source`.
 
-**Le premier relevé d'un jeu ne compte jamais**, et ce n'est pas un défaut :
-`DayDigestBuilder` exige un relevé *antérieur* au jour pour faire une différence,
-or le premier total cumulé porte des années de parties, pas la soirée d'hier.
-Conséquence à connaître avant de crier au bug — **la PlayStation ne compte rien le
-premier jour**, ni pour un jeu lancé pour la première fois.
+**Et une leçon de méthode qui est d'Arthur** : il a collé son `npsso` dans la
+conversation, et le jeton a dû être invalidé et redéposé. Le Trousseau n'était
+pas une précaution de principe — c'est ce qui permettait à la sonde de lire le
+jeton sans que personne ne le voie. La consigne « ne jamais demander un secret en
+chat » vaut dans les deux sens.
 
-**Sony met ses totaux à jour avec du retard**, parfois plusieurs heures. Une
-soirée de jeu peut donc atterrir sur la journée du lendemain. C'est une limite de
-la source, pas du calcul.
+#### Ce que la console avait appris à la télé, et qui reste vrai
 
-**PS5 allumée sans jeu = zéro minute de PlayStation.** `playDuration` n'avance que
-pour un titre ; le menu d'accueil et les réglages n'en sont pas. Ce temps-là n'est
-pas perdu pour autant : la télé le voit, avec de vrais horaires, et l'affiche en
-« Télé » — ce qui est exactement ce qu'on sait de cet écran.
+Deux acquis de cette journée-là **survivent** au retrait, parce qu'ils portent
+sur la télé et non sur la console :
 
-#### Le Trousseau redemande son autorisation à chaque réinstallation
-
-**Constaté à la première installation, le 2026-08-30** : le collecteur n'a rien
-écrit, et le journal de Pulseon était vide. La cause n'était pas dans le code —
-`pgrep SecurityAgent` montrait une **fenêtre d'autorisation du Trousseau en
-attente à l'écran**.
-
-C'est le comportement normal, et il faut le savoir : le jeton est déposé par
-`/usr/bin/security`, donc l'autorisation d'y accéder ne couvre pas Pulseon.
-macOS demande confirmation à la première lecture — et **il la redemandera après
-chaque réinstallation**, parce qu'une signature ad-hoc change à chaque build :
-l'app n'a jamais deux fois la même identité aux yeux du Trousseau. Cliquer
-« Toujours autoriser » vaut pour ce build-là, pas pour le suivant.
-
-C'est la même racine que `SMAppService` inutilisable et que l'avertissement
-Gatekeeper : **pas d'identité de signature sur cette machine**. Sans objet tant
-que Pulseon ne tourne que chez Arthur, mais ça se paie une fois par
-réinstallation.
-
-**Le défaut que ça a révélé** : `storedToken` traduisait *toute* panne du
-Trousseau en `missingToken`, donc le menu affichait « La PlayStation n'est pas
-branchée » alors que le jeton était bien là et qu'il suffisait de cliquer.
-`accessDenied` est désormais un cas distinct — deux pannes qui se ressemblent et
-ne se réparent pas pareil : l'une se dépose, l'autre se débloque. La traduction
-vit dans `failure(reading:)`, une fonction à part, parce que `storedToken` lit le
-vrai Trousseau de la machine et ne se teste donc pas.
-
-#### Ce que la console nomme, et ce que ça change
-
-**La PS5 déclare ses titres, et Sony dit lui-même ce qu'ils sont.** Relevé sur la
-bibliothèque d'Arthur le 2026-08-30 : ses 73 titres portent quatre valeurs de
-`category` exactement — `ps5_native_game`, `ps4_game`, `ps5_native_media_app`,
-`ps5_web_based_media_app`. Et les **onze apps non-jeux** (YouTube 162 h, Apple
-Music 119 h, Prime Video 106 h, Spotify 95 h, myCANAL 74 h, Netflix, Twitch,
-Disney+, Crunchyroll, Molotov, SONY PICTURES CORE) sont **toutes** déclarées
-`media_app`. Personne n'a eu à écrire une liste de noms.
-
-C'est la même bascule que la télé le 2026-08-22 : tant qu'un écran ne nommait
-rien, tout son temps portait le nom de l'appareil **parce qu'on ne savait rien
-d'autre**. Maintenant qu'il nomme, ce qui est du contenu part vers une vraie
-catégorie de contenu — 162 h de YouTube sur PS5 ne sont pas du jeu.
-
-Trois décisions qui ne se devinent pas :
-
-- **Les jeux restent `playstation`, ils ne deviennent pas `game`** (choix
-  d'Arthur, 2026-08-30). « Jeu » est le classement d'un jeu **sur le Mac**, et la
-  distinction entre les deux écrans est précisément ce que la catégorie
-  d'appareil porte.
-- **`category(forPlayStationTitle:)` est séparée de la version Mac**, et pas par
-  symétrie : celle du Mac reconnaît un navigateur **au nom**, donc « ARC
-  Raiders » deviendrait du Web. Même précaution que pour la télé, où retomber sur
-  les règles du Mac aurait deviné un navigateur là où il n'y en a pas.
-- **Sans déclaration, on retombe sur `playstation`**, jamais sur `other` ni sur
-  une devinette d'après le nom : « une console est un écran » reste vrai pour tout
-  ce que Sony ne nomme pas.
-
-**Les noms de jeux s'affichent, et ils ont failli ne jamais l'être.** La carte
-« Appareils » passait explicitement `apps: []` pour les sources à compteur —
-écrit du temps où aucune ne tournait. La ligne PlayStation aurait annoncé
-« 1 h 48, horaires inconnus » sans jamais nommer Elden Ring, alors que **le nom
-du jeu est ce que cette source sait le mieux**. Ce qui est inconnu, c'est
-l'heure : `AppTrail` porte donc une **réserve** à côté des noms plutôt qu'à leur
-place, avec une priorité de mise en page supérieure — une mise en garde qui
-disparaît en fenêtre étroite ne garde rien.
-
-### Deux nombres qui ne font pas le troisième, deuxième round
-
-**Trouvé avant que le collecteur PSN ne tourne, en simulant une soirée d'Arthur** :
-télé allumée de 20 h à 23 h, Elden Ring qui gagne 2 h 30. `coveredTotal` annonçait
-**5 h 30 pour une soirée de 3 h** — et la ligne « deux écrans à la fois » affichait
-**0 h**, puisqu'elle écarte les compteurs faute d'horaires. L'écran aurait donc
-gonflé le total *sans rien pour l'expliquer*.
-
-Ce n'était pas une erreur tant que la PlayStation était le seul compteur et la
-télé pas encore mesurée. **La PS5 d'Arthur est branchée sur cette télé** : sa
-configuration est exactement celle qui casse le raccourci.
-
-**`coveredTotal` prend désormais la borne basse**, `max(couverture, compteurs)` et
-non la somme. On ignore *où* tombent ces 2 h 30 : la couverture réelle est entre
-3 h (tout dedans) et 5 h 30 (tout dehors), et **sous-compter est permis, inventer
-ne l'est pas** — la même règle qui ferme une session au dernier instant *observé*
-plutôt qu'à l'heure courante. Chez Arthur, cette borne basse est aussi la vérité.
-
-Trois cas, trois tests, et il fallait les trois : une soirée de jeu **sans** télé
-mesurée compte toujours en entier ; un jeu **plus long** que la session de télé
-déborde et compte son surplus ; et `summedTotal` continue d'additionner, c'est son
-rôle.
-
-**Une ligne le dit à l'écran** — « PlayStation : horaire inconnu, comptée dans le
-total », posée sous la légende, exactement où la contradiction se lit. Elle **ne
-répète pas la durée**, écrite juste au-dessus : elle qualifie ce chiffre-là. Et
-elle **se tait quand aucun autre écran n'a été mesuré**, parce que ce temps de jeu
-est alors le total à lui seul — il n'est compris dans rien, et le dire serait faux.
-
-### Sources à compteur : la plomberie commune
-
-`CounterSource` est le contrat que remplit toute source incapable de dire un
-horaire (la PlayStation, et toute future source du même genre) : elle rend des
-**totaux cumulés par entité**, rien d'autre. `CounterPoller` l'interroge à
-intervalle régulier (un quart d'heure) et range ce qu'elle dit sans rien
-calculer — la conversion en temps du jour se fait à la lecture, par différence
-entre deux relevés. C'est ce qui garantit qu'aucun horaire n'est inventé.
-
-Rendre un dictionnaire vide et lever une erreur sont **deux réponses
-différentes** : « la source répond, rien à déclarer » n'est pas « on ne sait
-pas ». Le poller retient la dernière erreur pour que l'UI puisse dire qu'une
-source est muette, au lieu de laisser croire qu'elle est à zéro.
-
-`SessionStore.record(...)` **n'écrit pas un relevé identique au précédent**.
-On ne joue pas toute la journée : réécrire le même total à chaque passage
-referait exactement l'erreur du `lastSeen` en base. Sauter les doublons ne
-gêne pas l'agrégation, qui cherche « le dernier relevé antérieur au jour » —
-un relevé plus ancien fait l'affaire tant que le total n'a pas bougé. Un total
-qui *baisse* est écrit tel quel : c'est ce que la source a dit, et c'est à
-l'agrégation de refuser les deltas négatifs, ce qu'elle fait déjà.
+- **Un écran n'est pas un contenu**, et le cas qui le prouve est la PS5 branchée
+  en HDMI : une soirée de jeu est un écran allumé sans app Tizen visible. C'est
+  ce que `.tv` est là pour dire, et c'est le cas **majoritaire** de la télé.
+- **`coveredTotal` fusionne, il n'additionne pas.** Le double comptage a été
+  soulevé par Arthur lui-même avant qu'une seule donnée ne soit écrite : « je
+  suis sur la télé en jouant à la PS5, il ne faudrait pas que ce soit une session
+  comptée double ». Il avait raison, et c'était mesuré : 5 h 30 annoncées pour
+  une soirée de 3 h. Le retrait de la console règle la cause à la racine —
+  aujourd'hui la soirée est **une** session de télé, comptée une fois.
 
 ### La TV : ce que le réseau dit, et ce qu'il ne dit pas
 
@@ -1743,8 +1654,8 @@ Quatre choses à ne pas perdre :
   selon la profondeur du sommeil. Les deux valent « éteinte » — n'en traiter qu'un
   laisserait l'autre mentir.
 - **Interroger la télé ne la rallume pas** (vérifié, ç'aurait été rédhibitoire).
-  Et l'API répond **sans authentification** en lecture : rien à déposer dans le
-  Trousseau, contrairement à la PlayStation.
+  Et l'API répond **sans authentification** en lecture : aucun secret à ranger
+  nulle part, ce qui est aussi pourquoi le projet n'a plus de code Trousseau.
 - **Viser le nom mDNS et non une IP.** `Samsung.local` résout même en veille, et
   `URLSession` sait le faire (≈ 0,5 s au premier appel). Une IP serait figée
   jusqu'au prochain bail DHCP.
@@ -1807,8 +1718,8 @@ Quatre choses à ne pas perdre :
   reste du temps de « Télé ». C'est le repli honnête, jamais une approximation.
   La seule autre voie connue est le WebSocket `samsung.remote.control`, qui donne
   la liste installée mais **exige un appairage** (message d'autorisation sur la
-  télé, jeton à déposer au Trousseau comme celui de la PlayStation) — à garder
-  pour le jour où le balayage montrera ses limites.
+  télé, puis un jeton à conserver — donc réintroduire le Trousseau, supprimé avec
+  la PlayStation) — à garder pour le jour où le balayage montrera ses limites.
 - **Un 404 s'apprend une fois.** `SamsungTVAppProbe` retient les absentes et
   cesse de les demander, ce qui permet un catalogue large sans le payer. Coût
   mesuré sur le réseau d'Arthur : **≈ 60 ms** quand l'app d'avant est encore à
@@ -1849,8 +1760,8 @@ l'appareil, et c'est voulu : « Netflix » sur la télé et « Netflix » sur le
 sont le même produit et le même logo. Quand l'app n'est pas installée sur le
 Mac — le cas courant — on rend nil et l'appelant affiche son repli.
 
-**Le nom de la télé se dépose dans les réglages, pas dans le Trousseau** — ce
-n'est pas un secret :
+**Le nom de la télé se dépose dans les réglages** — ce n'est pas un secret, et
+c'est d'ailleurs le seul réglage du projet :
 
 ```
 defaults write com.arthurlanllier.pulseon TVHost "Samsung.local"
@@ -1900,9 +1811,6 @@ Ce qui ne s'invente pas, et se vérifie dans le fichier :
   personne ne pourra recouper avec la base.
 - **Une entité absente reste vide**, jamais « Autre » : c'est une absence de
   mesure, pas une valeur.
-- **Une source à compteur n'a ni début ni fin** — d'où la colonne `kind`, qui
-  sépare les deux natures de mesure du projet. Les mélanger sans le dire
-  produirait un fichier où des colonnes vides ressembleraient à des zéros.
 - **Les champs inconnus sortent en `null`, jamais absents.** `JSONEncoder` omet
   les optionnels nuls par défaut ; l'encodage est donc écrit à la main. Une clé
   absente se lit « ce format n'a pas cette colonne », une clé à `null` se lit
@@ -1926,27 +1834,35 @@ session, donc la durée se calculait entre la fin et elle-même. **Zéro partout
 s'imbrique dans un autre.
 
 Vérifié sur la vraie base (une copie faite par `sqlite3 .backup`, pour ne pas
-toucher à celle du collecteur) : **3 572 sessions**, huit colonnes sur chaque
-ligne, les sessions ouvertes sans fin, le JSON relu par un parseur.
+toucher à celle du collecteur) : **3 572 sessions**, les sessions ouvertes sans
+fin, le JSON relu par un parseur.
 
-### Les secrets vont dans le Trousseau, pas dans un `.env`
+**Le fichier est passé de huit colonnes à cinq le 2026-09-01.** `kind`,
+`recorded_at` et `total_seconds` n'existaient que pour les sources à compteur ;
+la dernière partie, elles ne portaient plus qu'une constante et deux vides sur
+chaque ligne. **Une colonne toujours vide n'est pas une précaution, c'est du
+bruit** — pire, elle invite à croire qu'une mesure manque.
 
-`Secrets` est le seul fichier qui sait où vivent les secrets ; le collecteur
-PSN, lui, l'ignore. La raison n'est pas la peur du `.gitignore`, qui marche
-très bien : un jeton PSN appartient à **l'utilisateur**, pas au code. Un
-secret de déploiement (mot de passe de base) se livre avec le service et un
-`.env` lui convient. Ici, chaque personne installant Pulseon a le sien, saisi
-à l'exécution — c'est exactement l'usage du Trousseau.
+### Pulseon n'a plus de secret, et c'est un état à défendre
 
-Le jeton se dépose à la main, une fois, sans jamais transiter par un fichier
-du projet :
+`Secrets` — le seul fichier qui savait où vivaient les secrets — **a été supprimé
+le 2026-09-01 avec la PlayStation** : le `npsso` était le seul jeton du projet.
+Plus de Trousseau, plus de `.env`, plus rien à déposer avant que l'app
+fonctionne.
 
-```
-security add-generic-password -s "com.arthurlanllier.pulseon.psn" -a "npsso" -U -w
-```
+Ça vaut d'être noté parce que **c'est une propriété du produit, pas un accident
+de suppression** : le Mac se lit par des API système, la télé répond sans
+authentification sur le réseau local. Une future source qui exigerait un jeton
+ferait donc revenir tout ce dossier — et avec lui un désagrément mesuré : le
+Trousseau redemandait son autorisation **à chaque réinstallation**, une signature
+ad-hoc changeant à chaque build, donc l'app n'ayant jamais deux fois la même
+identité à ses yeux. Même racine que `SMAppService` inutilisable et que
+l'avertissement Gatekeeper.
 
-**Aucune valeur de secret ne doit finir dans un log**, ni tronquée, ni dans un
-message d'erreur. `Secrets.Failure` ne porte que des statuts.
+La règle, si le cas se représente : **le Trousseau, jamais un `.env`**. Ce n'est
+pas la peur du `.gitignore`, qui marche très bien — c'est qu'un jeton de ce genre
+appartient à **l'utilisateur** et non au code. Et **aucune valeur de secret ne
+doit finir dans un log**, ni tronquée, ni dans un message d'erreur.
 
 ### `PulseonMacKit` : pourquoi le code macOS n'est pas dans l'exécutable
 
@@ -1979,12 +1895,13 @@ sont les chevauchements et les trous, et c'est à la future timeline de les
 montrer.
 
 **Règle à tenir, non négociable : ne jamais inventer de placement horaire.**
-La PlayStation n'expose qu'un total cumulé sans horaires. Sa piste doit
-rendre la quantité (largeur proportionnelle) tout en signalant visuellement
-que l'heure est inconnue — hachures ou équivalent. Toute future source à
-compteur suit la même convention. Une source qui n'a jamais rien écrit
-s'affiche « pas encore branchée », visuellement distinct d'une journée à
-zéro.
+Depuis le 2026-09-01, **aucune source ne la met plus à l'épreuve** — les deux
+appareils mesurés savent dire *quand*. Elle reste écrite pour la prochaine : une
+source qui ne rendrait qu'un total cumulé devrait montrer la quantité (largeur
+proportionnelle) tout en disant visuellement que l'heure est inconnue, et le prix
+de cette précaution est documenté dans « La PlayStation est partie ». Une source
+qui n'a jamais rien écrit s'affiche « pas encore branchée », visuellement
+distinct d'une journée à zéro.
 
 Corollaire déjà implémenté dans `DayDigest` : **deux totaux**, parce qu'ils
 ne veulent pas dire la même chose. `summedTotal` additionne les appareils et
@@ -2006,8 +1923,8 @@ Ce que ça retire de la roadmap, définitivement jusqu'à avis contraire :
   installer l'app sur la machine de quelqu'un d'autre. La signature ad-hoc suffit
   sur le Mac d'Arthur, et l'avertissement Gatekeeper n'a plus d'objet.
 - **Le positionnement produit.** Plus de risque « un public attend l'iPhone en
-  premier », plus de « le cœur partageable c'est le Mac » : la PlayStation et la
-  télé ne sont plus des sources hors sujet, ce sont **les** sources.
+  premier », plus de « le cœur partageable c'est le Mac » : la télé n'est plus
+  une source hors sujet, c'est **la** seconde source.
 - **L'onboarding pour un inconnu.** Personne d'autre n'installera Pulseon, donc
   aucune fonctionnalité ne se justifie plus par « il faudra bien expliquer ça à
   quelqu'un qui découvre ».
@@ -2154,8 +2071,59 @@ tout le parti pris visuel ci-dessus.
 5. Synchro CloudKit entre les deux (dépend de l'Apple Developer Program).
 6. ~~Collecteur TV~~ — tourne, par l'API HTTP locale de la télé, et **nomme
    l'app à l'écran** depuis le 2026-08-22. ~~Collecteur PlayStation~~ — branché
-   le 2026-08-30, jeton déposé, 73 titres relevés sur le vrai compte.
+   le 2026-08-30 puis **retiré le 2026-09-01** : la PS5 est sur la télé, son
+   temps y est déjà mesuré avec de vrais horaires. Ne pas le rouvrir.
+   - **Nommer l'entrée HDMI de la télé** est le successeur direct, et il est
+     ouvert : le temps de PS5 s'affiche « Télé », ce qui est honnête mais
+     imprécis. La question à trancher par la mesure — la télé sait-elle nommer sa
+     source active ? — demande un relevé chez Arthur, télé allumée sur la
+     console. **On mesure avant de coder**, comme pour les apps le 2026-08-22.
 7. Réévaluer l'intégration iPhone.
+
+### État au 2026-09-01 (fin de neuvième session)
+
+**La PlayStation est partie, un jour après être arrivée.** Décision d'Arthur,
+prise sur un argument que sa base confirme : la PS5 est branchée sur la télé,
+donc son temps est déjà mesuré — et mieux, avec de vrais horaires. Le collecteur
+PSN faisait une seconde mesure du même écran.
+
+**Et il a demandé de tout retirer**, pas seulement de débrancher : « je ne veux
+pas de dette tech, pas de code mort. Je ne veux pas de code qui soit relié à la
+console. » C'est ce qui a fait la séance — la PlayStation était l'unique source à
+**compteur** du projet, donc tout un vocabulaire n'existait que pour elle.
+
+**267 → 223 tests**, tous au vert. Les 44 tests partis étaient de la plomberie
+compteur ; aucune couverture réelle n'a été perdue. Détail dans « La PlayStation
+est partie, et le genre "compteur" avec elle ».
+
+**Ce que le retrait a rendu au code**, et c'est le vrai bénéfice : chaque endroit
+qui devait se protéger d'une source sans horaire redevient direct. `coveredTotal`
+est une fusion d'intervalles au lieu d'un `max(couverture, compteurs)` ;
+`DayAnatomy`, `DayPulse`, `RailLayout` et `simultaneity` perdent chacun un filtre
+par nature de source qu'aucun ne pouvait oublier ; l'export CSV perd trois
+colonnes qui ne portaient plus qu'une constante et deux vides.
+
+**Le travail PSN n'est pas jeté**, il vit sur `feat/psn-presence` avec ce qui a
+été mesuré chez Sony — dont le fait, contraire à la prémisse fondatrice du
+vocabulaire compteur, que **l'API expose bien une présence en temps réel**. Même
+statut que `feat/device-discovery` et `feat/steam-source` : du raisonnement mesuré
+qu'il vaut mieux relire que réécrire. **La PR #62 est devenue sans objet** — elle
+corrigeait l'affichage du premier jour d'un compteur.
+
+**Ce qui reste ouvert, et c'est la suite directe** : le temps de PS5 s'affiche
+« Télé ». C'est honnête — c'est tout ce que Pulseon mesure de cet écran — mais
+imprécis, et ça représente **26 h 39 sur douze jours contre 1 h 28 de temps
+nommé**. Arthur veut le voir sous le nom « PlayStation ». La bonne façon n'est pas
+de renommer le repli, ce qui rangerait sous « PlayStation » n'importe quelle
+entrée HDMI : **c'est de demander à la télé si elle sait nommer sa source active**
+(HDMI1, HDMI2…). Si oui, c'est mesuré et non deviné. Si non, on le saura, et on
+reposera la question.
+
+**Ce qu'Arthur doit faire pour ça** : lancer une sonde chez lui, télé allumée sur
+la PS5 — même méthode que le 2026-08-22 pour les apps. La sonde reste à écrire.
+
+**Et il a signalé des bugs dans l'app**, non encore regardés à la fin de cette
+séance. C'est le premier sujet de la prochaine.
 
 ### État au 2026-08-30 (fin de huitième session)
 
@@ -2200,21 +2168,10 @@ précaution de principe — c'est ce qui permet à la sonde de lire le jeton san
 personne ne le voie, et la consigne « ne jamais le demander en chat » vaut dans
 les deux sens.
 
-**Ce que je ferais ensuite, par ordre de rendement :**
-
-1. **Les jaquettes de jeux.** L'API rend un `imageUrl` par titre — c'est
-   l'équivalent PS5 des icônes d'apps, et une rangée de jaquettes se reconnaît
-   d'un coup d'œil. Seule réserve, à poser à Arthur : elles viennent du réseau,
-   chez Sony. Ça ne casse pas la promesse comme le feraient les favicons (Sony
-   sait déjà à quoi il joue), mais c'est la première image que l'app irait
-   chercher dehors.
-2. **La fiche d'un jeu**, qui est le chantier n° 3 de la roadmap appliqué à la
-   PS5 : total, évolution, `playCount`, et « dernière partie » — un fait mesuré,
-   donc affichable, à condition de ne jamais s'en servir pour poser le jeu sur la
-   chronologie.
-3. **Les trophées sont horodatés.** Ce ne sont pas des sessions, mais ce sont de
-   vrais instants de jeu — le genre de chose que « quand » sait faire et que
-   « combien » ne dira jamais. À sonder avant de coder quoi que ce soit.
+**Ce que je ferais ensuite, par ordre de rendement** — ~~les jaquettes de jeux,
+la fiche d'un jeu, les trophées horodatés~~. **Les trois sont caduques** : la
+PlayStation a été retirée le lendemain. Ils ne sont conservés ici que pour
+expliquer pourquoi la séance suivante a tout supprimé plutôt que de continuer.
 
 ### État au 2026-08-22 (fin de septième session)
 

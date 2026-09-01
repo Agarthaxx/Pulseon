@@ -42,8 +42,8 @@ Une vue qui compile et dont les tests passent peut être visiblement fausse. En
 une seule session, ce rendu a trouvé :
 
 - une étiquette de piste coupée en deux lignes (« PLAYSTATIO / N ») ;
-- un bloc PlayStation calé à gauche, qui se lisait « joué de minuit à 1 h 48 »
-  alors que son horaire est justement inconnu ;
+- un bloc sans horaire calé à gauche, qui se lisait « joué de minuit à 1 h 48 »
+  alors que son heure était justement inconnue (la PlayStation, retirée depuis) ;
 - une grille horaire qui partait de midi — un `ZStack` de rectangles d'un point
   ne mesure qu'un point de large, donc l'`overlay` le centrait dans la piste, et
   toute la matinée n'avait aucune graduation.
@@ -105,5 +105,5 @@ seul, jamais un carré vide.
 - Les étiquettes sont-elles coupées, tronquées, sur deux lignes ?
 - La tête de lecture est-elle à la bonne heure, et absente sur une journée
   passée ?
-- La piste PlayStation ment-elle sur l'horaire ? (voir la skill
+- Un bloc laisse-t-il croire à une heure qu'on n'a pas mesurée ? (voir la skill
   `pulseon-design`, règle non négociable n° 1)
