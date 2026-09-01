@@ -926,6 +926,46 @@ vingt tranches à 100 %, et « la plus haute » en désigne alors une au hasard.
 chargée, et **garde la plus précoce à égalité** — arbitraire mais stable, sans
 quoi deux ouvertures de la même journée afficheraient deux heures différentes.
 
+### De quand date le binaire qui tourne
+
+**Écrit le 2026-09-01, après que le même défaut se soit produit deux fois.** Le
+2026-08-18 : « je ne vois aucun changement ». Le 2026-09-01 : « bah c'était ça
+plus ou moins, l'appli n'était pas à jour ! ». Les deux fois, le binaire de
+`/Applications` datait d'avant la séance, et du travail réel est passé pour cassé.
+
+**La leçon avait été consignée dès la première fois, et n'a pas suffi.** C'est
+l'enseignement principal : le problème n'était pas la mémoire mais la
+**vérifiabilité**. Rien dans l'app ne disait de quand elle datait, donc « le
+correctif ne marche pas » et « le correctif n'est pas là » — deux diagnostics
+opposés, qui n'appellent pas les mêmes gestes — se ressemblaient trait pour
+trait. Une note de plus n'aurait rien changé ; une ligne dans le menu répond sans
+rien lancer.
+
+`Scripts/build-app.sh` estampille l'`Info.plist` (`PulseonBuildDate`,
+`PulseonBuildCommit`), `BuildStamp` le lit, et le menu l'affiche en dernière
+position, sans action : c'est du diagnostic, pas une commande.
+
+Trois décisions qui ne se devinent pas :
+
+- **La date du *build*, jamais celle du lancement.** Un agent de barre de menu
+  vit des semaines sans redémarrer : « lancée le 12 août » ne dirait rien de la
+  fraîcheur du code. Et **pas la date de modification du binaire** non plus — la
+  copie et la signature ad-hoc la réécrivent toutes les deux, donc elle daterait
+  la dernière manipulation du fichier, pas la compilation.
+- **Sans estampille, on le dit** (« Version inconnue — lancée hors bundle »).
+  Lancée par `swift run`, l'app n'a pas de bundle. Afficher la date du lancement
+  ou celle du fichier ferait exactement ce que cette ligne existe pour empêcher.
+  Même règle que le tiret de la barre de menu : une lecture qui échoue se dit.
+- **Le `+` d'un arbre modifié traverse jusqu'à l'écran.** Un SHA seul désignerait
+  alors du code qui n'est pas celui qu'on a compilé. Mieux vaut un identifiant
+  qui s'avoue approximatif qu'un identifiant faux — c'est la règle du projet
+  appliquée à sa propre traçabilité.
+
+**Ce qui se teste, et ce qui ne se teste pas** : `BuildStamp.label` est pure et
+couverte par cinq tests ; `current` ne fait que lui passer ce que le bundle
+contient, et lire un vrai bundle demanderait d'en avoir un. Même découpage que
+`TVMonitor.reading(from:)`, pure à côté d'un appel réseau qui ne l'est pas.
+
 ### Ce que la barre de menu affiche
 
 Le libellé porte **l'icône et le total du jour, qui défile à la seconde**
