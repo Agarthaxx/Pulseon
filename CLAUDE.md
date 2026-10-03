@@ -68,9 +68,13 @@ perçu comme pro, avec une identité visuelle forte, et une stack légère.
   pas de SDK iOS, pas de simulateur, et le `Testing.framework` livré est
   incomplet (`lib_TestingInterop.dylib` manquant) donc `swift test` compile
   mais ne s'exécute pas.
-- **Xcode est installé et sa licence est acceptée** (vérifié le 2026-08-15).
-  Il reste seulement à ce que `swift` vise Xcode et non les CLT — voir
-  « Lancer les tests ».
+- **Xcode est installé, mais sa licence est à ré-accepter après chaque mise
+  à jour d'Xcode.** Acceptée le 2026-08-15 ; le 2026-10-03, `swift test`
+  refusait de démarrer (« You have not agreed to the Xcode license
+  agreements ») — Xcode avait été mis à jour entre-temps. Une fois, dans un
+  vrai terminal (le `!` de Claude Code n'a pas de TTY) :
+  `sudo xcodebuild -license accept`. Il faut aussi que `swift` vise Xcode et
+  non les CLT — voir « Lancer les tests ».
 
 ## Architecture d'exécution
 
@@ -2106,14 +2110,17 @@ notions Swift accrochées à de vraies lignes du projet. **À mettre à jour qua
 l'architecture bouge** — republier en passant la même URL en paramètre `url`
 met à jour la même page, sans créer de doublon.
 
-**Refaite le 2026-08-18** : elle décrivait encore 744 lignes en 6 fichiers, un
-seul paquet côté Mac, et annonçait « l'app ne compile pas encore ». Elle
-couvre maintenant les **4 429 lignes en 4 paquets**, et son plan a changé de
-principe — une liste plate de fichiers ne dit plus rien à cette taille, donc
-elle est organisée par paquet, chacun présenté par **la règle qu'il fait
-respecter**. Elle décrit l'état de `local/build` (soit `main` + la maquette +
-le correctif du double collecteur), c'est-à-dire ce qui tourne réellement sur
-le Mac d'Arthur.
+**Refaite le 2026-08-18**, puis **le 2026-10-03** : elle décrivait encore
+4 429 lignes, la PlayStation comme troisième appareil, `Secrets` et
+`CounterPoller` — tous partis le 2026-09-01 — et un seul écran. Elle couvre
+maintenant les **9 115 lignes en 50 fichiers** de `main` @ `1114d57`, soit
+exactement le binaire installé : deux appareils, trois écrans, la direction
+éditoriale, le moteur sorti de l'exécutable. Elle reste organisée par paquet,
+chacun présenté par **la règle qu'il fait respecter**.
+
+Son adresse a changé de forme à la republication
+(https://claude.ai/artifact/DX6adoeiTRKn6gLfNMNFbP) ; l'ancienne pointe sur la
+même page.
 
 ## Historique : la première version (abandonnée)
 
