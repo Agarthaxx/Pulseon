@@ -1,5 +1,6 @@
 import Foundation
 import PulseonCore
+import PulseonUI
 
 /// Une app de la télé, **telle que la télé la nomme**.
 ///
@@ -119,11 +120,28 @@ public enum TVAppCatalog {
     /// Il n'en existe pas côté Samsung : celui-ci est fabriqué pour que la table
     /// `StoredApp` puisse distinguer une app de télé d'une app du Mac portant le
     /// même nom — « Apple TV » et « Spotify » existent des deux côtés. Il ne
-    /// résout évidemment aucune icône sur le disque, et
-    /// `AppRegistry.icon(ofApp:)` rendra nil : c'est le repli prévu, pas un
-    /// échec.
+    /// résout évidemment aucune icône sur le disque : c'est `logo(forBundleID:)`
+    /// qui prend le relais, et nil reste le repli prévu, pas un échec.
     public static func bundleID(for id: String) -> String {
-        "tv.samsung.app.\(id)"
+        "\(bundlePrefix)\(id)"
+    }
+
+    private static let bundlePrefix = "tv.samsung.app."
+
+    /// Les apps de la télé dont on sait dessiner le logo.
+    ///
+    /// Par identifiant Tizen, comme le reste du catalogue, et jamais par nom :
+    /// le nom vient de la télé et peut changer avec sa langue ou son firmware.
+    /// Ne figurent ici que des apps que la télé d'Arthur a **réellement**
+    /// nommées — YouTube est la seule à ce jour.
+    static let logos: [String: BrandLogo] = [
+        "111299001912": .youtube,
+    ]
+
+    /// Le logo d'une app de télé, d'après l'identifiant de bundle rangé en base.
+    public static func logo(forBundleID bundleID: String) -> BrandLogo? {
+        guard bundleID.hasPrefix(bundlePrefix) else { return nil }
+        return logos[String(bundleID.dropFirst(bundlePrefix.count))]
     }
 }
 
