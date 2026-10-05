@@ -156,14 +156,31 @@ public final class AppRegistry {
     /// affiche son repli.
     public func icon(ofApp name: String) -> NSImage? {
         if let cached = icons[name] { return cached }
-        guard
-            let bundleID = identity(ofApp: name, on: .mac)?.bundleID,
-            let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
-        else { return nil }
-        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        guard let bundleID = identity(ofApp: name, on: .mac)?.bundleID else { return nil }
+        let icon: NSImage
+        if let substitute = Self.substituteIcons[bundleID] {
+            icon = NSImage(contentsOfFile: substitute) ?? NSWorkspace.shared.icon(forFile: substitute)
+        } else {
+            guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+            else { return nil }
+            icon = NSWorkspace.shared.icon(forFile: url.path)
+        }
         icons[name] = icon
         return icon
     }
+
+    /// Les processus système qui passent au premier plan sans avoir d'icône à
+    /// eux : macOS leur rend l'icône générique, un carré gris quadrillé qui a
+    /// l'air d'un bug. On leur prête une icône du système qui dit ce qu'ils
+    /// sont — toujours lue sur le disque, donc toujours au style de la version
+    /// de macOS installée.
+    ///
+    /// `loginwindow` est au premier plan quand le Mac est verrouillé : le
+    /// cadenas est exactement ce que ce temps représente.
+    private static let substituteIcons: [String: String] = [
+        "com.apple.loginwindow":
+            "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/LockedIcon.icns",
+    ]
 
     /// L'accès des vues aux icônes, sous la seule forme que `PulseonUI` sait
     /// recevoir.

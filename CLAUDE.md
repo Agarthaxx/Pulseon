@@ -292,6 +292,14 @@ image d'une liste qui défile). **Rendre `nil` est une vraie réponse** : une ap
 désinstallée n'a plus d'icône, et une app de la télé n'est pas installée sur le
 Mac. À l'appelant d'afficher un repli, jamais un carré vide.
 
+**Un processus système peut avoir une icône pire que pas d'icône.** Question
+d'Arthur le 2026-10-05 sur `loginwindow`, qui passe au premier plan quand le Mac
+est verrouillé : macOS lui rend l'icône générique, un carré gris quadrillé qui
+a l'air d'un bug. `AppRegistry.substituteIcons` lui prête le cadenas du système
+(`CoreTypes.bundle/…/LockedIcon.icns`), qui est lu sur le disque et suit donc le
+style de la version de macOS installée. La table est indexée par identifiant de
+bundle, jamais par nom affiché : même règle que pour les catégories.
+
 **Le trajet complet, parce qu'il traverse trois paquets et que c'est voulu :**
 `AppRegistry.iconSource` traduit `NSImage` en `Image` — **c'est là que AppKit
 s'arrête**, ces vues servant telles quelles à l'app iOS — `DayBrowser` l'expose,
