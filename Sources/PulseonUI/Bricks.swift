@@ -16,9 +16,6 @@ struct MeterRow: View {
     let tint: Color
     let fill: LinearGradient
     let label: String
-    /// Ce qu'il y a à dire quand il n'y a pas d'apps à montrer — le cas d'une
-    /// source à compteur, qui connaît son total mais aucun horaire.
-    var detail: String = ""
     /// Les apps de la ligne, affichées derrière leurs icônes.
     var apps: [String] = []
     let total: TimeInterval
@@ -57,18 +54,9 @@ struct MeterRow: View {
                 Meter(share: share, fill: fill, palette: palette)
 
                 if !apps.isEmpty {
-                    // La réserve voyage avec les noms au lieu de les remplacer :
-                    // une source à compteur sait *quoi*, pas *quand*, et taire
-                    // l'un des deux serait mentir par omission dans un sens ou
-                    // dans l'autre.
-                    AppTrail(apps: Array(apps), note: detail)
+                    AppTrail(apps: Array(apps))
                         .font(PulseonTheme.caption)
                         .foregroundStyle(palette.inkFaint)
-                } else if !detail.isEmpty {
-                    Text(detail)
-                        .font(PulseonTheme.caption)
-                        .foregroundStyle(palette.inkFaint)
-                        .lineLimit(1)
                 }
             }
         }
@@ -338,7 +326,6 @@ struct DevicesCard: View {
                             tint: PulseonTheme.color(for: lane.device, in: palette),
                             fill: PulseonTheme.gradient(for: lane.device, in: palette),
                             label: lane.device.label,
-                            detail: "",
                             apps: lane.topEntities.prefix(3).map(\.entity),
                             total: lane.total,
                             share: summedTotal > 0 ? lane.total / summedTotal : 0,

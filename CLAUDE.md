@@ -1851,10 +1851,24 @@ changeant de camp à chaque passage. La colonne est optionnelle et nil vaut
 construction, et un attribut optionnel est la seule migration que SwiftData
 sache faire sans plan explicite.
 
-**Les icônes, elles, restent cherchées du côté du Mac**, quel que soit
+**Les icônes sont cherchées d'abord du côté du Mac**, quel que soit
 l'appareil, et c'est voulu : « Netflix » sur la télé et « Netflix » sur le Mac
 sont le même produit et le même logo. Quand l'app n'est pas installée sur le
 Mac — le cas courant — on rend nil et l'appelant affiche son repli.
+
+**Sauf YouTube, depuis le 2026-10-05**, sur une question d'Arthur : « je n'ai pas
+le logo youtube sur l'application, pourquoi ? ». YouTube n'a **pas d'app macOS**,
+donc la seule app que la télé ait jamais nommée (38,7 h en base) n'avait jamais
+de logo. `BrandLogo` le **dessine en SwiftUI** dans `PulseonUI`, comme l'icône de
+Pulseon, et `TVAppCatalog.logos` le rattache à l'**identifiant Tizen**, jamais au
+nom. Trois choses à ne pas défaire :
+
+- **Dessiné, jamais téléchargé** : un service public de logos saurait ce que tu
+  regardes, ce qui casse la promesse « rien ne sort de ta machine ».
+- **L'icône du Mac passe avant** quand elle existe : elle suit le style de la
+  version installée, un dessin non.
+- **On n'ajoute un logo que pour une app que la télé a vraiment nommée.** Les
+  autres gardent leur glyphe, qui reste vrai.
 
 **Le nom de la télé se dépose dans les réglages** — ce n'est pas un secret, et
 c'est d'ailleurs le seul réglage du projet :

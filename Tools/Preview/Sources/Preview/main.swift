@@ -150,6 +150,11 @@ let demoBundleIDs = [
 ]
 
 let demoIcons = AppIconSource { name in
+    // YouTube est l'app de la télé du jeu de démonstration, et n'a pas d'app
+    // macOS : c'est le logo dessiné qui le montre, comme dans la vraie app.
+    if name == "YouTube", let logo = BrandLogo.youtube.cgImage() {
+        return Image(decorative: logo, scale: 2)
+    }
     guard
         let bundleID = demoBundleIDs[name],
         let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
@@ -167,7 +172,7 @@ let demoIcons = AppIconSource { name in
 ///
 /// Seul le dictionnaire est écrit ici — c'est ce que le côté macOS résout en
 /// lisant la catégorie déclarée de chaque app. Ce qui n'y figure pas retombe
-/// sur le défaut de l'appareil : « Elden Ring » n'y est pas, et c'est voulu.
+/// sur le défaut de l'appareil.
 let assignment = CategoryAssignment(byEntity: [
     "Xcode": .development,
     "Ghostty": .development,

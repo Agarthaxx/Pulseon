@@ -57,12 +57,6 @@ public struct Lane: Sendable, Equatable {
 ///   devant un écran.
 /// - `coveredTotal` fusionne les intervalles qui se chevauchent : c'est le
 ///   temps réel passé devant au moins un écran.
-///
-/// Le second est devenu simple le jour où le dernier appareil sans horaire est
-/// parti. Il a porté une borne basse — `max(couverture, compteurs)` — parce
-/// qu'on ignorait si le temps de PlayStation tombait ou non pendant qu'un autre
-/// écran était allumé. Tous les appareils sachant désormais dire *quand*, la
-/// fusion suffit et ne suppose plus rien.
 public struct DayDigest: Sendable {
     public let date: DateComponents
     public let lanes: [Lane]

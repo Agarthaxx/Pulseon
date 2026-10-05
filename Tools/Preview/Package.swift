@@ -12,8 +12,8 @@ let package = Package(
         .executableTarget(
             name: "Preview",
             dependencies: [
-                .product(name: "PulseonCore", package: "creation_project"),
-                .product(name: "PulseonUI", package: "creation_project"),
+                .product(name: "PulseonCore", package: "pulseon"),
+                .product(name: "PulseonUI", package: "pulseon"),
             ]
         ),
         // Le banc de mesure des animations de fenêtre : il ouvre et ferme la
@@ -23,15 +23,15 @@ let package = Package(
         .executableTarget(
             name: "Bench",
             dependencies: [
-                .product(name: "PulseonCore", package: "creation_project"),
-                .product(name: "PulseonUI", package: "creation_project"),
+                .product(name: "PulseonCore", package: "pulseon"),
+                .product(name: "PulseonUI", package: "pulseon"),
             ]
         ),
         // L'icône : même paquet, parce qu'elle rend elle aussi des vues hors
         // écran et n'a pas sa place dans l'app livrée.
         .executableTarget(
             name: "Icon",
-            dependencies: [.product(name: "PulseonUI", package: "creation_project")]
+            dependencies: [.product(name: "PulseonUI", package: "pulseon")]
         ),
     ]
 )

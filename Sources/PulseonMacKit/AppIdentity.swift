@@ -106,7 +106,7 @@ public final class AppRegistry {
     /// À quoi servait ce temps.
     ///
     /// - Parameter device: sert de repli quand l'app est inconnue de la base —
-    ///   un jeu PlayStation n'a pas d'`Info.plist` à lire.
+    ///   un écran de télé sans app nommée n'a pas d'`Info.plist` à lire.
     public func category(ofApp name: String, on device: Device = .mac) -> AppCategory {
         switch device {
         case .mac:
@@ -145,17 +145,25 @@ public final class AppRegistry {
     /// L'icône de l'app, ou nil si on ne peut pas l'avoir.
     ///
     /// Rendre nil est une vraie réponse, pas un échec à cacher : une app
-    /// désinstallée n'a plus d'icône, et une source à compteur (un jeu
-    /// PlayStation) n'en a jamais eu. À l'appelant d'afficher un repli qui n'ait
-    /// pas l'air cassé, jamais un carré vide.
-    /// Cherchée du côté du **Mac**, quel que soit l'appareil qui a consommé le
-    /// temps — et c'est voulu. « Netflix » sur la télé et « Netflix » sur le Mac
-    /// sont le même produit et le même logo : emprunter l'icône du Mac quand
-    /// elle existe est juste. Quand elle n'existe pas — le cas courant, aucune
-    /// app de télé n'étant installée sur le Mac — on rend nil, et l'appelant
-    /// affiche son repli.
+    /// désinstallée n'a plus d'icône, et une app de la télé sans logo connu n'en
+    /// a jamais eu. À l'appelant d'afficher un repli qui n'ait pas l'air cassé,
+    /// jamais un carré vide.
+    ///
+    /// Cherchée **d'abord du côté du Mac**, quel que soit l'appareil qui a
+    /// consommé le temps — et c'est voulu. « Netflix » sur la télé et « Netflix »
+    /// sur le Mac sont le même produit et le même logo : emprunter l'icône du
+    /// Mac quand elle existe est juste, et elle est toujours au style de la
+    /// version installée. À défaut, une app de la télé prend le logo dessiné
+    /// par `BrandLogo` — YouTube, qui n'a pas d'app macOS, n'en aurait sinon
+    /// jamais.
     public func icon(ofApp name: String) -> NSImage? {
         if let cached = icons[name] { return cached }
+        guard let icon = macIcon(ofApp: name) ?? tvLogo(ofApp: name) else { return nil }
+        icons[name] = icon
+        return icon
+    }
+
+    private func macIcon(ofApp name: String) -> NSImage? {
         guard let bundleID = identity(ofApp: name, on: .mac)?.bundleID else { return nil }
         let icon: NSImage
         if let substitute = Self.substituteIcons[bundleID] {
@@ -165,8 +173,21 @@ public final class AppRegistry {
             else { return nil }
             icon = NSWorkspace.shared.icon(forFile: url.path)
         }
-        icons[name] = icon
         return icon
+    }
+
+    private func tvLogo(ofApp name: String) -> NSImage? {
+        guard
+            let bundleID = identity(ofApp: name, on: .tv)?.bundleID,
+            let logo = TVAppCatalog.logo(forBundleID: bundleID),
+            let image = logo.cgImage()
+        else { return nil }
+        // La taille en points, pas en pixels : rendue en double densité,
+        // l'image en porte deux fois plus.
+        return NSImage(
+            cgImage: image,
+            size: NSSize(width: image.width / 2, height: image.height / 2)
+        )
     }
 
     /// Les processus système qui passent au premier plan sans avoir d'icône à

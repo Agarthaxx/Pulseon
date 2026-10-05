@@ -41,7 +41,7 @@ import Testing
     @Test("Une app inconnue de la base n'a pas d'icône, et le dit")
     func unknownAppHasNoIcon() {
         let base = TestBase()
-        #expect(base.registry.iconSource.icon(for: "Elden Ring") == nil)
+        #expect(base.registry.iconSource.icon(for: "Logiciel inconnu") == nil)
     }
 
     /// Sans registre — le cas des tests, et celui d'une future app iOS qui lira
@@ -140,6 +140,46 @@ import Testing
         let base = TestBase()
         #expect(base.registry.category(ofApp: "Jamais vue") == .other)
         #expect(base.registry.icon(ofApp: "Jamais vue") == nil)
+    }
+
+    /// YouTube n'a pas d'app macOS : sans logo dessiné, son rond retombait
+    /// toujours sur le glyphe de sa catégorie, alors que c'est l'app de la télé
+    /// qui porte le plus de temps nommé.
+    @Test("YouTube sur la télé a son logo, sans rien d'installé sur le Mac")
+    func tvYouTubeHasDrawnLogo() throws {
+        let base = TestBase()
+        base.store.noteApp(
+            name: "YouTube", device: .tv,
+            bundleID: TVAppCatalog.bundleID(for: "111299001912"),
+            declaredCategory: "public.app-category.video", at: Date()
+        )
+        let icon = try #require(base.registry.icon(ofApp: "YouTube"))
+        // En points : l'image est rendue en double densité.
+        #expect(icon.size.width == 256)
+        #expect(base.registry.iconSource.icon(for: "YouTube") != nil)
+    }
+
+    /// Le logo est un ajout, pas une règle générale : une app de télé qu'on ne
+    /// sait pas dessiner garde son repli, jamais un logo approché.
+    @Test("Une app de télé sans logo connu n'en invente pas")
+    func tvAppWithoutLogoHasNoIcon() {
+        let base = TestBase()
+        base.store.noteApp(
+            name: "Netflix", device: .tv,
+            bundleID: TVAppCatalog.bundleID(for: "3201907018807"),
+            declaredCategory: "public.app-category.video", at: Date()
+        )
+        #expect(base.registry.icon(ofApp: "Netflix") == nil)
+    }
+
+    /// Le logo se décide sur l'identifiant Tizen, jamais sur le nom : une app du
+    /// Mac qui s'appellerait « YouTube » n'a rien à voir avec celle de la télé.
+    @Test("Le logo se reconnaît à l'identifiant, pas au nom")
+    func logoIsMatchedByIdentifier() {
+        #expect(TVAppCatalog.logo(forBundleID: TVAppCatalog.bundleID(for: "111299001912")) == .youtube)
+        #expect(TVAppCatalog.logo(forBundleID: TVAppCatalog.bundleID(for: "3201907018807")) == nil)
+        #expect(TVAppCatalog.logo(forBundleID: "111299001912") == nil)
+        #expect(TVAppCatalog.logo(forBundleID: "com.google.YouTube") == nil)
     }
 
     /// La correction manuelle gagne sur tout : c'est ce qui fait que le

@@ -9,8 +9,8 @@ import SwiftUI
 /// sait le faire, et chaque plateforme fournit la sienne.
 ///
 /// **Rendre nil est une vraie réponse, pas un échec à cacher** : une app
-/// désinstallée n'a plus d'icône, et un jeu PlayStation n'en a jamais eu côté
-/// Mac. La vue affiche alors le nom seul, jamais un carré vide.
+/// désinstallée n'a plus d'icône, et une app de la télé sans logo connu n'en a
+/// jamais eu côté Mac. La vue affiche alors le nom seul, jamais un carré vide.
 public struct AppIconSource {
     /// Isolée au fil principal, parce que sa seule implémentation réelle
     /// interroge `NSWorkspace`, qui y vit. C'est gratuit ici : le corps d'une
@@ -67,21 +67,11 @@ extension EnvironmentValues {
 public struct AppTrail: View {
     private let apps: [String]
     private let size: CGFloat
-    /// Une réserve accrochée à la rangée, jamais un élément de plus.
-    ///
-    /// Sert aux sources à compteur, qui **nomment** ce qui a tourné sans savoir
-    /// *quand* : les noms sont mesurés, l'horaire ne l'est pas, et les deux
-    /// doivent tenir sur la même ligne sans que la réserve passe pour une
-    /// troisième app — d'où le tiret et une priorité de mise en page
-    /// supérieure. Si la place manque, ce sont les noms qui se tronquent : une
-    /// mise en garde qui disparaît en fenêtre étroite ne garde rien.
-    private let note: String
 
     @Environment(\.appIcons) private var source
 
-    public init(apps: [String], note: String = "", size: CGFloat = 14) {
+    public init(apps: [String], size: CGFloat = 14) {
         self.apps = apps
-        self.note = note
         self.size = size
     }
 
@@ -108,15 +98,6 @@ public struct AppTrail: View {
                 // la dernière de la rangée qui se tronque, pas le nom de
                 // chacune.
                 .layoutPriority(1)
-            }
-
-            if !note.isEmpty {
-                Text("— \(note)")
-                    .lineLimit(1)
-                    // Ne jamais *proposer* de se tronquer : c'est ce qui décide
-                    // si la rangée tient. Même piège que la carte « Déroulé ».
-                    .fixedSize()
-                    .layoutPriority(2)
             }
         }
     }
