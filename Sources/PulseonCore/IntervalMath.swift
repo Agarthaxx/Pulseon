@@ -54,9 +54,7 @@ public enum IntervalMath {
     /// théorique. Cette soustraction donne le temps compté en trop par
     /// l'addition, pas le temps passé sur plusieurs écrans : à trois appareils
     /// allumés une heure ensemble, elle rend deux heures alors qu'on n'a vécu
-    /// qu'une heure de simultanéité. Et surtout elle inclurait le total d'une
-    /// source à compteur — la PlayStation n'a aucun horaire, donc on ne peut
-    /// **pas** dire qu'elle tournait en même temps que la télé.
+    /// qu'une heure de simultanéité.
     ///
     /// - Parameter perDevice: les blocs de chaque appareil, séparément. Les
     ///   blocs d'un même appareil sont fusionnés d'abord : **un appareil ne peut

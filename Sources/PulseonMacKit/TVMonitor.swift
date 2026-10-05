@@ -52,8 +52,8 @@ public protocol TVProbe: Sendable {
 /// la rallume pas.** Une app qui allume la télé pour savoir si elle est allumée
 /// n'aurait aucun sens.
 ///
-/// L'API répond **sans authentification** en lecture, contrairement à la
-/// PlayStation : rien à déposer dans le Trousseau.
+/// L'API répond **sans authentification** en lecture : rien à déposer dans le
+/// Trousseau.
 public struct SamsungTVProbe: TVProbe {
     /// Le nom ou l'IP de la télé. Un nom mDNS (`Samsung.local`) est préférable :
     /// il survit à un changement d'adresse.

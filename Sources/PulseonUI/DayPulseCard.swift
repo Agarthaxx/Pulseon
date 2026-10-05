@@ -18,8 +18,6 @@ import SwiftUI
 ///
 /// Ce que la courbe ne dit pas, et que la carte doit dire :
 ///
-/// - **la PlayStation n'y est pas** (règle 1). Sans horaire, elle ne peut
-///   occuper aucune tranche, et son absence se lirait comme un creux ;
 /// - **une journée sans mesure ne dessine pas un plat.** Une ligne à zéro
 ///   affirmerait « aucun écran » là où le collecteur était éteint (règle 2).
 struct DayPulseCard: View {

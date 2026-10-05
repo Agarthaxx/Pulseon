@@ -171,10 +171,9 @@ public enum PulseonTheme {
         switch category {
         case .development: (palette.navyLight, palette.navy)
         case .game: (palette.goldLight, palette.gold)
-        // La télé et la PlayStation portent **la couleur de leur appareil**, pas
-        // une teinte de catégorie : c'est le même vert-de-gris et le même or que
-        // leurs arcs dans l'anneau du haut et que leurs pastilles dans la
-        // légende. Un rond de catégorie qui parle d'un écran doit se rattacher à
+        // La télé porte **la couleur de son appareil**, pas une teinte de
+        // catégorie : c'est le même vert-de-gris que son arc dans l'anneau du
+        // haut et que sa pastille dans la légende. Un rond de catégorie qui parle d'un écran doit se rattacher à
         // cet écran d'un coup d'œil, sans redescendre lire un libellé.
         case .tv:
             (Color(red: 0.573, green: 0.769, blue: 0.765), Color(red: 0.427, green: 0.616, blue: 0.612))

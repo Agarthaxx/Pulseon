@@ -41,7 +41,7 @@ import Testing
     @Test("Une app inconnue de la base n'a pas d'icône, et le dit")
     func unknownAppHasNoIcon() {
         let base = TestBase()
-        #expect(base.registry.iconSource.icon(for: "Elden Ring") == nil)
+        #expect(base.registry.iconSource.icon(for: "Logiciel inconnu") == nil)
     }
 
     /// Sans registre — le cas des tests, et celui d'une future app iOS qui lira

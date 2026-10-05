@@ -61,7 +61,7 @@ public protocol TVAppProbe: Sendable {
 /// La seule autre voie connue est le WebSocket `samsung.remote.control`, qui
 /// donne la liste installée mais **exige un appairage** — un message
 /// d'autorisation s'affiche sur la télé et rend un jeton, qui irait alors au
-/// Trousseau comme celui de la PlayStation. Plus intrusif à installer ; à garder
+/// Trousseau. Plus intrusif à installer ; à garder
 /// pour le jour où le balayage montrera ses limites.
 ///
 /// **Les catégories sont écrites au format d'Apple** (`public.app-category.…`)

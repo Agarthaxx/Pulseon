@@ -48,8 +48,8 @@ struct DayCategoryRings: View {
         // de passer à la ligne.
         //
         // Il fallait quand même traiter le cas, et le PNG l'a montré le même
-        // jour : en donnant leur propre rond à la télé et à la PlayStation, on
-        // passe de cinq catégories à sept. Dans une fenêtre de 560 points, la
+        // jour : en donnant leur propre rond aux écrans, on passait de cinq
+        // catégories à sept. Dans une fenêtre de 560 points, la
         // rangée réclamait 612 points, débordait, et **entraînait toute la
         // colonne avec elle** — les cartes du dessous se retrouvaient rognées à
         // gauche et à droite. Invisible à la compilation, invisible en fenêtre
@@ -137,9 +137,9 @@ private struct CategoryRing: View {
     /// Ce qui occupe le cœur du rond : le logo de l'app dominante, ou le glyphe
     /// de la catégorie à défaut.
     ///
-    /// **Rendre nil est une vraie réponse**, pas un échec à cacher : un jeu
-    /// PlayStation n'a jamais eu d'icône côté Mac, une app désinstallée n'en a
-    /// plus, et une app utilisée avant que `noteApp` ne tourne n'a aucun
+    /// **Rendre nil est une vraie réponse**, pas un échec à cacher : une app de
+    /// la télé sans logo connu n'a pas d'icône côté Mac, une app désinstallée
+    /// n'en a plus, et une app utilisée avant que `noteApp` ne tourne n'a aucun
     /// identifiant de bundle en base. Le repli n'est donc pas un cas rare à
     /// traiter par acquit de conscience — c'est le cas normal d'une catégorie
     /// entière, « Jeu » en tête. **Jamais de carré vide.**

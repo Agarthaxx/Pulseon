@@ -13,10 +13,6 @@ import Foundation
 ///   étant sur son Mac ne fait pas 200 % d'une tranche. C'est la même règle que
 ///   `coveredTotal` face à `summedTotal`, et celle qui a évité la journée de
 ///   51 heures : deux mesures d'un même instant restent un seul instant.
-/// - **Une source à compteur est écartée** (règle 1). La PlayStation ne connaît
-///   aucun horaire : la placer dans une tranche inventerait une heure. Son temps
-///   n'apparaît donc pas dans le battement, et la carte doit le dire plutôt que
-///   de laisser croire à un creux.
 /// - **La longueur du jour est fournie**, jamais supposée égale à 86 400 : les
 ///   journées de changement d'heure font 23 ou 25 h, et une courbe calée sur 24
 ///   décalerait toutes ses tranches ce jour-là.

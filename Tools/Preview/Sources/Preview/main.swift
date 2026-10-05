@@ -167,7 +167,7 @@ let demoIcons = AppIconSource { name in
 ///
 /// Seul le dictionnaire est écrit ici — c'est ce que le côté macOS résout en
 /// lisant la catégorie déclarée de chaque app. Ce qui n'y figure pas retombe
-/// sur le défaut de l'appareil : « Elden Ring » n'y est pas, et c'est voulu.
+/// sur le défaut de l'appareil.
 let assignment = CategoryAssignment(byEntity: [
     "Xcode": .development,
     "Ghostty": .development,

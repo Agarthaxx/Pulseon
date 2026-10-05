@@ -4,16 +4,11 @@ import SwiftUI
 /// L'écran d'une journée : ce qu'on voit en ouvrant Pulseon.
 ///
 /// **Suit la maquette d'Arthur du 2026-08-17** — fond profond, cartes,
-/// l'anneau en tête, puis la répartition, puis les appareils. Deux écarts
-/// délibérés, tous deux demandés ou imposés par les règles du projet :
-///
-/// - **aucun objectif quotidien, aucun badge « On Track »**. La maquette en
-///   portait ; Arthur a confirmé « on reste sur une application sans
-///   jugement » en même temps qu'il validait le dessin. L'anneau garde donc sa
-///   forme mais dit une composition, pas une progression (voir `RingLayout`) ;
-/// - **la PlayStation n'apparaît sur aucune ligne de temps**. Elle ne connaît
-///   pas ses horaires : elle a sa part dans l'anneau, qui n'est pas une
-///   chronologie, et son total dans les listes.
+/// l'anneau en tête, puis la répartition, puis les appareils. Un écart
+/// délibéré : **aucun objectif quotidien, aucun badge « On Track »**. La
+/// maquette en portait ; Arthur a confirmé « on reste sur une application sans
+/// jugement » en même temps qu'il validait le dessin. L'anneau garde donc sa
+/// forme mais dit une composition, pas une progression (voir `RingLayout`).
 public struct DayDashboard: View {
     public enum Load: Sendable {
         case loaded(DayPresentation)
@@ -427,8 +422,9 @@ private struct RingCard: View {
     /// **« deux » ou « plusieurs » selon ce qui a été mesuré** : écrire « deux »
     /// un jour où trois écrans tournaient ensemble sous-entendrait une mesure
     /// qu'on n'a pas faite. Et jamais « les deux », qui renverrait aux pastilles
-    /// de la légende — or elle peut en porter une troisième, la PlayStation,
-    /// dont on ignore justement les horaires.
+    /// de la légende — or elle pourra en porter une troisième le jour où un
+    /// appareil s'ajoute, et la phrase serait fausse sans que personne la
+    /// relise.
     ///
     /// En dessous d'une minute, on se tait : deux sessions qui se frôlent à la
     /// seconde ne sont pas une soirée sur deux écrans.

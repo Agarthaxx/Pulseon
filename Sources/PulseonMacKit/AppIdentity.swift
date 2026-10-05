@@ -106,7 +106,7 @@ public final class AppRegistry {
     /// À quoi servait ce temps.
     ///
     /// - Parameter device: sert de repli quand l'app est inconnue de la base —
-    ///   un jeu PlayStation n'a pas d'`Info.plist` à lire.
+    ///   un écran de télé sans app nommée n'a pas d'`Info.plist` à lire.
     public func category(ofApp name: String, on device: Device = .mac) -> AppCategory {
         switch device {
         case .mac:

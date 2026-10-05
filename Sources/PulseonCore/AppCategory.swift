@@ -18,18 +18,18 @@ public enum AppCategory: String, CaseIterable, Sendable, Codable {
     case creation
     case productivity
     case game
-    /// La télé, et la console : **deux écrans, pas deux contenus.**
+    /// La télé : **un écran, pas un contenu.**
     ///
-    /// Elles n'ont pas leur place parmi les catégories de contenu, et c'est
+    /// Elle n'a pas sa place parmi les catégories de contenu, et c'est
     /// exactement ce que le raccourci précédent faisait — tout le temps de télé
     /// tombait en `media`, donc « Vidéo et musique », **avant même de savoir ce
-    /// qui passait à l'écran**. Une soirée de PS5 branchée sur cette télé s'y
-    /// serait rangée en musique. Pulseon ne sait qu'une chose de la télé
+    /// qui passait à l'écran**. Une soirée de jeu sur une entrée HDMI s'y serait
+    /// rangée en musique. Pulseon ne sait qu'une chose de la télé
     /// (`PowerState: on`) : le rond doit dire ça, et rien de plus.
     ///
     /// Le jour où la télé nommera son app (`Scripts/probe-tv-apps.sh`), son
-    /// temps repartira vers une vraie catégorie de contenu et ces cas
-    /// redeviendront le seul repli — sans rien perdre de l'historique, la
+    /// temps repartira vers une vraie catégorie de contenu et ce cas
+    /// redeviendra le seul repli — sans rien perdre de l'historique, la
     /// catégorie brute étant stockée telle quelle.
     case tv
     /// Ni devinée, ni devinable. Assumée comme telle : mieux vaut une ligne
